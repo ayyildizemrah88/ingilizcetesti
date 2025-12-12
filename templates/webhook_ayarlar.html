@@ -1,0 +1,78 @@
+{% extends "dashboard.html" %}
+{% block title %}Webhook Ayarları - Skills Test Center{% endblock %}
+
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-link-45deg me-2"></i>Webhook Ayarları</h3>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">Yeni Webhook Ekle</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Webhook URL *</label>
+                        <input type="url" name="url" class="form-control" placeholder="https://yourapp.com/webhook"
+                            required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Olay Tipi</label>
+                        <select name="event_type" class="form-select">
+                            <option value="exam_completed">Sınav Tamamlandı</option>
+                            <option value="candidate_added">Aday Eklendi</option>
+                            <option value="credit_low">Kredi Düşük</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Secret Key (opsiyonel)</label>
+                        <input type="text" name="secret_key" class="form-control"
+                            placeholder="Doğrulama için gizli anahtar">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Kaydet</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">Mevcut Webhook'lar</h6>
+            </div>
+            <div class="card-body">
+                {% if webhooks %}
+                {% for wh in webhooks %}
+                <div class="border rounded p-3 mb-2">
+                    <strong>{{ wh.event_type if wh is mapping else wh[3] }}</strong><br>
+                    <small class="text-muted">{{ wh.url if wh is mapping else wh[2] }}</small>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted">Henüz webhook tanımlanmamış.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card border-0 mt-3">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">Örnek Payload</h6>
+            </div>
+            <div class="card-body">
+                <pre class="bg-light p-2 small"><code>{
+  "event": "exam_completed",
+  "aday_id": 123,
+  "ad_soyad": "Ahmet Yılmaz",
+  "puan": 85.5,
+  "seviye": "B2",
+  "certificate_hash": "abc123..."
+}</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
