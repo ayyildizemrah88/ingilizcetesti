@@ -103,7 +103,12 @@
 <script>
     let remainingSeconds = {{ kalan_sure }};
     const timerEl = document.getElementById('timer');
+    const OFFLINE_KEY = 'skills_offline_answers';
+    let webcamStream = null;
 
+    // ══════════════════════════════════════════════════════════════
+    // TIMER
+    // ══════════════════════════════════════════════════════════════
     function updateTimer() {
         const mins = Math.floor(remainingSeconds / 60);
         const secs = remainingSeconds % 60;
@@ -129,8 +134,107 @@
         btn.classList.add('selected');
         document.getElementById('selectedAnswer').value = answer;
         document.getElementById('submitBtn').disabled = false;
+
+        // Save to LocalStorage for offline mode
+        saveOfflineAnswer({{ soru.id }}, answer);
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // OFFLINE MODE - LocalStorage
+    // ══════════════════════════════════════════════════════════════
+    function saveOfflineAnswer(soruId, answer) {
+        try {
+            let answers = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+            answers = answers.filter(a => a.soru_id !== soruId);
+            answers.push({
+                soru_id: soruId,
+                answer: answer,
+                timestamp: new Date().toISOString()
+            });
+            localStorage.setItem(OFFLINE_KEY, JSON.stringify(answers));
+        } catch (e) {
+            console.warn('LocalStorage not available', e);
+        }
+    }
+
+    async function syncOfflineAnswers() {
+        try {
+            const answers = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+            if (answers.length === 0) return;
+
+            const resp = await fetch('/api/offline/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ answers: answers })
+            });
+
+            if (resp.ok) {
+                localStorage.removeItem(OFFLINE_KEY);
+                console.log('Offline answers synced');
+            }
+        } catch (e) {
+            console.warn('Sync failed, will retry later', e);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // WEBCAM PROCTORING
+    // ══════════════════════════════════════════════════════════════
+    async function initWebcam() {
+        try {
+            webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            console.log('Webcam initialized for proctoring');
+
+            // Take snapshot every 30 seconds
+            setInterval(captureSnapshot, 30000);
+            captureSnapshot(); // Initial snapshot
+        } catch (e) {
+            console.warn('Webcam not available', e);
+        }
+    }
+
+    async function captureSnapshot() {
+        if (!webcamStream) return;
+
+        try {
+            const video = document.createElement('video');
+            video.srcObject = webcamStream;
+            await video.play();
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 320;
+            canvas.height = 240;
+            canvas.getContext('2d').drawImage(video, 0, 0, 320, 240);
+
+            const snapshot = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+
+            await fetch('/api/proctoring/snapshot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ snapshot: snapshot, type: 'periodic', suspicious: 0 })
+            });
+        } catch (e) {
+            console.warn('Snapshot failed', e);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // NETWORK STATUS
+    // ══════════════════════════════════════════════════════════════
+    window.addEventListener('online', () => {
+        console.log('Back online, syncing...');
+        syncOfflineAnswers();
+    });
+
+    window.addEventListener('offline', () => {
+        console.log('Offline mode activated');
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    // INIT
+    // ══════════════════════════════════════════════════════════════
     updateTimer();
+    initWebcam();
+    syncOfflineAnswers();
 </script>
 {% endblock %}
