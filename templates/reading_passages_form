@@ -1,0 +1,121 @@
+{% extends "dashboard.html" %}
+{% block title %}Yeni Reading Passage - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-book me-2"></i>Yeni Reading Passage</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Başlık</label>
+                            <input type="text" name="title" class="form-control" required
+                                placeholder="The History of Coffee">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Konu</label>
+                            <input type="text" name="topic" class="form-control" placeholder="History, Science, etc.">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Seviye</label>
+                            <select name="difficulty" class="form-select">
+                                <option value="A1">A1</option>
+                                <option value="A2">A2</option>
+                                <option value="B1" selected>B1</option>
+                                <option value="B2">B2</option>
+                                <option value="C1">C1</option>
+                                <option value="C2">C2</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Passage Text</label>
+                        <textarea name="passage_text" class="form-control" rows="12" required
+                            placeholder="Enter the full reading passage here. This should be 300-800 words for IELTS-style questions."></textarea>
+                        <small class="text-muted">Kelime sayısı otomatik hesaplanır.</small>
+                    </div>
+
+                    <hr>
+                    <h6 class="mb-3">Sorular</h6>
+
+                    <div id="questions-container">
+                        <div class="question-block mb-4 p-3 bg-light rounded">
+                            <div class="mb-3">
+                                <label class="form-label">Soru 1</label>
+                                <input type="text" name="questions[]" class="form-control"
+                                    placeholder="What is the main idea of the passage?">
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <input type="text" name="a_0" class="form-control" placeholder="A) Option A">
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" name="b_0" class="form-control" placeholder="B) Option B">
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" name="c_0" class="form-control" placeholder="C) Option C">
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" name="d_0" class="form-control" placeholder="D) Option D">
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <select name="correct_0" class="form-select w-auto">
+                                    <option value="A">Doğru: A</option>
+                                    <option value="B">Doğru: B</option>
+                                    <option value="C">Doğru: C</option>
+                                    <option value="D">Doğru: D</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-outline-secondary mb-4" onclick="addQuestion()">
+                        <i class="bi bi-plus me-1"></i>Soru Ekle
+                    </button>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="/admin/reading-passages" class="btn btn-secondary">İptal</a>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let questionCount = 1;
+    function addQuestion() {
+        const container = document.getElementById('questions-container');
+        const html = `
+    <div class="question-block mb-4 p-3 bg-light rounded">
+        <div class="mb-3">
+            <label class="form-label">Soru ${questionCount + 1}</label>
+            <input type="text" name="questions[]" class="form-control" placeholder="Enter question text">
+        </div>
+        <div class="row g-2">
+            <div class="col-md-6"><input type="text" name="a_${questionCount}" class="form-control" placeholder="A) Option A"></div>
+            <div class="col-md-6"><input type="text" name="b_${questionCount}" class="form-control" placeholder="B) Option B"></div>
+            <div class="col-md-6"><input type="text" name="c_${questionCount}" class="form-control" placeholder="C) Option C"></div>
+            <div class="col-md-6"><input type="text" name="d_${questionCount}" class="form-control" placeholder="D) Option D"></div>
+        </div>
+        <div class="mt-2">
+            <select name="correct_${questionCount}" class="form-select w-auto">
+                <option value="A">Doğru: A</option><option value="B">Doğru: B</option>
+                <option value="C">Doğru: C</option><option value="D">Doğru: D</option>
+            </select>
+        </div>
+    </div>`;
+        container.insertAdjacentHTML('beforeend', html);
+        questionCount++;
+    }
+</script>
+{% endblock %}
