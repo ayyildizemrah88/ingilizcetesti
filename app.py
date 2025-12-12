@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 ═══════════════════════════════════════════════════════════════
-SKILLS TEST CENTER - V21 PRODUCTION READY
+SKILLS TEST CENTER - V26 PRODUCTION READY
 ═══════════════════════════════════════════════════════════════
 ✅ PostgreSQL + SQLite Support | ✅ Full Features | ✅ Docker Ready
 ✅ Multi-tenant | ✅ Role-Based Access | ✅ GDPR Compliant
+✅ Unit Tests | ✅ Sentry Error Tracking | ✅ Data Encryption
 """
 
-import os, random, string, datetime, time, sys, io, threading, re, json, logging, hashlib, uuid
+import os, random, string, datetime, time, sys, io, threading, re, json, logging, hashlib, uuid, base64
 from datetime import timedelta
 from contextlib import contextmanager
 from functools import wraps
@@ -30,6 +31,31 @@ from dotenv import load_dotenv
 import pandas as pd
 import jwt
 
+# Sentry Error Tracking
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.flask import FlaskIntegration
+    SENTRY_DSN = os.getenv('SENTRY_DSN')
+    if SENTRY_DSN:
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[FlaskIntegration()],
+            traces_sample_rate=0.1,
+            profiles_sample_rate=0.1,
+        )
+        SENTRY_AVAILABLE = True
+    else:
+        SENTRY_AVAILABLE = False
+except ImportError:
+    SENTRY_AVAILABLE = False
+
+# Cryptography for GDPR encryption
+try:
+    from cryptography.fernet import Fernet
+    CRYPTO_AVAILABLE = True
+except ImportError:
+    CRYPTO_AVAILABLE = False
+
 # Optional imports
 try:
     import psycopg2
@@ -48,6 +74,7 @@ try:
     import sqlite3
     SQLITE_AVAILABLE = True
 except:
+
     SQLITE_AVAILABLE = False
 
 # ══════════════════════════════════════════════════════════════
@@ -308,6 +335,19 @@ def init_db():
         )''',
         f'''CREATE TABLE IF NOT EXISTS sablon_soru_tipleri (
             id {auto_inc}, sablon_id INTEGER, soru_tipi TEXT
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS soru_etiketleri (
+            id {auto_inc}, soru_id INTEGER, etiket TEXT
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS gdpr_settings (
+            id {auto_inc}, sirket_id INTEGER UNIQUE, retention_days INTEGER DEFAULT 365,
+            auto_anonymize INTEGER DEFAULT 1, encrypt_pii INTEGER DEFAULT 0,
+            last_anonymize_run TIMESTAMP
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS data_requests (
+            id {auto_inc}, aday_id INTEGER, request_type TEXT, 
+            status TEXT DEFAULT 'Bekliyor', requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP
         )'''
     ]
     
@@ -1347,7 +1387,231 @@ def get_questions_for_template(sablon_id, difficulty='B1', aday_id=None, sirket_
     
     return dict(question) if question else None
 
+# ══════════════════════════════════════════════════════════════
+# GDPR/KVKK - ENCRYPTION & ANONYMIZATION
+# ══════════════════════════════════════════════════════════════
+def get_encryption_key():
+    """Get or generate encryption key for GDPR data"""
+    key = os.getenv('ENCRYPTION_KEY')
+    if not key and CRYPTO_AVAILABLE:
+        key = Fernet.generate_key().decode()
+        logger.warning("No ENCRYPTION_KEY set. Generate one with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'")
+    return key
+
+def encrypt_field(value):
+    """Encrypt sensitive PII data"""
+    if not CRYPTO_AVAILABLE or not value:
+        return value
+    
+    key = get_encryption_key()
+    if not key:
+        return value
+    
+    try:
+        f = Fernet(key.encode() if isinstance(key, str) else key)
+        return f.encrypt(value.encode()).decode()
+    except Exception as e:
+        logger.error(f"Encryption failed: {e}")
+        return value
+
+def decrypt_field(value):
+    """Decrypt sensitive PII data"""
+    if not CRYPTO_AVAILABLE or not value:
+        return value
+    
+    key = get_encryption_key()
+    if not key:
+        return value
+    
+    try:
+        f = Fernet(key.encode() if isinstance(key, str) else key)
+        return f.decrypt(value.encode()).decode()
+    except Exception as e:
+        logger.error(f"Decryption failed: {e}")
+        return value
+
+def anonymize_candidate(aday_id):
+    """Anonymize candidate data for GDPR compliance"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    anon_hash = hashlib.sha256(str(aday_id).encode()).hexdigest()[:12]
+    
+    q = """UPDATE adaylar SET 
+           ad_soyad=?, email=?, telefon=?, ip_address=?,
+           is_anonymized=1
+           WHERE id=?"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    
+    c.execute(q, (
+        f"ANONYMIZED_{anon_hash}",
+        f"anon_{anon_hash}@deleted.local",
+        "000-000-0000",
+        "0.0.0.0",
+        aday_id
+    ))
+    
+    conn.commit()
+    conn.close()
+    logger.info(f"Candidate {aday_id} anonymized for GDPR compliance")
+    return True
+
+def anonymize_old_candidates(sirket_id=None, retention_days=365):
+    """Anonymize candidates older than retention period"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    cutoff = datetime.datetime.now() - timedelta(days=retention_days)
+    
+    if sirket_id:
+        q = "SELECT id FROM adaylar WHERE sirket_id=? AND created_at<? AND (is_anonymized IS NULL OR is_anonymized=0)"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (sirket_id, cutoff))
+    else:
+        q = "SELECT id FROM adaylar WHERE created_at<? AND (is_anonymized IS NULL OR is_anonymized=0)"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (cutoff,))
+    
+    candidates = c.fetchall()
+    conn.close()
+    
+    count = 0
+    for row in candidates:
+        aday_id = row['id'] if isinstance(row, dict) else row[0]
+        anonymize_candidate(aday_id)
+        count += 1
+    
+    return {'anonymized_count': count}
+
+def export_candidate_data(aday_id):
+    """Export all candidate data for GDPR data portability"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    data = {'aday': None, 'cevaplar': [], 'proctoring': []}
+    
+    # Candidate info
+    q = "SELECT * FROM adaylar WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id,))
+    data['aday'] = dict(c.fetchone()) if c.fetchone() else None
+    
+    # Answers
+    c.execute(q.replace('adaylar', 'cevaplar').replace('id=', 'aday_id='), (aday_id,))
+    data['cevaplar'] = [dict(r) for r in c.fetchall()]
+    
+    conn.close()
+    return data
+
+def delete_candidate_data(aday_id):
+    """Delete all candidate data for GDPR right to be forgotten"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    tables = ['cevaplar', 'proctoring_snapshots', 'offline_answers', 'speaking_recordings']
+    
+    for table in tables:
+        q = f"DELETE FROM {table} WHERE aday_id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        try:
+            c.execute(q, (aday_id,))
+        except:
+            pass
+    
+    q = "DELETE FROM adaylar WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id,))
+    
+    conn.commit()
+    conn.close()
+    logger.info(f"Candidate {aday_id} data deleted (GDPR)")
+    return True
+
+# ══════════════════════════════════════════════════════════════
+# QUESTION TAGGING SYSTEM
+# ══════════════════════════════════════════════════════════════
+def add_question_tags(soru_id, tags):
+    """Add tags to a question"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    # Clear existing tags
+    q = "DELETE FROM soru_etiketleri WHERE soru_id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (soru_id,))
+    
+    # Add new tags
+    for tag in tags:
+        tag = tag.strip().lower()
+        if tag:
+            q = "INSERT INTO soru_etiketleri (soru_id, etiket) VALUES (?,?)"
+            if is_pg:
+                q = q.replace('?', '%s')
+            c.execute(q, (soru_id, tag))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def get_question_tags(soru_id):
+    """Get all tags for a question"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = "SELECT etiket FROM soru_etiketleri WHERE soru_id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (soru_id,))
+    tags = [r[0] for r in c.fetchall()]
+    conn.close()
+    return tags
+
+def get_questions_by_tag(tag, sirket_id=0):
+    """Get all questions with a specific tag"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = """SELECT s.* FROM sorular s 
+           JOIN soru_etiketleri e ON s.id=e.soru_id 
+           WHERE e.etiket=? AND (s.sirket_id=0 OR s.sirket_id=?)"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (tag.lower(), sirket_id))
+    questions = c.fetchall()
+    conn.close()
+    return questions
+
+def get_all_tags(sirket_id=0):
+    """Get all unique tags"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = """SELECT DISTINCT e.etiket FROM soru_etiketleri e 
+           JOIN sorular s ON e.soru_id=s.id 
+           WHERE s.sirket_id=0 OR s.sirket_id=?
+           ORDER BY e.etiket"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    tags = [r[0] for r in c.fetchall()]
+    conn.close()
+    return tags
+
 def send_email(to, subj, body, sid=None, deduct_credit=True):
+
     """Send email with multiple SMTP fallback and credit deduction"""
     
     # Check credit before sending
@@ -3087,8 +3351,77 @@ def admin_sablon_tipleri(sablon_id):
                           all_types=QUESTION_TYPES)
 
 # ══════════════════════════════════════════════════════════════
+# GDPR/KVKK API ROUTES
+# ══════════════════════════════════════════════════════════════
+@app.route('/api/gdpr/export/<int:aday_id>')
+def api_gdpr_export(aday_id):
+    """Export candidate data for GDPR compliance"""
+    # Verify ownership (candidate can export own data)
+    if session.get('aday_id') != aday_id and session.get('rol') not in ['super_admin', 'sirket_admin']:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = export_candidate_data(aday_id)
+    return jsonify(data)
+
+@app.route('/api/gdpr/delete/<int:aday_id>', methods=['POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def api_gdpr_delete(aday_id):
+    """Delete candidate data for GDPR right to be forgotten"""
+    delete_candidate_data(aday_id)
+    return jsonify({'status': 'deleted', 'aday_id': aday_id})
+
+@app.route('/api/gdpr/anonymize/<int:aday_id>', methods=['POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def api_gdpr_anonymize(aday_id):
+    """Anonymize candidate data"""
+    anonymize_candidate(aday_id)
+    return jsonify({'status': 'anonymized', 'aday_id': aday_id})
+
+@app.route('/admin/gdpr-cleanup', methods=['POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_gdpr_cleanup():
+    """Run GDPR cleanup to anonymize old data"""
+    sirket_id = session['sirket_id'] if session['rol'] != 'super_admin' else None
+    retention_days = int(request.form.get('retention_days', 365))
+    
+    result = anonymize_old_candidates(sirket_id, retention_days)
+    flash(f"{result['anonymized_count']} aday anonimleştirildi.", "success")
+    return redirect(url_for('admin_ayarlar'))
+
+# ══════════════════════════════════════════════════════════════
+# QUESTION TAGGING ROUTES
+# ══════════════════════════════════════════════════════════════
+@app.route('/api/questions/tags/<int:soru_id>', methods=['GET', 'POST'])
+@check_role(['super_admin', 'sirket_admin', 'recruiter'])
+def api_question_tags(soru_id):
+    """Get or set question tags"""
+    if request.method == 'POST':
+        data = request.get_json()
+        tags = data.get('tags', [])
+        add_question_tags(soru_id, tags)
+        return jsonify({'status': 'saved', 'tags': tags})
+    
+    tags = get_question_tags(soru_id)
+    return jsonify({'tags': tags})
+
+@app.route('/api/questions/by-tag/<tag>')
+@check_role(['super_admin', 'sirket_admin', 'recruiter'])
+def api_questions_by_tag(tag):
+    """Get questions by tag"""
+    questions = get_questions_by_tag(tag, session.get('sirket_id', 0))
+    return jsonify({'questions': [dict(q) if hasattr(q, 'keys') else q for q in questions]})
+
+@app.route('/api/tags')
+@check_role(['super_admin', 'sirket_admin', 'recruiter'])
+def api_all_tags():
+    """Get all available tags"""
+    tags = get_all_tags(session.get('sirket_id', 0))
+    return jsonify({'tags': tags})
+
+# ══════════════════════════════════════════════════════════════
 # RESIT POLICY MANAGEMENT
 # ══════════════════════════════════════════════════════════════
+
 @app.route('/admin/resit-ayarlar', methods=['GET', 'POST'])
 @check_role(['super_admin', 'sirket_admin'])
 def admin_resit_ayarlar():
