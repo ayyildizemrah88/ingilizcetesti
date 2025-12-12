@@ -1,0 +1,57 @@
+{% extends "dashboard.html" %}
+{% block title %}{{ 'Şirket Ekle' if not sirket else 'Şirket Düzenle' }} - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-building me-2"></i>{{ 'Yeni Şirket' if not sirket else 'Şirket Düzenle'
+                    }}</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Şirket Adı *</label>
+                        <input type="text" name="isim" class="form-control" value="{{ sirket.isim if sirket else '' }}"
+                            required>
+                    </div>
+                    {% if not sirket %}
+                    <div class="mb-3">
+                        <label class="form-label">Alt Alan (subdomain)</label>
+                        <input type="text" name="kadi" class="form-control" placeholder="sirket-adi">
+                        <small class="text-muted">sirket-adi.skillstestcenter.com</small>
+                    </div>
+                    {% endif %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Kredi</label>
+                            <input type="number" name="kredi" class="form-control"
+                                value="{{ sirket.kredi if sirket else 100 }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tema Rengi</label>
+                            <input type="color" name="theme_color" class="form-control form-control-color w-100"
+                                value="{{ sirket.theme_color if sirket else '#0d6efd' }}">
+                        </div>
+                    </div>
+                    {% if sirket %}
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {{ 'checked' if
+                            sirket.is_active else '' }}>
+                        <label class="form-check-label" for="is_active">Aktif</label>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="/admin/sirketler" class="btn btn-secondary">İptal</a>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
