@@ -1,0 +1,47 @@
+{% extends "dashboard.html" %}
+{% block title %}Raporlar - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-graph-up me-2"></i>Raporlar</h3>
+    <div class="btn-group">
+        <a href="/admin/export?format=csv" class="btn btn-outline-secondary"><i
+                class="bi bi-filetype-csv me-1"></i>CSV</a>
+        <a href="/admin/export?format=xlsx" class="btn btn-outline-success"><i
+                class="bi bi-file-earmark-excel me-1"></i>Excel</a>
+        <a href="/admin/export?format=json" class="btn btn-outline-info"><i
+                class="bi bi-filetype-json me-1"></i>JSON</a>
+    </div>
+</div>
+
+<div class="card border-0">
+    <div class="card-header bg-white">
+        <h6 class="mb-0">Tamamlanan Sınavlar</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ad Soyad</th>
+                        <th>Puan</th>
+                        <th>Seviye</th>
+                        <th>Tarih</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in tamamlananlar %}
+                    <tr>
+                        <td><strong>{{ a[1] if a is not mapping else a.ad_soyad }}</strong></td>
+                        <td><span class="badge bg-primary">{{ a[7] if a is not mapping else a.puan }}%</span></td>
+                        <td><span class="badge bg-success">{{ a[24] if a is not mapping else a.seviye_sonuc }}</span>
+                        </td>
+                        <td>{{ a[12] if a is not mapping else a.bitis_tarihi }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
