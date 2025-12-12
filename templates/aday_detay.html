@@ -1,0 +1,95 @@
+{% extends "dashboard.html" %}
+{% block title %}Aday Detay - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-person-lines-fill me-2"></i>Aday Detayı</h3>
+    <a href="/admin/adaylar" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Geri</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card border-0 h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">Kişi Bilgileri</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>Ad Soyad:</strong> {{ aday.ad_soyad if aday is mapping else aday[1] }}</p>
+                <p><strong>Email:</strong> {{ aday.email if aday is mapping else aday[4] }}</p>
+                <p><strong>Durum:</strong>
+                    {% set durum = aday.durum if aday is mapping else aday[8] %}
+                    <span
+                        class="badge bg-{{ 'success' if durum == 'Tamamlandi' else 'warning' if durum == 'Devam' else 'secondary' }}">{{
+                        durum }}</span>
+                </p>
+                <p><strong>Puan:</strong> {{ aday.puan if aday is mapping else aday[7] }}%</p>
+                <p><strong>Seviye:</strong> {{ aday.seviye_sonuc if aday is mapping else aday[24] }}</p>
+                <p><strong>Trust Score:</strong> {{ aday.trust_score if aday is mapping else aday[9] }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">Kategori Bazlı Performans</h6>
+            </div>
+            <div class="card-body">
+                {% for kat, stats in kategori_stats.items() %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>{{ kat }}</span>
+                        <span>{{ stats.dogru }}/{{ stats.toplam }} ({{ ((stats.dogru / stats.toplam) * 100)|int
+                            }}%)</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-{{ 'success' if (stats.dogru / stats.toplam) > 0.7 else 'warning' if (stats.dogru / stats.toplam) > 0.4 else 'danger' }}"
+                            style="width: {{ ((stats.dogru / stats.toplam) * 100)|int }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 mt-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0">Cevaplar</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Soru</th>
+                        <th>Kategori</th>
+                        <th>Zorluk</th>
+                        <th>Cevap</th>
+                        <th>Doğru</th>
+                        <th>Sonuç</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cevaplar %}
+                    <tr>
+                        <td>{{ (c.soru_metni if c is mapping else c[5])[:50] }}...</td>
+                        <td><span class="badge bg-info">{{ c.kategori if c is mapping else c[6] }}</span></td>
+                        <td>{{ c.zorluk if c is mapping else c[7] }}</td>
+                        <td><strong>{{ c.verilen_cevap if c is mapping else c[3] }}</strong></td>
+                        <td>{{ c.correct_answer if c is mapping else c[8] }}</td>
+                        <td>
+                            {% if (c.dogru_mu if c is mapping else c[4]) %}
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                            {% else %}
+                            <i class="bi bi-x-circle-fill text-danger"></i>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
