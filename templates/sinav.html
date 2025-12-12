@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Sınav - Skills Test Center{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timer {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+
+    .timer.warning {
+        color: #ffc107;
+    }
+
+    .timer.danger {
+        color: #dc3545;
+        animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+        50% {
+            opacity: 0.5;
+        }
+    }
+
+    .option-btn {
+        transition: all 0.3s;
+    }
+
+    .option-btn:hover {
+        transform: scale(1.02);
+    }
+
+    .option-btn.selected {
+        border-color: #0d6efd !important;
+        background: #e7f1ff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card border-0 mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <div>
+                    <span class="badge bg-primary fs-6">Soru {{ soru_no }} / {{ toplam }}</span>
+                    <span class="badge bg-secondary ms-2">{{ soru.zorluk if soru.zorluk else 'B1' }}</span>
+                </div>
+                <div class="timer" id="timer">--:--</div>
+            </div>
+
+            <div class="card-body p-4">
+                <div class="progress mb-4" style="height: 8px;">
+                    <div class="progress-bar" style="width: {{ (soru_no / toplam * 100)|int }}%"></div>
+                </div>
+
+                <h4 class="mb-4">{{ soru.soru_metni }}</h4>
+
+                <form method="POST" action="/sinav" id="examForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="soru_id" value="{{ soru.id }}">
+
+                    <div class="d-grid gap-3">
+                        <button type="button" class="btn btn-outline-secondary btn-lg text-start option-btn p-3"
+                            onclick="selectOption(this, 'A')">
+                            <strong class="me-3">A)</strong> {{ soru.secenek_a }}
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-lg text-start option-btn p-3"
+                            onclick="selectOption(this, 'B')">
+                            <strong class="me-3">B)</strong> {{ soru.secenek_b }}
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-lg text-start option-btn p-3"
+                            onclick="selectOption(this, 'C')">
+                            <strong class="me-3">C)</strong> {{ soru.secenek_c }}
+                        </button>
+                        {% if soru.secenek_d %}
+                        <button type="button" class="btn btn-outline-secondary btn-lg text-start option-btn p-3"
+                            onclick="selectOption(this, 'D')">
+                            <strong class="me-3">D)</strong> {{ soru.secenek_d }}
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    <input type="hidden" name="cevap" id="selectedAnswer" value="">
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="/candidate/privacy" class="btn btn-outline-secondary">
+                            <i class="bi bi-shield-check me-1"></i>Veri Hakları
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg px-5" id="submitBtn" disabled>
+                            Sonraki <i class="bi bi-arrow-right ms-2"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let remainingSeconds = {{ kalan_sure }};
+    const timerEl = document.getElementById('timer');
+
+    function updateTimer() {
+        const mins = Math.floor(remainingSeconds / 60);
+        const secs = remainingSeconds % 60;
+        timerEl.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+        if (remainingSeconds <= 60) {
+            timerEl.classList.add('danger');
+        } else if (remainingSeconds <= 300) {
+            timerEl.classList.add('warning');
+        }
+
+        if (remainingSeconds <= 0) {
+            document.getElementById('examForm').submit();
+            return;
+        }
+
+        remainingSeconds--;
+        setTimeout(updateTimer, 1000);
+    }
+
+    function selectOption(btn, answer) {
+        document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        document.getElementById('selectedAnswer').value = answer;
+        document.getElementById('submitBtn').disabled = false;
+    }
+
+    updateTimer();
+</script>
+{% endblock %}
