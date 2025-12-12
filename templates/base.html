@@ -1,47 +1,169 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="{{ session.get('lang', 'tr') }}"
+    class="{% if accessibility.high_contrast %}high-contrast{% endif %} {% if accessibility.large_text %}large-text{% endif %} {% if accessibility.reduced_motion %}reduced-motion{% endif %} {% if accessibility.dyslexia_friendly %}dyslexia-friendly{% endif %} {% if accessibility.colorblind_mode %}colorblind-{{ accessibility.colorblind_mode }}{% endif %}">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Skills Test Center - International English Proficiency Assessment">
     <title>{% block title %}Skills Test Center{% endblock %}</title>
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Accessibility CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
     <style>
         :root {
             --primary-color: #0d6efd;
             --success-color: #198754;
             --warning-color: #ffc107;
+            --danger-color: #dc3545;
         }
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
-        .card { border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
-        .navbar { box-shadow: 0 2px 15px rgba(0,0,0,0.1); }
-        .btn { border-radius: 10px; padding: 10px 25px; }
-        .form-control { border-radius: 10px; }
-        .table { border-radius: 10px; overflow: hidden; }
-        .badge { border-radius: 20px; }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .navbar {
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            border-radius: 10px;
+            padding: 10px 25px;
+        }
+
+        .form-control,
+        .form-select {
+            border-radius: 10px;
+        }
+
+        .table {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .badge {
+            border-radius: 20px;
+        }
+
+        /* Dark mode */
+        .dark-mode body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        .dark-mode .card {
+            background: #1e1e2d;
+            color: #fff;
+        }
+
+        .dark-mode .table {
+            color: #fff;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+
+<body class="{% if session.get('theme') == 'dark' %}dark-mode{% endif %}">
+    <!-- Skip Link for Screen Readers -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
     {% block navbar %}{% endblock %}
-    
-    <div class="container py-4">
+
+    <main id="main-content" role="main" class="container py-4">
+        <!-- Flash Messages with ARIA -->
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
+        {% if messages %}
+        <div role="alert" aria-live="polite">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show">
+                {% if category == 'success' %}<i class="bi bi-check-circle" aria-hidden="true"></i>{% endif %}
+                {% if category == 'danger' %}<i class="bi bi-exclamation-triangle" aria-hidden="true"></i>{% endif %}
+                {% if category == 'warning' %}<i class="bi bi-exclamation-circle" aria-hidden="true"></i>{% endif %}
+                {% if category == 'info' %}<i class="bi bi-info-circle" aria-hidden="true"></i>{% endif %}
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
         {% endwith %}
-        
+
         {% block content %}{% endblock %}
+    </main>
+
+    <!-- Accessibility Toolbar -->
+    <div id="accessibility-toolbar" class="accessibility-toolbar" role="toolbar" aria-label="Accessibility options"
+        style="display: none;">
+        <button type="button" onclick="toggleAccessibility('high_contrast')"
+            aria-pressed="{{ 'true' if accessibility.high_contrast else 'false' }}" title="High Contrast Mode">
+            <i class="bi bi-circle-half" aria-hidden="true"></i>
+        </button>
+        <button type="button" onclick="toggleAccessibility('large_text')"
+            aria-pressed="{{ 'true' if accessibility.large_text else 'false' }}" title="Large Text">
+            <i class="bi bi-fonts" aria-hidden="true"></i>
+        </button>
+        <button type="button" onclick="toggleAccessibility('reduced_motion')"
+            aria-pressed="{{ 'true' if accessibility.reduced_motion else 'false' }}" title="Reduce Motion">
+            <i class="bi bi-pause-circle" aria-hidden="true"></i>
+        </button>
+        <button type="button" onclick="toggleAccessibility('dyslexia_friendly')"
+            aria-pressed="{{ 'true' if accessibility.dyslexia_friendly else 'false' }}" title="Dyslexia Friendly">
+            <i class="bi bi-type" aria-hidden="true"></i>
+        </button>
     </div>
-    
+
+    <button type="button" id="accessibility-toggle" class="accessibility-toggle"
+        onclick="document.getElementById('accessibility-toolbar').style.display = document.getElementById('accessibility-toolbar').style.display === 'none' ? 'flex' : 'none'"
+        aria-label="Toggle accessibility options" title="Accessibility Options">
+        <i class="bi bi-universal-access" aria-hidden="true"></i>
+    </button>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Accessibility toggle function
+        function toggleAccessibility(feature) {
+            fetch('/international/accessibility/toggle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ feature: feature })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // Reload to apply changes
+                    location.reload();
+                })
+                .catch(error => {
+                    console.error('Accessibility toggle error:', error);
+                });
+        }
+
+        // Keyboard navigation enhancement
+        document.addEventListener('keydown', function (e) {
+            // Alt + A to open accessibility toolbar
+            if (e.altKey && e.key === 'a') {
+                document.getElementById('accessibility-toggle').click();
+            }
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
+
 </html>
