@@ -1,0 +1,63 @@
+{% extends "dashboard.html" %}
+{% block title %}Ayarlar - Skills Test Center{% endblock %}
+
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-gear me-2"></i>Ayarlar</h3>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">E-posta Bildirimleri</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="email_bildirim" id="email_bildirim">
+                        <label class="form-check-label" for="email_bildirim">
+                            Sınav tamamlandığında e-posta gönder
+                        </label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Bildirim E-posta Adresi</label>
+                        <input type="email" name="bildirim_email" class="form-control" placeholder="admin@sirket.com">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Kaydet
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">API Erişimi</h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">REST API kullanarak sisteme entegre olabilirsiniz.</p>
+
+                <h6>Token Almak İçin:</h6>
+                <pre class="bg-light p-2"><code>POST /api/v1/token
+{
+  "email": "kullanici@email.com",
+  "password": "sifre"
+}</code></pre>
+
+                <h6>Aday Listesi:</h6>
+                <pre class="bg-light p-2"><code>GET /api/v1/candidates
+Authorization: Bearer {token}</code></pre>
+
+                <a href="https://documenter.getpostman.com" target="_blank" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-book me-1"></i>API Dokümantasyonu
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
