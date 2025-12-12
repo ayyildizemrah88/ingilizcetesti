@@ -1,0 +1,77 @@
+{% extends "dashboard.html" %}
+{% block title %}Şablon Soru Tipleri - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-filter-circle me-2"></i>Soru Tipi Filtresi: {{ sablon.isim if sablon is
+                    mapping else sablon[0] }}</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="alert alert-info mb-4">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Sadece seçilen soru tiplerinden sorular gelir. Örneğin: sadece Speaking seçerseniz müşteriye özel
+                    Speaking sınavı oluşturursunuz.
+                </div>
+
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="row g-3">
+                        {% for tip in all_types %}
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="soru_tipleri" value="{{ tip }}"
+                                    id="tip_{{ tip }}" {{ 'checked' if tip in current_types }}>
+                                <label class="form-check-label" for="tip_{{ tip }}">
+                                    <span
+                                        class="badge bg-{{ 'primary' if tip in ['LISTENING', 'SPEAKING', 'WRITING', 'READING'] else 'secondary' }}">
+                                        {{ tip }}
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                            onclick="selectPreset('speaking')">Sadece Speaking</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                            onclick="selectPreset('listening')">Sadece Listening</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                            onclick="selectPreset('writing')">Sadece Writing</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                            onclick="selectPreset('all')">Tümü</button>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="/admin/sablonlar" class="btn btn-secondary">İptal</a>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function selectPreset(preset) {
+        document.querySelectorAll('input[name="soru_tipleri"]').forEach(cb => {
+            if (preset === 'all') {
+                cb.checked = true;
+            } else if (preset === 'speaking') {
+                cb.checked = cb.value === 'SPEAKING';
+            } else if (preset === 'listening') {
+                cb.checked = cb.value === 'LISTENING';
+            } else if (preset === 'writing') {
+                cb.checked = cb.value === 'WRITING';
+            }
+        });
+    }
+</script>
+{% endblock %}
