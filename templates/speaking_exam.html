@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+{% block title %}Speaking Test - Skills Test Center{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4" role="main" aria-labelledby="speaking-title">
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white">
+            <h1 id="speaking-title" class="h4 mb-0">
+                <i class="bi bi-mic" aria-hidden="true"></i>
+                Speaking Assessment
+            </h1>
+        </div>
+
+        <div class="card-body">
+            <!-- Instructions -->
+            <div class="alert alert-info mb-4" role="alert">
+                <h2 class="h6"><i class="bi bi-info-circle" aria-hidden="true"></i> Instructions</h2>
+                <ul class="mb-0">
+                    <li>You will have <strong>{{ preparation_time }}</strong> seconds to prepare before recording</li>
+                    <li>Speak clearly into your microphone for up to <strong>{{ max_duration }}</strong> seconds</li>
+                    <li>Your response will be evaluated for fluency, pronunciation, grammar, and content</li>
+                </ul>
+            </div>
+
+            <!-- Question -->
+            <div class="speaking-question mb-4 p-4 bg-light rounded">
+                <h2 class="h5 mb-3">Question {{ current_question }} of {{ total_questions }}</h2>
+
+                {% if question.soru_tipi == 'DESCRIBE_IMAGE' and question.image_url %}
+                <div class="mb-3">
+                    <img src="{{ question.image_url }}" alt="{{ question.image_description or 'Image to describe' }}"
+                        class="img-fluid rounded border" style="max-height: 300px;">
+                </div>
+                {% endif %}
+
+                <p class="lead mb-0">{{ question.soru_metni }}</p>
+
+                {% if question.soru_tipi == 'KONUSMA' and question.referans_cevap %}
+                <div class="mt-3">
+                    <details>
+                        <summary class="text-muted small">Hint / Sample answer structure</summary>
+                        <p class="mt-2 text-muted small">{{ question.referans_cevap }}</p>
+                    </details>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Recording Control -->
+            <div id="speaking-recorder" class="recording-container text-center p-4 border rounded">
+                <!-- Preparation Phase -->
+                <div id="preparation-phase" class="phase">
+                    <div class="mb-3">
+                        <i class="bi bi-hourglass-split display-4 text-warning" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="h5">Preparation Time</h3>
+                    <p class="text-muted">Think about your answer...</p>
+                    <div id="prep-timer" class="display-3 text-primary mb-3" role="timer" aria-live="polite">
+                        {{ preparation_time }}
+                    </div>
+                    <button type="button" id="skip-prep-btn" class="btn btn-outline-primary">
+                        Skip and Start Recording
+                    </button>
+                </div>
+
+                <!-- Recording Phase -->
+                <div id="recording-phase" class="phase d-none">
+                    <div class="recording-status mb-3">
+                        <span id="recording-indicator" class="recording-dot" aria-hidden="true"></span>
+                        <span class="recording-text">Recording...</span>
+                    </div>
+
+                    <div class="recording-timer display-4 text-danger mb-3" role="timer" aria-live="polite">
+                        <span id="elapsed-time">00:00</span> / <span id="max-time">{{ "%02d:%02d"|format(max_duration //
+                            60, max_duration % 60) }}</span>
+                    </div>
+
+                    <div class="progress mb-4" style="height: 10px;">
+                        <div id="recording-progress"
+                            class="progress-bar bg-danger progress-bar-striped progress-bar-animated" style="width: 0%"
+                            role="progressbar" aria-label="Recording progress"></div>
+                    </div>
+
+                    <!-- Audio Visualizer -->
+                    <div id="audio-visualizer" class="mb-4" aria-hidden="true">
+                        <canvas id="waveform" height="60"></canvas>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="button" id="pause-btn" class="btn btn-warning" aria-label="Pause recording">
+                            <i class="bi bi-pause-fill" aria-hidden="true"></i> Pause
+                        </button>
+                        <button type="button" id="stop-btn" class="btn btn-danger btn-lg" aria-label="Stop recording">
+                            <i class="bi bi-stop-fill" aria-hidden="true"></i> Stop Recording
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preview Phase -->
+                <div id="preview-phase" class="phase d-none">
+                    <div class="mb-3">
+                        <i class="bi bi-check-circle display-4 text-success" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="h5">Recording Complete</h3>
+
+                    <div class="audio-preview my-4">
+                        <audio id="audio-preview" controls class="w-100">
+                            Your browser does not support audio playback.
+                        </audio>
+                        <p class="text-muted small mt-2">
+                            Duration: <span id="final-duration">--:--</span>
+                        </p>
+                    </div>
+
+                    <div id="upload-status" class="mb-3">
+                        <!-- Upload status will appear here -->
+                    </div>
+
+                    <div id="ai-feedback" class="text-start d-none">
+                        <h4 class="h6">AI Feedback</h4>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <div class="h4 mb-0" id="score-fluency">--</div>
+                                        <small>Fluency</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <div class="h4 mb-0" id="score-pronunciation">--</div>
+                                        <small>Pronunciation</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <div class="h4 mb-0" id="score-grammar">--</div>
+                                        <small>Grammar</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <div class="h4 mb-0" id="score-vocabulary">--</div>
+                                        <small>Vocabulary</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="transcript-container" class="mt-3 d-none">
+                            <h5 class="h6">Your Transcript:</h5>
+                            <blockquote id="transcript-text" class="blockquote-footer bg-light p-3 rounded">
+
+                            </blockquote>
+                        </div>
+                    </div>
+
+                    <div class="btn-group mt-4">
+                        <button type="button" id="retry-btn" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Record Again
+                        </button>
+                        <button type="button" id="next-btn" class="btn btn-primary btn-lg">
+                            {% if current_question < total_questions %} Next Question <i class="bi bi-arrow-right"
+                                aria-hidden="true"></i>
+                                {% else %}
+                                Finish Test <i class="bi bi-check2-all" aria-hidden="true"></i>
+                                {% endif %}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Recording indicator animation */
+    @keyframes pulse {
+
+        0%,
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: 0.5;
+            transform: scale(1.2);
+        }
+    }
+
+    .recording-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        background: #dc3545;
+        border-radius: 50%;
+        margin-right: 8px;
+        animation: pulse 1s infinite;
+    }
+
+    .recording-status {
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+
+    /* Audio visualizer */
+    #waveform {
+        width: 100%;
+        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 4px;
+    }
+
+    /* Phase transitions */
+    .phase {
+        transition: opacity 0.3s ease;
+    }
+</style>
+
+<script src="{{ url_for('static', filename='js/speaking_recorder.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const prepPhase = document.getElementById('preparation-phase');
+        const recordPhase = document.getElementById('recording-phase');
+        const previewPhase = document.getElementById('preview-phase');
+        const prepTimer = document.getElementById('prep-timer');
+        const elapsedTimeEl = document.getElementById('elapsed-time');
+        const progressBar = document.getElementById('recording-progress');
+        const audioPreview = document.getElementById('audio-preview');
+        const uploadStatus = document.getElementById('upload-status');
+
+        let prepTimeRemaining = {{ preparation_time }
+    };
+    const maxDuration = {{ max_duration }};
+    let recorder = null;
+    let prepInterval = null;
+
+    // Format time
+    function formatTime(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    // Show phase
+    function showPhase(phase) {
+        prepPhase.classList.add('d-none');
+        recordPhase.classList.add('d-none');
+        previewPhase.classList.add('d-none');
+        phase.classList.remove('d-none');
+    }
+
+    // Start preparation countdown
+    prepInterval = setInterval(function () {
+        prepTimeRemaining--;
+        prepTimer.textContent = prepTimeRemaining;
+
+        if (prepTimeRemaining <= 0) {
+            clearInterval(prepInterval);
+            startRecording();
+        }
+    }, 1000);
+
+    // Skip preparation
+    document.getElementById('skip-prep-btn').addEventListener('click', function () {
+        clearInterval(prepInterval);
+        startRecording();
+    });
+
+    // Start recording
+    async function startRecording() {
+        showPhase(recordPhase);
+
+        recorder = new SpeakingRecorder({
+            maxDuration: maxDuration,
+            onStop: handleRecordingComplete,
+            onTimeUpdate: function (elapsed, max) {
+                elapsedTimeEl.textContent = formatTime(elapsed);
+                const progress = (elapsed / max) * 100;
+                progressBar.style.width = progress + '%';
+            },
+            onError: function (error) {
+                alert('Microphone error: ' + error);
+            }
+        });
+
+        const started = await recorder.start();
+        if (!started) {
+            alert('Could not access microphone. Please check your permissions.');
+            return;
+        }
+
+        // Simple audio visualization
+        try {
+            const audioContext = new AudioContext();
+            const analyser = audioContext.createAnalyser();
+            const source = audioContext.createMediaStreamSource(recorder.stream);
+            source.connect(analyser);
+
+            const canvas = document.getElementById('waveform');
+            const ctx = canvas.getContext('2d');
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            function draw() {
+                if (recorder.isRecording) {
+                    requestAnimationFrame(draw);
+                }
+
+                analyser.getByteFrequencyData(dataArray);
+                ctx.fillStyle = '#f8f9fa';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const barWidth = canvas.width / dataArray.length * 2.5;
+                let x = 0;
+
+                for (let i = 0; i < dataArray.length; i++) {
+                    const barHeight = (dataArray[i] / 255) * canvas.height;
+                    ctx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+                    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                    x += barWidth + 1;
+                }
+            }
+            draw();
+        } catch (e) {
+            console.log('Visualization not available:', e);
+        }
+    }
+
+    // Handle recording complete
+    async function handleRecordingComplete(blob) {
+        showPhase(previewPhase);
+
+        // Show preview
+        const audioUrl = URL.createObjectURL(blob);
+        audioPreview.src = audioUrl;
+        document.getElementById('final-duration').textContent = formatTime(recorder.getElapsedTime());
+
+        // Upload
+        uploadStatus.innerHTML = `
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Uploading...</span>
+            </div>
+            <span class="ms-2">Uploading and analyzing...</span>
+        `;
+
+        try {
+            const result = await uploadSpeakingAudio(blob, {{ question.id }}, '{{ csrf_token() }}');
+
+        uploadStatus.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Uploaded successfully</span>';
+
+        // Show AI feedback if available
+        if (result.scores) {
+            document.getElementById('ai-feedback').classList.remove('d-none');
+            document.getElementById('score-fluency').textContent = result.scores.fluency + '/9';
+            document.getElementById('score-pronunciation').textContent = result.scores.pronunciation + '/9';
+            document.getElementById('score-grammar').textContent = result.scores.grammar + '/9';
+            document.getElementById('score-vocabulary').textContent = result.scores.vocabulary + '/9';
+        }
+
+        if (result.transcript) {
+            document.getElementById('transcript-container').classList.remove('d-none');
+            document.getElementById('transcript-text').textContent = result.transcript;
+        }
+    } catch (error) {
+        uploadStatus.innerHTML = `
+                <span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Upload pending</span>
+                <p class="small text-muted">Your recording is saved locally and will be uploaded when connection is restored.</p>
+            `;
+
+        // Save locally
+        const base64 = await blobToBase64(blob);
+        localStorage.setItem('speaking_{{ question.id }}', JSON.stringify({
+            audio: base64,
+            timestamp: Date.now()
+        }));
+    }
+    }
+
+    // Stop button
+    document.getElementById('stop-btn').addEventListener('click', function () {
+        if (recorder) {
+            recorder.stop();
+        }
+    });
+
+    // Pause button
+    document.getElementById('pause-btn').addEventListener('click', function () {
+        if (recorder) {
+            if (recorder.isPaused) {
+                recorder.resume();
+                this.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+            } else {
+                recorder.pause();
+                this.innerHTML = '<i class="bi bi-play-fill"></i> Resume';
+            }
+        }
+    });
+
+    // Retry button
+    document.getElementById('retry-btn').addEventListener('click', function () {
+        if (recorder) {
+            recorder.destroy();
+        }
+        startRecording();
+    });
+
+    // Next button
+    document.getElementById('next-btn').addEventListener('click', function () {
+        {% if current_question < total_questions %}
+        window.location.href = "{{ url_for('sinav_speaking', question_num=current_question + 1) }}";
+        {% else %}
+        window.location.href = "{{ url_for('sinav_bitti') }}";
+        {% endif %}
+    });
+
+    // Cleanup
+    window.addEventListener('beforeunload', function () {
+        if (recorder) {
+            recorder.destroy();
+        }
+    });
+});
+</script>
+{% endblock %}
