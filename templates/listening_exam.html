@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}Listening Exam - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container py-4" role="main" aria-labelledby="listening-title">
+    <!-- Skip link for accessibility -->
+    <a href="#questions" class="skip-link sr-only sr-only-focusable">Skip to questions</a>
+    
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h1 id="listening-title" class="h4 mb-0">
+                <i class="bi bi-headphones" aria-hidden="true"></i> 
+                Listening Comprehension
+            </h1>
+            <div class="d-flex align-items-center gap-3">
+                <span id="timer" class="badge bg-warning text-dark fs-5" role="timer" aria-live="polite">
+                    {{ "%02d:%02d"|format(remaining_time // 60, remaining_time % 60) }}
+                </span>
+                <span class="badge bg-light text-dark">
+                    Question {{ current_question }} / {{ total_questions }}
+                </span>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            <!-- Audio Player Section -->
+            <section class="audio-section mb-4" aria-label="Audio playback">
+                <div class="alert alert-info" role="alert">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
+                    <strong>Instructions:</strong> Listen carefully to the audio. You can play it up to 
+                    <strong>{{ max_plays }}</strong> times.
+                    <span id="plays-remaining" class="badge bg-primary ms-2">
+                        {{ max_plays - plays_used }} plays remaining
+                    </span>
+                </div>
+                
+                <div class="audio-player-container bg-light rounded p-4 text-center">
+                    <h2 class="h5 mb-3">{{ audio.title }}</h2>
+                    
+                    <audio id="listening-audio" 
+                           preload="auto"
+                           aria-label="Listening passage audio">
+                        <source src="{{ audio.audio_url }}" type="audio/mpeg">
+                        <source src="{{ audio.audio_url }}" type="audio/webm">
+                        Your browser does not support the audio element.
+                    </audio>
+                    
+                    <div class="audio-controls mt-3">
+                        <button type="button" 
+                                id="play-btn" 
+                                class="btn btn-lg btn-success"
+                                aria-label="Play audio"
+                                {% if plays_used >= max_plays %}disabled{% endif %}>
+                            <i class="bi bi-play-fill" aria-hidden="true"></i> 
+                            <span id="play-text">Play Audio</span>
+                        </button>
+                        
+                        <div class="progress mt-3" style="height: 10px;" role="progressbar" 
+                             aria-label="Audio progress" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            <div id="audio-progress" class="progress-bar" style="width: 0%"></div>
+                        </div>
+                        
+                        <p class="text-muted mt-2 mb-0">
+                            <span id="current-time">0:00</span> / 
+                            <span id="duration">{{ audio.duration_seconds // 60 }}:{{ "%02d"|format(audio.duration_seconds % 60) }}</span>
+                        </p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Questions Section -->
+            <section id="questions" class="questions-section" aria-label="Listening questions">
+                <h2 class="h5 mb-3">Questions</h2>
+                
+                <form id="listening-form" method="POST" action="{{ url_for('sinav_listening_cevap') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="audio_id" value="{{ audio.id }}">
+                    
+                    {% for question in questions %}
+                    <div class="question-card card mb-3" 
+                         id="question-{{ question.id }}"
+                         role="group"
+                         aria-labelledby="q-label-{{ question.id }}">
+                        <div class="card-body">
+                            <p id="q-label-{{ question.id }}" class="fw-bold mb-3">
+                                {{ loop.index }}. {{ question.soru_metni }}
+                            </p>
+                            
+                            <div class="options" role="radiogroup" aria-labelledby="q-label-{{ question.id }}">
+                                {% for option, text in [('A', question.secenek_a), ('B', question.secenek_b), ('C', question.secenek_c), ('D', question.secenek_d)] %}
+                                {% if text %}
+                                <div class="form-check mb-2">
+                                    <input type="radio" 
+                                           class="form-check-input" 
+                                           name="q_{{ question.id }}" 
+                                           id="q_{{ question.id }}_{{ option }}"
+                                           value="{{ option }}"
+                                           required>
+                                    <label class="form-check-label" for="q_{{ question.id }}_{{ option }}">
+                                        <span class="option-letter" aria-hidden="true">{{ option }})</span>
+                                        {{ text }}
+                                    </label>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="button" 
+                                class="btn btn-outline-secondary"
+                                onclick="history.back()"
+                                aria-label="Go back">
+                            <i class="bi bi-arrow-left" aria-hidden="true"></i> Back
+                        </button>
+                        
+                        <button type="submit" 
+                                class="btn btn-primary btn-lg"
+                                id="submit-btn">
+                            Submit Answers <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const audio = document.getElementById('listening-audio');
+    const playBtn = document.getElementById('play-btn');
+    const playText = document.getElementById('play-text');
+    const progressBar = document.getElementById('audio-progress');
+    const currentTimeEl = document.getElementById('current-time');
+    const playsRemainingEl = document.getElementById('plays-remaining');
+    
+    let playsUsed = {{ plays_used }};
+    const maxPlays = {{ max_plays }};
+    let isPlaying = false;
+    
+    // Format time as M:SS
+    function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    // Update progress bar and time display
+    audio.addEventListener('timeupdate', function() {
+        const progress = (audio.currentTime / audio.duration) * 100;
+        progressBar.style.width = progress + '%';
+        currentTimeEl.textContent = formatTime(audio.currentTime);
+    });
+    
+    // Play button handler
+    playBtn.addEventListener('click', function() {
+        if (isPlaying) {
+            audio.pause();
+            playText.textContent = 'Resume';
+            playBtn.classList.replace('btn-danger', 'btn-success');
+            playBtn.querySelector('i').classList.replace('bi-pause-fill', 'bi-play-fill');
+            isPlaying = false;
+        } else {
+            if (audio.currentTime === 0 || audio.ended) {
+                playsUsed++;
+                updatePlaysRemaining();
+                
+                // Log play to server
+                fetch('/api/listening/log-play', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ audio_id: {{ audio.id }} })
+                });
+            }
+            
+            audio.play();
+            playText.textContent = 'Pause';
+            playBtn.classList.replace('btn-success', 'btn-danger');
+            playBtn.querySelector('i').classList.replace('bi-play-fill', 'bi-pause-fill');
+            isPlaying = true;
+        }
+    });
+    
+    // Audio ended
+    audio.addEventListener('ended', function() {
+        isPlaying = false;
+        playText.textContent = 'Play Again';
+        playBtn.classList.replace('btn-danger', 'btn-success');
+        playBtn.querySelector('i').classList.replace('bi-pause-fill', 'bi-play-fill');
+        
+        if (playsUsed >= maxPlays) {
+            playBtn.disabled = true;
+            playText.textContent = 'No plays remaining';
+        }
+    });
+    
+    function updatePlaysRemaining() {
+        const remaining = maxPlays - playsUsed;
+        playsRemainingEl.textContent = remaining + ' plays remaining';
+        
+        if (remaining <= 1) {
+            playsRemainingEl.classList.replace('bg-primary', 'bg-warning');
+        }
+        if (remaining === 0) {
+            playsRemainingEl.classList.replace('bg-warning', 'bg-danger');
+        }
+    }
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
+            e.preventDefault();
+            playBtn.click();
+        }
+    });
+    
+    // Timer countdown
+    let remainingSeconds = {{ remaining_time }};
+    const timerEl = document.getElementById('timer');
+    
+    setInterval(function() {
+        if (remainingSeconds > 0) {
+            remainingSeconds--;
+            const mins = Math.floor(remainingSeconds / 60);
+            const secs = remainingSeconds % 60;
+            timerEl.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            if (remainingSeconds <= 60) {
+                timerEl.classList.replace('bg-warning', 'bg-danger');
+            }
+            
+            if (remainingSeconds === 0) {
+                document.getElementById('listening-form').submit();
+            }
+        }
+    }, 1000);
+});
+</script>
+{% endblock %}
