@@ -1278,6 +1278,904 @@ def company_onboard():
     return render_template('onboard.html')
 
 # ══════════════════════════════════════════════════════════════
+# HIGH PRIORITY FEATURES
+# ══════════════════════════════════════════════════════════════
+
+# Password Reset
+@csrf.exempt
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        
+        conn, is_pg = get_db_connection()
+        if is_pg:
+            c = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            c = conn.cursor()
+        
+        q = "SELECT id, ad_soyad FROM yoneticiler WHERE kadi=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (email,))
+        user = c.fetchone()
+        
+        if user:
+            # Generate reset token
+            token = generate_code(32)
+            expires = datetime.datetime.now() + timedelta(hours=1)
+            
+            q = "INSERT INTO otp_codes (email, otp_code, expires_at) VALUES (?,?,?)"
+            if is_pg:
+                q = q.replace('?', '%s')
+            c.execute(q, (email, token, expires.isoformat()))
+            conn.commit()
+            
+            # Send email
+            reset_url = f"{request.host_url}reset-password/{token}"
+            send_email(email, "Şifre Sıfırlama", 
+                      f"Şifrenizi sıfırlamak için: {reset_url}\n\nBu link 1 saat geçerlidir.")
+        
+        conn.close()
+        flash("Eğer email kayıtlıysa, şifre sıfırlama linki gönderildi.", "info")
+        return redirect(url_for('login'))
+    
+    return render_template('forgot_password.html')
+
+@csrf.exempt
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM otp_codes WHERE otp_code=? AND is_used=0"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (token,))
+    otp = c.fetchone()
+    
+    if not otp:
+        conn.close()
+        flash("Geçersiz veya süresi dolmuş link.", "danger")
+        return redirect(url_for('login'))
+    
+    expires = otp['expires_at'] if is_pg else otp[5]
+    if isinstance(expires, str):
+        expires = datetime.datetime.fromisoformat(expires)
+    
+    if datetime.datetime.now() > expires:
+        conn.close()
+        flash("Link süresi dolmuş.", "danger")
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm', '')
+        
+        if len(password) < 8:
+            flash("Şifre en az 8 karakter olmalı.", "danger")
+            return render_template('reset_password.html', token=token)
+        
+        if password != confirm:
+            flash("Şifreler eşleşmiyor.", "danger")
+            return render_template('reset_password.html', token=token)
+        
+        email = otp['email'] if is_pg else otp[2]
+        pw_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        q = "UPDATE yoneticiler SET sifre=? WHERE kadi=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (pw_hash, email))
+        
+        q = "UPDATE otp_codes SET is_used=1 WHERE otp_code=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (token,))
+        
+        conn.commit()
+        conn.close()
+        
+        flash("Şifreniz başarıyla değiştirildi.", "success")
+        return redirect(url_for('login'))
+    
+    conn.close()
+    return render_template('reset_password.html', token=token)
+
+# Candidate Edit
+@app.route('/admin/aday-duzenle/<int:id>', methods=['GET', 'POST'])
+@check_role(['super_admin', 'sirket_admin', 'recruiter'])
+def admin_aday_duzenle(id):
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM adaylar WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (id,))
+    aday = c.fetchone()
+    
+    if not aday:
+        conn.close()
+        flash("Aday bulunamadı.", "danger")
+        return redirect(url_for('admin_adaylar'))
+    
+    if request.method == 'POST':
+        ad_soyad = request.form.get('ad_soyad', '').strip()
+        email = request.form.get('email', '').strip()
+        tc = request.form.get('tc_kimlik', '').strip()
+        cep = request.form.get('cep_no', '').strip()
+        sinav_suresi = int(request.form.get('sinav_suresi', 30))
+        soru_limiti = int(request.form.get('soru_limiti', 10))
+        admin_notes = request.form.get('admin_notes', '')
+        
+        q = """UPDATE adaylar SET ad_soyad=?, email=?, tc_kimlik=?, cep_no=?, 
+               sinav_suresi=?, soru_limiti=?, admin_notes=? WHERE id=?"""
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (ad_soyad, email, tc, cep, sinav_suresi, soru_limiti, admin_notes, id))
+        conn.commit()
+        conn.close()
+        
+        log_admin_action(session['user_id'], session['ad_soyad'], 'ADAY_DUZENLE', id)
+        flash("Aday güncellendi.", "success")
+        return redirect(url_for('admin_adaylar'))
+    
+    conn.close()
+    return render_template('aday_form.html', aday=aday)
+
+# Question Edit/Delete
+@app.route('/admin/soru-duzenle/<int:id>', methods=['GET', 'POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_soru_duzenle(id):
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM sorular WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (id,))
+    soru = c.fetchone()
+    
+    if not soru:
+        conn.close()
+        flash("Soru bulunamadı.", "danger")
+        return redirect(url_for('admin_sorular'))
+    
+    if request.method == 'POST':
+        soru_metni = request.form.get('soru_metni', '').strip()
+        secenek_a = request.form.get('secenek_a', '').strip()
+        secenek_b = request.form.get('secenek_b', '').strip()
+        secenek_c = request.form.get('secenek_c', '').strip()
+        secenek_d = request.form.get('secenek_d', '').strip()
+        dogru_cevap = request.form.get('dogru_cevap', '').upper()
+        kategori = request.form.get('kategori', 'Grammar')
+        zorluk = request.form.get('zorluk', 'B1')
+        
+        q = """UPDATE sorular SET soru_metni=?, secenek_a=?, secenek_b=?, secenek_c=?, 
+               secenek_d=?, dogru_cevap=?, kategori=?, zorluk=? WHERE id=?"""
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (soru_metni, secenek_a, secenek_b, secenek_c, secenek_d, dogru_cevap, kategori, zorluk, id))
+        conn.commit()
+        conn.close()
+        
+        log_admin_action(session['user_id'], session['ad_soyad'], 'SORU_DUZENLE', id)
+        flash("Soru güncellendi.", "success")
+        return redirect(url_for('admin_sorular'))
+    
+    conn.close()
+    return render_template('soru_form.html', soru=soru)
+
+@app.route('/admin/soru-sil/<int:id>')
+@check_role(['super_admin', 'sirket_admin'])
+def admin_soru_sil(id):
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = "DELETE FROM sorular WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (id,))
+    conn.commit()
+    conn.close()
+    
+    log_admin_action(session['user_id'], session['ad_soyad'], 'SORU_SIL', id)
+    flash("Soru silindi.", "success")
+    return redirect(url_for('admin_sorular'))
+
+# Company Management (Super Admin)
+@app.route('/admin/sirketler')
+@check_role(['super_admin'])
+def admin_sirketler():
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    c.execute("SELECT * FROM sirketler ORDER BY id DESC")
+    sirketler = c.fetchall()
+    conn.close()
+    
+    return render_template('sirketler.html', sirketler=sirketler)
+
+@app.route('/admin/sirket-ekle', methods=['GET', 'POST'])
+@check_role(['super_admin'])
+def admin_sirket_ekle():
+    if request.method == 'POST':
+        isim = request.form.get('isim', '').strip()
+        kadi = request.form.get('kadi', '').strip().lower()
+        kredi = int(request.form.get('kredi', 100))
+        theme_color = request.form.get('theme_color', '#0d6efd')
+        
+        conn, is_pg = get_db_connection()
+        c = conn.cursor()
+        
+        q = "INSERT INTO sirketler (isim, kadi, kredi, theme_color, is_active) VALUES (?,?,?,?,1)"
+        if is_pg:
+            q = q.replace('?', '%s')
+        
+        try:
+            c.execute(q, (isim, kadi, kredi, theme_color))
+            conn.commit()
+            flash("Şirket eklendi.", "success")
+        except Exception as e:
+            flash(f"Hata: {str(e)}", "danger")
+        finally:
+            conn.close()
+        
+        return redirect(url_for('admin_sirketler'))
+    
+    return render_template('sirket_form.html', sirket=None)
+
+@app.route('/admin/sirket-duzenle/<int:id>', methods=['GET', 'POST'])
+@check_role(['super_admin'])
+def admin_sirket_duzenle(id):
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM sirketler WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (id,))
+    sirket = c.fetchone()
+    
+    if not sirket:
+        conn.close()
+        flash("Şirket bulunamadı.", "danger")
+        return redirect(url_for('admin_sirketler'))
+    
+    if request.method == 'POST':
+        isim = request.form.get('isim', '').strip()
+        kredi = int(request.form.get('kredi', 100))
+        theme_color = request.form.get('theme_color', '#0d6efd')
+        is_active = 1 if request.form.get('is_active') else 0
+        
+        q = "UPDATE sirketler SET isim=?, kredi=?, theme_color=?, is_active=? WHERE id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (isim, kredi, theme_color, is_active, id))
+        conn.commit()
+        conn.close()
+        
+        flash("Şirket güncellendi.", "success")
+        return redirect(url_for('admin_sirketler'))
+    
+    conn.close()
+    return render_template('sirket_form.html', sirket=sirket)
+
+# User Management
+@app.route('/admin/kullanicilar')
+@check_role(['super_admin', 'sirket_admin'])
+def admin_kullanicilar():
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    if session['rol'] == 'super_admin':
+        c.execute("SELECT y.*, s.isim as sirket_isim FROM yoneticiler y LEFT JOIN sirketler s ON y.sirket_id=s.id ORDER BY y.id DESC")
+    else:
+        q = "SELECT * FROM yoneticiler WHERE sirket_id=? ORDER BY id DESC"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (session['sirket_id'],))
+    
+    kullanicilar = c.fetchall()
+    conn.close()
+    
+    return render_template('kullanicilar.html', kullanicilar=kullanicilar)
+
+@app.route('/admin/kullanici-ekle', methods=['GET', 'POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_kullanici_ekle():
+    if request.method == 'POST':
+        kadi = request.form.get('kadi', '').strip()
+        sifre = request.form.get('sifre', '')
+        ad_soyad = request.form.get('ad_soyad', '').strip()
+        rol = request.form.get('rol', 'recruiter')
+        sirket_id = int(request.form.get('sirket_id', session['sirket_id']))
+        
+        if session['rol'] != 'super_admin':
+            sirket_id = session['sirket_id']
+            if rol == 'super_admin':
+                rol = 'recruiter'
+        
+        pw_hash = bcrypt.hashpw(sifre.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        conn, is_pg = get_db_connection()
+        c = conn.cursor()
+        
+        q = "INSERT INTO yoneticiler (kadi, sifre, ad_soyad, rol, sirket_id) VALUES (?,?,?,?,?)"
+        if is_pg:
+            q = q.replace('?', '%s')
+        
+        try:
+            c.execute(q, (kadi, pw_hash, ad_soyad, rol, sirket_id))
+            conn.commit()
+            flash("Kullanıcı eklendi.", "success")
+        except Exception as e:
+            flash(f"Hata: {str(e)}", "danger")
+        finally:
+            conn.close()
+        
+        return redirect(url_for('admin_kullanicilar'))
+    
+    # Get companies for super admin
+    sirketler = []
+    if session['rol'] == 'super_admin':
+        conn, is_pg = get_db_connection()
+        if is_pg:
+            c = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            c = conn.cursor()
+        c.execute("SELECT id, isim FROM sirketler ORDER BY isim")
+        sirketler = c.fetchall()
+        conn.close()
+    
+    return render_template('kullanici_form.html', kullanici=None, sirketler=sirketler)
+
+@app.route('/admin/kullanici-sil/<int:id>')
+@check_role(['super_admin', 'sirket_admin'])
+def admin_kullanici_sil(id):
+    if id == session['user_id']:
+        flash("Kendinizi silemezsiniz.", "danger")
+        return redirect(url_for('admin_kullanicilar'))
+    
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = "DELETE FROM yoneticiler WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (id,))
+    conn.commit()
+    conn.close()
+    
+    flash("Kullanıcı silindi.", "success")
+    return redirect(url_for('admin_kullanicilar'))
+
+# ══════════════════════════════════════════════════════════════
+# MEDIUM PRIORITY FEATURES  
+# ══════════════════════════════════════════════════════════════
+
+# Question Category Filter
+@app.route('/admin/sorular/filtre')
+@check_role(['super_admin', 'sirket_admin'])
+def admin_sorular_filtre():
+    kategori = request.args.get('kategori', '')
+    zorluk = request.args.get('zorluk', '')
+    
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM sorular WHERE 1=1"
+    params = []
+    
+    if kategori:
+        q += " AND kategori=?"
+        params.append(kategori)
+    if zorluk:
+        q += " AND zorluk=?"
+        params.append(zorluk)
+    
+    q += " ORDER BY id DESC"
+    
+    if is_pg:
+        q = q.replace('?', '%s')
+    
+    c.execute(q, tuple(params))
+    sorular = c.fetchall()
+    conn.close()
+    
+    return render_template('sorular.html', sorular=sorular, filtre_kategori=kategori, filtre_zorluk=zorluk)
+
+# Bulk Question Upload
+@app.route('/admin/soru-toplu-yukle', methods=['POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_soru_toplu_yukle():
+    if 'file' not in request.files:
+        flash("Dosya seçilmedi.", "danger")
+        return redirect(url_for('admin_sorular'))
+    
+    file = request.files['file']
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        flash("Sadece Excel dosyaları kabul edilir.", "danger")
+        return redirect(url_for('admin_sorular'))
+    
+    try:
+        df = pd.read_excel(file)
+        required = {'soru_metni', 'dogru_cevap'}
+        
+        if not required.issubset(set(df.columns)):
+            flash("Excel dosyasında 'soru_metni' ve 'dogru_cevap' kolonları zorunludur.", "danger")
+            return redirect(url_for('admin_sorular'))
+        
+        conn, is_pg = get_db_connection()
+        c = conn.cursor()
+        
+        sirket_id = 0 if session['rol'] == 'super_admin' else session['sirket_id']
+        count = 0
+        
+        for _, row in df.iterrows():
+            soru_metni = str(row.get('soru_metni', '')).strip()
+            secenek_a = str(row.get('secenek_a', '')).strip() if 'secenek_a' in df.columns else ''
+            secenek_b = str(row.get('secenek_b', '')).strip() if 'secenek_b' in df.columns else ''
+            secenek_c = str(row.get('secenek_c', '')).strip() if 'secenek_c' in df.columns else ''
+            secenek_d = str(row.get('secenek_d', '')).strip() if 'secenek_d' in df.columns else ''
+            dogru_cevap = str(row.get('dogru_cevap', '')).upper().strip()
+            kategori = str(row.get('kategori', 'Grammar')).strip() if 'kategori' in df.columns else 'Grammar'
+            zorluk = str(row.get('zorluk', 'B1')).strip() if 'zorluk' in df.columns else 'B1'
+            
+            q = """INSERT INTO sorular (soru_metni, secenek_a, secenek_b, secenek_c, secenek_d, 
+                   dogru_cevap, kategori, zorluk, sirket_id) VALUES (?,?,?,?,?,?,?,?,?)"""
+            if is_pg:
+                q = q.replace('?', '%s')
+            
+            try:
+                c.execute(q, (soru_metni, secenek_a, secenek_b, secenek_c, secenek_d, dogru_cevap, kategori, zorluk, sirket_id))
+                count += 1
+            except:
+                continue
+        
+        conn.commit()
+        conn.close()
+        
+        flash(f"{count} soru başarıyla eklendi.", "success")
+    except Exception as e:
+        flash(f"Hata: {str(e)}", "danger")
+    
+    return redirect(url_for('admin_sorular'))
+
+# Detailed Result Report (by category)
+@app.route('/admin/aday-detay/<int:id>')
+@check_role(['super_admin', 'sirket_admin', 'recruiter'])
+def admin_aday_detay(id):
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    # Get candidate
+    q = "SELECT * FROM adaylar WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (id,))
+    aday = c.fetchone()
+    
+    # Get answers with question details
+    q = """SELECT c.*, s.soru_metni, s.kategori, s.zorluk, s.dogru_cevap as correct_answer
+           FROM cevaplar c 
+           JOIN sorular s ON c.soru_id=s.id 
+           WHERE c.aday_id=?"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (id,))
+    cevaplar = c.fetchall()
+    
+    # Calculate category scores
+    kategori_stats = {}
+    for cevap in cevaplar:
+        kat = cevap['kategori'] if is_pg else cevap[5]
+        dogru = cevap['dogru_mu'] if is_pg else cevap[4]
+        
+        if kat not in kategori_stats:
+            kategori_stats[kat] = {'dogru': 0, 'toplam': 0}
+        kategori_stats[kat]['toplam'] += 1
+        if dogru:
+            kategori_stats[kat]['dogru'] += 1
+    
+    conn.close()
+    
+    return render_template('aday_detay.html', aday=aday, cevaplar=cevaplar, kategori_stats=kategori_stats)
+
+# Email notifications on exam completion
+@app.route('/admin/ayarlar', methods=['GET', 'POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_ayarlar():
+    if request.method == 'POST':
+        email_bildirim = 1 if request.form.get('email_bildirim') else 0
+        bildirim_email = request.form.get('bildirim_email', '').strip()
+        
+        conn, is_pg = get_db_connection()
+        c = conn.cursor()
+        
+        # Store in sirketler table (simplified)
+        q = "UPDATE sirketler SET mail_template=? WHERE id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        
+        settings = json.dumps({'email_bildirim': email_bildirim, 'bildirim_email': bildirim_email})
+        c.execute(q, (settings, session['sirket_id']))
+        conn.commit()
+        conn.close()
+        
+        flash("Ayarlar kaydedildi.", "success")
+    
+    return render_template('ayarlar.html')
+
+# PDF Certificate Generation
+@app.route('/cert/download/<cert_hash>')
+def cert_download(cert_hash):
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT ad_soyad, puan, seviye_sonuc, bitis_tarihi FROM adaylar WHERE certificate_hash=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (cert_hash,))
+    aday = c.fetchone()
+    conn.close()
+    
+    if not aday:
+        flash("Sertifika bulunamadı.", "danger")
+        return redirect(url_for('index'))
+    
+    try:
+        from fpdf import FPDF
+        
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font('Helvetica', 'B', 24)
+        
+        # Title
+        pdf.cell(0, 20, 'SKILLS TEST CENTER', 0, 1, 'C')
+        pdf.set_font('Helvetica', 'B', 18)
+        pdf.cell(0, 15, 'CERTIFICATE OF COMPLETION', 0, 1, 'C')
+        
+        pdf.ln(10)
+        pdf.set_font('Helvetica', '', 14)
+        
+        ad_soyad = aday['ad_soyad'] if is_pg else aday[0]
+        puan = aday['puan'] if is_pg else aday[1]
+        seviye = aday['seviye_sonuc'] if is_pg else aday[2]
+        tarih = aday['bitis_tarihi'] if is_pg else aday[3]
+        
+        pdf.cell(0, 10, f'This is to certify that', 0, 1, 'C')
+        pdf.set_font('Helvetica', 'B', 20)
+        pdf.cell(0, 15, ad_soyad, 0, 1, 'C')
+        
+        pdf.set_font('Helvetica', '', 14)
+        pdf.cell(0, 10, f'has successfully completed the English Assessment', 0, 1, 'C')
+        pdf.ln(5)
+        pdf.cell(0, 10, f'Score: {puan}%', 0, 1, 'C')
+        pdf.cell(0, 10, f'Level: {seviye}', 0, 1, 'C')
+        pdf.cell(0, 10, f'Date: {tarih}', 0, 1, 'C')
+        pdf.ln(10)
+        pdf.set_font('Helvetica', '', 10)
+        pdf.cell(0, 10, f'Verification Code: {cert_hash}', 0, 1, 'C')
+        
+        out = io.BytesIO()
+        pdf.output(out)
+        out.seek(0)
+        
+        return send_file(out, download_name=f'certificate_{cert_hash}.pdf', as_attachment=True, mimetype='application/pdf')
+    except Exception as e:
+        flash(f"PDF oluşturma hatası: {str(e)}", "danger")
+        return redirect(url_for('index'))
+
+# Exam Template Assignment
+@app.route('/admin/aday-sablon-ata/<int:aday_id>', methods=['POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_aday_sablon_ata(aday_id):
+    sablon_id = request.form.get('sablon_id')
+    
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    # Get template
+    q = "SELECT sinav_suresi, soru_limiti, baslangic_seviyesi FROM sinav_sablonlari WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sablon_id,))
+    sablon = c.fetchone()
+    
+    if sablon:
+        sinav_suresi = sablon['sinav_suresi'] if is_pg else sablon[0]
+        soru_limiti = sablon['soru_limiti'] if is_pg else sablon[1]
+        baslangic = sablon['baslangic_seviyesi'] if is_pg else sablon[2]
+        
+        q = "UPDATE adaylar SET sinav_suresi=?, soru_limiti=?, current_difficulty=? WHERE id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (sinav_suresi, soru_limiti, baslangic, aday_id))
+        conn.commit()
+        flash("Şablon atandı.", "success")
+    
+    conn.close()
+    return redirect(url_for('admin_adaylar'))
+
+# ══════════════════════════════════════════════════════════════
+# LOW PRIORITY FEATURES
+# ══════════════════════════════════════════════════════════════
+
+# Writing/Speaking Questions
+@app.route('/admin/soru-ekle-yazili', methods=['GET', 'POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_soru_ekle_yazili():
+    if request.method == 'POST':
+        soru_metni = request.form.get('soru_metni', '').strip()
+        soru_tipi = request.form.get('soru_tipi', 'YAZILI')  # YAZILI or KONUSMA
+        referans_cevap = request.form.get('referans_cevap', '').strip()
+        kategori = request.form.get('kategori', 'Writing')
+        zorluk = request.form.get('zorluk', 'B1')
+        
+        conn, is_pg = get_db_connection()
+        c = conn.cursor()
+        
+        sirket_id = 0 if session['rol'] == 'super_admin' else session['sirket_id']
+        
+        q = "INSERT INTO sorular (soru_metni, soru_tipi, referans_cevap, kategori, zorluk, sirket_id) VALUES (?,?,?,?,?,?)"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (soru_metni, soru_tipi, referans_cevap, kategori, zorluk, sirket_id))
+        conn.commit()
+        conn.close()
+        
+        flash("Soru eklendi.", "success")
+        return redirect(url_for('admin_sorular'))
+    
+    return render_template('soru_yazili_form.html')
+
+# AI Evaluation (Gemini) - placeholder
+@app.route('/api/ai-evaluate', methods=['POST'])
+@csrf.exempt
+def api_ai_evaluate():
+    """AI evaluation endpoint for writing/speaking answers"""
+    data = request.json
+    answer = data.get('answer', '')
+    reference = data.get('reference', '')
+    
+    # Placeholder - would integrate with Gemini API
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=os.getenv('GEMINI_API_KEY', ''))
+        
+        model = genai.GenerativeModel('gemini-pro')
+        prompt = f"""Evaluate this English writing answer on a scale of 0-100.
+        
+Question Reference: {reference}
+Student Answer: {answer}
+
+Provide JSON: {{"score": X, "feedback": "..."}}"""
+        
+        response = model.generate_content(prompt)
+        return jsonify({"status": "success", "result": response.text})
+    except Exception as e:
+        # Fallback simple scoring
+        score = min(100, len(answer) // 5)
+        return jsonify({"status": "fallback", "score": score, "feedback": "AI unavailable, basic scoring applied."})
+
+# Proctoring Status
+@app.route('/api/proctor/status', methods=['POST'])
+@csrf.exempt
+def proctor_status():
+    """Receive proctoring status from client"""
+    data = request.json
+    aday_id = session.get('aday_id')
+    
+    if not aday_id:
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    focus_lost = data.get('focus_lost', False)
+    anomaly = data.get('anomaly', False)
+    
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    if focus_lost:
+        q = "UPDATE adaylar SET focus_lost_count = focus_lost_count + 1, trust_score = trust_score - 5 WHERE id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (aday_id,))
+    
+    if anomaly:
+        q = "UPDATE adaylar SET anomaly_count = anomaly_count + 1, trust_score = trust_score - 10 WHERE id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (aday_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"status": "recorded"})
+
+# Multi-language Support
+@app.route('/set-lang/<lang>')
+def set_language(lang):
+    if lang in ['tr', 'en']:
+        session['lang'] = lang
+        if session.get('aday_id'):
+            conn, is_pg = get_db_connection()
+            c = conn.cursor()
+            q = "UPDATE adaylar SET session_lang=? WHERE id=?"
+            if is_pg:
+                q = q.replace('?', '%s')
+            c.execute(q, (lang, session['aday_id']))
+            conn.commit()
+            conn.close()
+    return redirect(request.referrer or url_for('index'))
+
+# Dark Mode Toggle
+@app.route('/toggle-theme')
+def toggle_theme():
+    current = session.get('theme', 'light')
+    session['theme'] = 'dark' if current == 'light' else 'light'
+    return redirect(request.referrer or url_for('index'))
+
+# ══════════════════════════════════════════════════════════════
+# REST API ENDPOINTS
+# ══════════════════════════════════════════════════════════════
+@csrf.exempt
+@app.route('/api/v1/candidates', methods=['GET', 'POST'])
+def api_candidates():
+    """REST API for candidates"""
+    auth = request.headers.get('Authorization', '')
+    if not auth.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    token = auth.replace('Bearer ', '')
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+    except:
+        return jsonify({"error": "Invalid token"}), 401
+    
+    sirket_id = payload.get('sirket_id', 0)
+    
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    if request.method == 'GET':
+        q = "SELECT id, ad_soyad, email, puan, seviye_sonuc, durum FROM adaylar WHERE sirket_id=? AND is_deleted=0"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (sirket_id,))
+        data = c.fetchall()
+        conn.close()
+        
+        if is_pg:
+            return jsonify(data)
+        else:
+            return jsonify([dict(zip(['id', 'ad_soyad', 'email', 'puan', 'seviye_sonuc', 'durum'], row)) for row in data])
+    
+    elif request.method == 'POST':
+        data = request.json
+        ad_soyad = data.get('ad_soyad', '')
+        email = data.get('email', '')
+        giris_kodu = generate_code(8)
+        
+        q = "INSERT INTO adaylar (ad_soyad, email, giris_kodu, sirket_id) VALUES (?,?,?,?)"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (ad_soyad, email, giris_kodu, sirket_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"status": "created", "giris_kodu": giris_kodu}), 201
+
+@csrf.exempt
+@app.route('/api/v1/token', methods=['POST'])
+def api_token():
+    """Generate API token"""
+    data = request.json
+    email = data.get('email', '')
+    password = data.get('password', '')
+    
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM yoneticiler WHERE kadi=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (email,))
+    user = c.fetchone()
+    conn.close()
+    
+    if not user:
+        return jsonify({"error": "Invalid credentials"}), 401
+    
+    stored_pw = user['sifre'] if is_pg else user[2]
+    if not bcrypt.checkpw(password.encode('utf-8'), stored_pw.encode('utf-8')):
+        return jsonify({"error": "Invalid credentials"}), 401
+    
+    sirket_id = user['sirket_id'] if is_pg else user[4]
+    user_id = user['id'] if is_pg else user[0]
+    
+    payload = {
+        'user_id': user_id,
+        'sirket_id': sirket_id,
+        'exp': datetime.datetime.utcnow() + timedelta(days=30)
+    }
+    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
+    
+    return jsonify({"token": token})
+
+@csrf.exempt
+@app.route('/api/v1/results/<int:aday_id>')
+def api_results(aday_id):
+    """Get candidate results via API"""
+    auth = request.headers.get('Authorization', '')
+    if not auth.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    token = auth.replace('Bearer ', '')
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+    except:
+        return jsonify({"error": "Invalid token"}), 401
+    
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT ad_soyad, email, puan, seviye_sonuc, durum, bitis_tarihi, certificate_hash FROM adaylar WHERE id=? AND sirket_id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id, payload.get('sirket_id')))
+    aday = c.fetchone()
+    conn.close()
+    
+    if not aday:
+        return jsonify({"error": "Not found"}), 404
+    
+    if is_pg:
+        return jsonify(dict(aday))
+    else:
+        return jsonify(dict(zip(['ad_soyad', 'email', 'puan', 'seviye_sonuc', 'durum', 'bitis_tarihi', 'certificate_hash'], aday)))
+
+# ══════════════════════════════════════════════════════════════
 # ERROR HANDLERS
 # ══════════════════════════════════════════════════════════════
 @app.errorhandler(404)
