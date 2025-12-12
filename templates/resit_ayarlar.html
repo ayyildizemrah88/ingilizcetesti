@@ -1,0 +1,45 @@
+{% extends "dashboard.html" %}
+{% block title %}Resit Politikası - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Resit/Yeniden Sınav Politikası</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Sınavlar Arası Minimum Gün</label>
+                        <input type="number" name="min_days" class="form-control"
+                            value="{{ policy.min_days_between if policy else 30 if policy is mapping else 30 }}" min="1"
+                            max="365">
+                        <small class="text-muted">Aday bir sonraki sınava kaç gün beklemeli?</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Maksimum Deneme Sayısı</label>
+                        <input type="number" name="max_attempts" class="form-control"
+                            value="{{ policy.max_attempts if policy else 3 if policy is mapping else 3 }}" min="1"
+                            max="10">
+                        <small class="text-muted">Bir aday kaç kez sınava girebilir?</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Sertifika Geçerlilik Süresi (yıl)</label>
+                        <input type="number" name="validity" class="form-control"
+                            value="{{ policy.cert_validity_years if policy else 2 if policy is mapping else 2 }}"
+                            min="1" max="10">
+                        <small class="text-muted">Sertifikalar kaç yıl geçerli olsun?</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Kaydet</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
