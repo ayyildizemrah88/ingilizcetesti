@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Deneme Sınavı - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold text-primary">🎯 Practice Mode</h1>
+        <p class="lead text-muted">Deneme sınavı yapın - Sonuçlar kayıt altına alınmaz!</p>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        {% for t in templates %}
+        <div class="col-md-4">
+            <div class="card border-0 h-100 hover-shadow">
+                <div class="card-body text-center p-4">
+                    <div class="display-4 mb-3">📝</div>
+                    <h5>{{ t.isim if t is mapping else t[1] }}</h5>
+                    <p class="text-muted small">
+                        {{ t.soru_limiti if t is mapping else t[3] }} soru |
+                        {{ t.sinav_suresi if t is mapping else t[2] }} dakika
+                    </p>
+                    <a href="/practice/start/{{ t.id if t is mapping else t[0] }}" class="btn btn-outline-primary">
+                        Deneme Başlat
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="alert alert-info mt-5">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Deneme Modunda:</strong> Cevaplarınız puanlanmaz ve kayıt altına alınmaz.
+        Gerçek sınav öncesi pratik yapmanızı sağlar.
+    </div>
+</div>
+
+<style>
+    .hover-shadow {
+        transition: all 0.3s;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .hover-shadow:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
