@@ -1,0 +1,76 @@
+{% extends "dashboard.html" %}
+{% block title %}Listening Ekle - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="card border-0">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="bi bi-headphones me-2"></i>Listening Audio Ekle</h5>
+    </div>
+    <div class="card-body p-4">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Başlık *</label>
+                    <input type="text" name="title" class="form-control" required placeholder="Interview at Work">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Audio URL *</label>
+                    <input type="url" name="audio_url" class="form-control" required
+                        placeholder="https://cdn.example.com/audio.mp3">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Zorluk</label>
+                    <select name="difficulty" class="form-select">
+                        <option value="A1">A1</option>
+                        <option value="A2">A2</option>
+                        <option value="B1" selected>B1</option>
+                        <option value="B2">B2</option>
+                        <option value="C1">C1</option>
+                        <option value="C2">C2</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Süre (saniye)</label>
+                    <input type="number" name="duration" class="form-control" value="120">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Transcript</label>
+                    <textarea name="transcript" class="form-control" rows="4"
+                        placeholder="Audio transcript..."></textarea>
+                </div>
+            </div>
+
+            <h6 class="mb-3">Sorular (10'a kadar)</h6>
+            {% for i in range(1, 4) %}
+            <div class="border rounded p-3 mb-3">
+                <div class="row g-2">
+                    <div class="col-12"><input type="text" name="soru_{{ i }}" class="form-control"
+                            placeholder="Soru {{ i }}"></div>
+                    <div class="col-3"><input type="text" name="secenek_a_{{ i }}" class="form-control" placeholder="A">
+                    </div>
+                    <div class="col-3"><input type="text" name="secenek_b_{{ i }}" class="form-control" placeholder="B">
+                    </div>
+                    <div class="col-3"><input type="text" name="secenek_c_{{ i }}" class="form-control" placeholder="C">
+                    </div>
+                    <div class="col-3"><input type="text" name="secenek_d_{{ i }}" class="form-control" placeholder="D">
+                    </div>
+                    <div class="col-3"><select name="dogru_{{ i }}" class="form-select">
+                            <option>A</option>
+                            <option>B</option>
+                            <option>C</option>
+                            <option>D</option>
+                        </select></div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="/admin/listening" class="btn btn-secondary">İptal</a>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
