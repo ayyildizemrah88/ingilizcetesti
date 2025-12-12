@@ -1,0 +1,33 @@
+{% extends "dashboard.html" %}
+{% block title %}Fraud Heatmap - Skills Test Center{% endblock %}
+
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-exclamation-triangle me-2"></i>Fraud / Anomali Heatmap</h3>
+<div class="card border-0">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Ad Soyad</th>
+                    <th>Anomali</th>
+                    <th>Trust Score</th>
+                    <th>Tarih</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in frauds %}
+                <tr
+                    class="{{ 'table-danger' if (f[2] if f is not mapping else f.anomaly_count) > 10 else 'table-warning' }}">
+                    <td>{{ f[0] if f is not mapping else f.id }}</td>
+                    <td>{{ f[1] if f is not mapping else f.ad_soyad }}</td>
+                    <td><span class="badge bg-danger">{{ f[2] if f is not mapping else f.anomaly_count }}</span></td>
+                    <td>{{ f[3] if f is not mapping else f.trust_score }}</td>
+                    <td>{{ f[4] if f is not mapping else f.bitis_tarihi }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
