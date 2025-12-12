@@ -1,40 +1,185 @@
 {% extends "base.html" %}
-{% block title %}Sertifika Doğrulama - Skills Test Center{% endblock %}
+{% block title %}Certificate Verification - Skills Test Center{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-6">
-        <div class="card border-0 text-center">
-            <div class="card-body p-5">
-                {% if aday %}
-                <div class="mb-4"><i class="bi bi-patch-check-fill text-success" style="font-size: 5rem;"></i></div>
-                <h3 class="text-success">Sertifika Geçerli</h3>
-                <hr>
-                <p class="lead"><strong>{{ aday[0] if aday is not mapping else aday.ad_soyad }}</strong></p>
-                <div class="row g-3 mt-3">
-                    <div class="col-6">
-                        <div class="bg-light p-3 rounded">
-                            <h5 class="text-primary mb-0">{{ aday[1] if aday is not mapping else aday.puan }}%</h5>
-                            <small>Puan</small>
-                        </div>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg">
+                <div class="card-body text-center p-5">
+                    {% if certificate %}
+                    <!-- Valid Certificate -->
+                    <div class="mb-4">
+                        <i class="bi bi-patch-check-fill display-1 text-success"></i>
                     </div>
-                    <div class="col-6">
-                        <div class="bg-light p-3 rounded">
-                            <h5 class="text-success mb-0">{{ aday[2] if aday is not mapping else aday.seviye_sonuc }}
-                            </h5><small>Seviye</small>
+
+                    <h1 class="h3 text-success mb-4">
+                        ✓ Valid Certificate
+                    </h1>
+
+                    <div class="certificate-details bg-light rounded p-4 mb-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Certificate Holder:</strong></p>
+                                <p class="h5">{{ certificate.ad_soyad }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Issue Date:</strong></p>
+                                <p class="h5">{{ certificate.bitis_tarihi }}</p>
+                            </div>
                         </div>
+
+                        <hr>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="score-box p-3 bg-white rounded">
+                                    <p class="text-muted mb-1">Score</p>
+                                    <p class="h3 mb-0 text-primary">{{ certificate.puan|round(1) }}%</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="score-box p-3 bg-white rounded">
+                                    <p class="text-muted mb-1">CEFR Level</p>
+                                    <p class="h3 mb-0">
+                                        <span
+                                            class="badge bg-{{ 'success' if certificate.seviye_sonuc in ['B2', 'C1', 'C2'] else 'warning' }}">
+                                            {{ certificate.seviye_sonuc }}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="score-box p-3 bg-white rounded">
+                                    <p class="text-muted mb-1">IELTS Band</p>
+                                    <p class="h3 mb-0 text-info">{{ certificate.band_score }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if certificate.ielts_reading or certificate.ielts_listening %}
+                        <hr>
+                        <h5 class="mb-3">Skill Breakdown</h5>
+                        <div class="row g-2 text-start">
+                            {% if certificate.ielts_reading %}
+                            <div class="col-6 col-md-3">
+                                <small class="text-muted">Reading</small>
+                                <div class="fw-bold">{{ certificate.ielts_reading }}</div>
+                            </div>
+                            {% endif %}
+                            {% if certificate.ielts_listening %}
+                            <div class="col-6 col-md-3">
+                                <small class="text-muted">Listening</small>
+                                <div class="fw-bold">{{ certificate.ielts_listening }}</div>
+                            </div>
+                            {% endif %}
+                            {% if certificate.ielts_writing %}
+                            <div class="col-6 col-md-3">
+                                <small class="text-muted">Writing</small>
+                                <div class="fw-bold">{{ certificate.ielts_writing }}</div>
+                            </div>
+                            {% endif %}
+                            {% if certificate.ielts_speaking %}
+                            <div class="col-6 col-md-3">
+                                <small class="text-muted">Speaking</small>
+                                <div class="fw-bold">{{ certificate.ielts_speaking }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Expiry Status -->
+                    {% if certificate.is_expired %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Note:</strong> This certificate has expired.
+                        <br>
+                        <small>Validity period: {{ certificate.validity_years }} years from issue date.</small>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i>
+                        <strong>Status:</strong> Active and Valid
+                        {% if certificate.expiry_date %}
+                        <br>
+                        <small>Valid until: {{ certificate.expiry_date }}</small>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Verification Code -->
+                    <div class="mt-4">
+                        <p class="text-muted mb-1">
+                            <small>Verification Code:</small>
+                        </p>
+                        <code class="user-select-all">{{ certificate.certificate_hash }}</code>
+                    </div>
+
+                    <!-- QR Code Image -->
+                    {% if qr_image %}
+                    <div class="mt-4">
+                        <img src="data:image/png;base64,{{ qr_image }}" alt="QR Code for certificate verification"
+                            class="img-fluid" style="max-width: 150px;">
+                        <p class="text-muted small mt-2">
+                            Scan to verify this certificate
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    {% else %}
+                    <!-- Invalid Certificate -->
+                    <div class="mb-4">
+                        <i class="bi bi-x-circle-fill display-1 text-danger"></i>
+                    </div>
+
+                    <h1 class="h3 text-danger mb-4">
+                        ✗ Certificate Not Found
+                    </h1>
+
+                    <p class="text-muted">
+                        The certificate with this verification code could not be found in our system.
+                    </p>
+
+                    <div class="alert alert-secondary">
+                        <p class="mb-0">
+                            <strong>Possible reasons:</strong>
+                        </p>
+                        <ul class="text-start mt-2 mb-0">
+                            <li>The verification code may be incorrect</li>
+                            <li>The certificate may have been revoked</li>
+                            <li>The certificate may not exist in our system</li>
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <!-- Back button -->
+                    <div class="mt-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-left"></i> Back to Home
+                        </a>
                     </div>
                 </div>
-                <p class="text-muted mt-3">Tamamlanma: {{ aday[3] if aday is not mapping else aday.bitis_tarihi }}</p>
-                <small class="text-muted">Kod: {{ cert_hash }}</small>
-                {% else %}
-                <div class="mb-4"><i class="bi bi-x-circle-fill text-danger" style="font-size: 5rem;"></i></div>
-                <h3 class="text-danger">Sertifika Bulunamadı</h3>
-                <p class="text-muted">Bu kod geçersiz veya sertifika iptal edilmiş.</p>
-                {% endif %}
-                <div class="mt-4"><a href="/" class="btn btn-outline-primary">Ana Sayfa</a></div>
+            </div>
+
+            <!-- Footer -->
+            <div class="text-center mt-4 text-muted">
+                <small>
+                    Verified by Skills Test Center<br>
+                    {{ verified_at }}
+                </small>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .certificate-details {
+        border: 2px dashed #dee2e6;
+    }
+
+    .score-box {
+        border: 1px solid #dee2e6;
+    }
+</style>
 {% endblock %}
