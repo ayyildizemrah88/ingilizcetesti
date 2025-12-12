@@ -259,6 +259,42 @@ def init_db():
         )''',
         f'''CREATE TABLE IF NOT EXISTS varsayilan_sablonlar (
             id {auto_inc}, sirket_id INTEGER UNIQUE, sablon_id INTEGER
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS listening_audio (
+            id {auto_inc}, title TEXT, audio_url TEXT, transcript TEXT, 
+            duration_seconds INTEGER, difficulty TEXT DEFAULT 'B1',
+            sirket_id INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS listening_questions (
+            id {auto_inc}, audio_id INTEGER, soru_metni TEXT, secenek_a TEXT, 
+            secenek_b TEXT, secenek_c TEXT, secenek_d TEXT, dogru_cevap TEXT,
+            soru_sirasi INTEGER DEFAULT 1
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS speaking_recordings (
+            id {auto_inc}, aday_id INTEGER, soru_id INTEGER, audio_blob TEXT,
+            duration_seconds INTEGER, transcript TEXT, ai_score_json TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS sinav_randevulari (
+            id {auto_inc}, aday_id INTEGER, sinav_tarihi TIMESTAMP, 
+            timezone TEXT DEFAULT 'Europe/Istanbul', durum TEXT DEFAULT 'Bekliyor',
+            hatirlatma_gonderildi INTEGER DEFAULT 0, sirket_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS odemeler (
+            id {auto_inc}, aday_id INTEGER, sirket_id INTEGER, miktar REAL,
+            para_birimi TEXT DEFAULT 'TRY', stripe_session_id TEXT,
+            durum TEXT DEFAULT 'Bekliyor', odeme_tarihi TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS email_templates (
+            id {auto_inc}, sirket_id INTEGER, template_key TEXT, 
+            lang TEXT DEFAULT 'tr', subject TEXT, body TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS resit_policy (
+            id {auto_inc}, sirket_id INTEGER UNIQUE, min_days_between INTEGER DEFAULT 30,
+            max_attempts INTEGER DEFAULT 3, cert_validity_years INTEGER DEFAULT 2
         )'''
     ]
     
@@ -677,6 +713,414 @@ def create_demo_company(company_name, admin_email, admin_password):
         conn.close()
         logger.error(f"Demo company creation error: {e}")
         return None
+
+# ══════════════════════════════════════════════════════════════
+# LISTENING TEST FUNCTIONS
+# ══════════════════════════════════════════════════════════════
+def get_listening_audio(difficulty='B1', sirket_id=0):
+    """Get listening audio for exam"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        from psycopg2.extras import RealDictCursor
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM listening_audio WHERE difficulty=? AND (sirket_id=0 OR sirket_id=?) ORDER BY RANDOM() LIMIT 1"
+    if is_pg:
+        q = q.replace('?', '%s').replace('RANDOM()', 'RANDOM()')
+    c.execute(q, (difficulty, sirket_id))
+    audio = c.fetchone()
+    
+    if audio:
+        audio_id = audio['id'] if is_pg else audio[0]
+        q = "SELECT * FROM listening_questions WHERE audio_id=? ORDER BY soru_sirasi"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (audio_id,))
+        questions = c.fetchall()
+        conn.close()
+        return {'audio': dict(audio), 'questions': [dict(q) for q in questions]}
+    
+    conn.close()
+    return None
+
+def save_listening_answers(aday_id, answers_dict):
+    """Save listening test answers and calculate score"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    correct = 0
+    total = len(answers_dict)
+    
+    for soru_id, answer in answers_dict.items():
+        q = "SELECT dogru_cevap FROM listening_questions WHERE id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (soru_id,))
+        result = c.fetchone()
+        
+        if result:
+            is_correct = (result[0] == answer)
+            if is_correct:
+                correct += 1
+            
+            q = "INSERT INTO cevaplar (aday_id, soru_id, verilen_cevap, dogru_mu) VALUES (?,?,?,?)"
+            if is_pg:
+                q = q.replace('?', '%s')
+            c.execute(q, (aday_id, soru_id, answer, 1 if is_correct else 0))
+    
+    # Update listening score
+    listening_score = (correct / total * 100) if total > 0 else 0
+    q = "UPDATE adaylar SET p_listening=? WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (listening_score, aday_id))
+    
+    conn.commit()
+    conn.close()
+    return {'correct': correct, 'total': total, 'score': listening_score}
+
+# ══════════════════════════════════════════════════════════════
+# SPEAKING RECORDING FUNCTIONS
+# ══════════════════════════════════════════════════════════════
+def save_speaking_recording(aday_id, soru_id, audio_base64, transcript="", duration=0):
+    """Save speaking audio recording and get AI evaluation"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    # Get reference if exists
+    q = "SELECT referans_cevap FROM sorular WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (soru_id,))
+    ref = c.fetchone()
+    reference = ref[0] if ref and ref[0] else ""
+    
+    # Get AI evaluation
+    ai_result = evaluate_speaking_with_ai(transcript, reference)
+    
+    # Save recording
+    q = """INSERT INTO speaking_recordings 
+           (aday_id, soru_id, audio_blob, duration_seconds, transcript, ai_score_json) 
+           VALUES (?,?,?,?,?,?)"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id, soru_id, audio_base64, duration, transcript, json.dumps(ai_result)))
+    
+    # Update speaking score
+    q = "UPDATE adaylar SET p_speaking=? WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (ai_result.get('score', 0), aday_id))
+    
+    conn.commit()
+    conn.close()
+    return ai_result
+
+# ══════════════════════════════════════════════════════════════
+# EXAM SCHEDULING & TIMEZONE
+# ══════════════════════════════════════════════════════════════
+TIMEZONES = [
+    'Europe/Istanbul', 'Europe/London', 'Europe/Berlin', 'Europe/Paris',
+    'America/New_York', 'America/Los_Angeles', 'America/Chicago',
+    'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Dubai', 'Asia/Singapore',
+    'Australia/Sydney', 'Pacific/Auckland'
+]
+
+def schedule_exam(aday_id, exam_datetime, timezone='Europe/Istanbul', sirket_id=None):
+    """Schedule an exam for a specific date/time"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = """INSERT INTO sinav_randevulari (aday_id, sinav_tarihi, timezone, sirket_id) 
+           VALUES (?,?,?,?)"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id, exam_datetime, timezone, sirket_id))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def get_scheduled_exams(sirket_id=None, upcoming_only=True):
+    """Get scheduled exams for company"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        from psycopg2.extras import RealDictCursor
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    if upcoming_only:
+        q = """SELECT r.*, a.ad_soyad, a.email FROM sinav_randevulari r
+               JOIN adaylar a ON r.aday_id = a.id
+               WHERE r.sirket_id=? AND r.sinav_tarihi > CURRENT_TIMESTAMP
+               ORDER BY r.sinav_tarihi"""
+    else:
+        q = """SELECT r.*, a.ad_soyad, a.email FROM sinav_randevulari r
+               JOIN adaylar a ON r.aday_id = a.id
+               WHERE r.sirket_id=? ORDER BY r.sinav_tarihi DESC"""
+    
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    exams = c.fetchall()
+    conn.close()
+    return exams
+
+def convert_timezone(dt, from_tz, to_tz):
+    """Convert datetime between timezones"""
+    try:
+        from datetime import datetime as dt_module
+        import pytz
+        from_zone = pytz.timezone(from_tz)
+        to_zone = pytz.timezone(to_tz)
+        
+        if isinstance(dt, str):
+            dt = dt_module.fromisoformat(dt.replace('Z', '+00:00'))
+        
+        localized = from_zone.localize(dt) if dt.tzinfo is None else dt
+        return localized.astimezone(to_zone)
+    except:
+        return dt
+
+# ══════════════════════════════════════════════════════════════
+# CEFR BENCHMARK & ANALYTICS
+# ══════════════════════════════════════════════════════════════
+CEFR_BENCHMARKS = {
+    'A1': {'min': 0, 'max': 20, 'description': 'Beginner', 'ielts': '1-2'},
+    'A2': {'min': 21, 'max': 40, 'description': 'Elementary', 'ielts': '3'},
+    'B1': {'min': 41, 'max': 60, 'description': 'Intermediate', 'ielts': '4-5'},
+    'B2': {'min': 61, 'max': 80, 'description': 'Upper Intermediate', 'ielts': '5.5-6.5'},
+    'C1': {'min': 81, 'max': 90, 'description': 'Advanced', 'ielts': '7-8'},
+    'C2': {'min': 91, 'max': 100, 'description': 'Proficient', 'ielts': '8.5-9'}
+}
+
+def calculate_cefr_level(score):
+    """Calculate CEFR level from score"""
+    for level, data in CEFR_BENCHMARKS.items():
+        if data['min'] <= score <= data['max']:
+            return level
+    return 'A1'
+
+def get_cefr_benchmark_report(aday_id):
+    """Generate detailed CEFR benchmark report"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        from psycopg2.extras import RealDictCursor
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = """SELECT puan, p_grammar, p_vocab, p_reading, p_writing, p_speaking, p_listening,
+           seviye_sonuc FROM adaylar WHERE id=?"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id,))
+    aday = c.fetchone()
+    conn.close()
+    
+    if not aday:
+        return None
+    
+    overall = aday['puan'] if is_pg else aday[0]
+    level = calculate_cefr_level(overall)
+    
+    skills = {
+        'Grammar': aday['p_grammar'] if is_pg else aday[1],
+        'Vocabulary': aday['p_vocab'] if is_pg else aday[2],
+        'Reading': aday['p_reading'] if is_pg else aday[3],
+        'Writing': aday['p_writing'] if is_pg else aday[4],
+        'Speaking': aday['p_speaking'] if is_pg else aday[5],
+        'Listening': aday['p_listening'] if is_pg else aday[6]
+    }
+    
+    skill_levels = {k: calculate_cefr_level(v) for k, v in skills.items()}
+    
+    return {
+        'overall_score': overall,
+        'cefr_level': level,
+        'cefr_description': CEFR_BENCHMARKS[level]['description'],
+        'ielts_equivalent': CEFR_BENCHMARKS[level]['ielts'],
+        'skills': skills,
+        'skill_levels': skill_levels,
+        'benchmarks': CEFR_BENCHMARKS
+    }
+
+# ══════════════════════════════════════════════════════════════
+# PAYMENT FUNCTIONS (Stripe)
+# ══════════════════════════════════════════════════════════════
+def create_payment_session(aday_id, amount, currency='TRY', success_url=None, cancel_url=None):
+    """Create Stripe checkout session"""
+    try:
+        import stripe
+        stripe.api_key = os.getenv('STRIPE_SECRET', '')
+        
+        if not stripe.api_key:
+            return None
+        
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': currency.lower(),
+                    'product_data': {
+                        'name': 'Skills Test Center - Sınav Ücreti',
+                    },
+                    'unit_amount': int(amount * 100),
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=success_url or f'{os.getenv("BASE_URL", "http://localhost:5000")}/payment/success?session_id={{CHECKOUT_SESSION_ID}}',
+            cancel_url=cancel_url or f'{os.getenv("BASE_URL", "http://localhost:5000")}/payment/cancel',
+            metadata={'aday_id': str(aday_id)}
+        )
+        
+        # Save payment record
+        conn, is_pg = get_db_connection()
+        c = conn.cursor()
+        q = "INSERT INTO odemeler (aday_id, miktar, para_birimi, stripe_session_id) VALUES (?,?,?,?)"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (aday_id, amount, currency, session.id))
+        conn.commit()
+        conn.close()
+        
+        return session.url
+    except Exception as e:
+        logger.error(f"Stripe error: {e}")
+        return None
+
+def verify_payment(session_id):
+    """Verify Stripe payment and update status"""
+    try:
+        import stripe
+        stripe.api_key = os.getenv('STRIPE_SECRET', '')
+        
+        session = stripe.checkout.Session.retrieve(session_id)
+        
+        if session.payment_status == 'paid':
+            conn, is_pg = get_db_connection()
+            c = conn.cursor()
+            q = "UPDATE odemeler SET durum='Odendi', odeme_tarihi=CURRENT_TIMESTAMP WHERE stripe_session_id=?"
+            if is_pg:
+                q = q.replace('?', '%s')
+            c.execute(q, (session_id,))
+            conn.commit()
+            conn.close()
+            return True
+    except Exception as e:
+        logger.error(f"Payment verification error: {e}")
+    return False
+
+# ══════════════════════════════════════════════════════════════
+# RESIT/RETAKE POLICY
+# ══════════════════════════════════════════════════════════════
+def check_resit_eligibility(aday_email, sirket_id):
+    """Check if candidate can retake exam based on policy"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        from psycopg2.extras import RealDictCursor
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    # Get policy
+    q = "SELECT * FROM resit_policy WHERE sirket_id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    policy = c.fetchone()
+    
+    min_days = 30
+    max_attempts = 3
+    
+    if policy:
+        min_days = policy['min_days_between'] if is_pg else policy[2]
+        max_attempts = policy['max_attempts'] if is_pg else policy[3]
+    
+    # Count previous attempts
+    q = """SELECT COUNT(*), MAX(bitis_tarihi) FROM adaylar 
+           WHERE email=? AND sirket_id=? AND durum='Tamamlandi'"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_email, sirket_id))
+    result = c.fetchone()
+    conn.close()
+    
+    attempts = result[0] if result else 0
+    last_exam = result[1] if result and result[1] else None
+    
+    if attempts >= max_attempts:
+        return {'eligible': False, 'reason': f'Maksimum deneme sayısına ({max_attempts}) ulaştınız.'}
+    
+    if last_exam:
+        from datetime import datetime, timedelta
+        if isinstance(last_exam, str):
+            last_exam = datetime.fromisoformat(last_exam.replace('Z', '+00:00'))
+        
+        days_since = (datetime.now() - last_exam.replace(tzinfo=None)).days if last_exam else 999
+        
+        if days_since < min_days:
+            return {'eligible': False, 'reason': f'{min_days - days_since} gün daha beklemeniz gerekiyor.'}
+    
+    return {'eligible': True, 'attempts': attempts, 'max_attempts': max_attempts}
+
+# ══════════════════════════════════════════════════════════════
+# MULTI-LANGUAGE EMAIL TEMPLATES
+# ══════════════════════════════════════════════════════════════
+DEFAULT_EMAIL_TEMPLATES = {
+    'exam_invitation': {
+        'tr': {'subject': 'Sınav Davetiyesi', 'body': 'Sayın {ad_soyad},\n\nGiriş kodunuz: {giris_kodu}\nSınav linki: {sinav_link}\n\nBaşarılar!'},
+        'en': {'subject': 'Exam Invitation', 'body': 'Dear {ad_soyad},\n\nYour access code: {giris_kodu}\nExam link: {sinav_link}\n\nGood luck!'}
+    },
+    'exam_completed': {
+        'tr': {'subject': 'Sınav Sonuçları', 'body': 'Sayın {ad_soyad},\n\nPuanınız: {puan}%\nSeviyeniz: {seviye}\nSertifika: {cert_link}'},
+        'en': {'subject': 'Exam Results', 'body': 'Dear {ad_soyad},\n\nYour score: {puan}%\nLevel: {seviye}\nCertificate: {cert_link}'}
+    },
+    'exam_reminder': {
+        'tr': {'subject': 'Sınav Hatırlatması', 'body': 'Sayın {ad_soyad},\n\nSınav tarihiniz: {sinav_tarihi}\nGiriş kodunuz: {giris_kodu}'},
+        'en': {'subject': 'Exam Reminder', 'body': 'Dear {ad_soyad},\n\nExam date: {sinav_tarihi}\nAccess code: {giris_kodu}'}
+    }
+}
+
+def get_email_template(template_key, lang='tr', sirket_id=None):
+    """Get email template with fallback to defaults"""
+    if sirket_id:
+        conn, is_pg = get_db_connection()
+        if is_pg:
+            from psycopg2.extras import RealDictCursor
+            c = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            c = conn.cursor()
+        
+        q = "SELECT subject, body FROM email_templates WHERE sirket_id=? AND template_key=? AND lang=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (sirket_id, template_key, lang))
+        result = c.fetchone()
+        conn.close()
+        
+        if result:
+            return {'subject': result['subject'] if is_pg else result[0], 
+                    'body': result['body'] if is_pg else result[1]}
+    
+    # Fallback to defaults
+    if template_key in DEFAULT_EMAIL_TEMPLATES and lang in DEFAULT_EMAIL_TEMPLATES[template_key]:
+        return DEFAULT_EMAIL_TEMPLATES[template_key][lang]
+    
+    return DEFAULT_EMAIL_TEMPLATES.get(template_key, {}).get('en', {'subject': '', 'body': ''})
+
+def send_localized_email(to, template_key, data, lang='tr', sirket_id=None):
+    """Send email using localized template"""
+    template = get_email_template(template_key, lang, sirket_id)
+    
+    subject = template['subject']
+    body = template['body'].format(**data)
+    
+    return send_email(to, subject, body, sirket_id)
 
 def send_email(to, subj, body, sid=None, deduct_credit=True):
     """Send email with multiple SMTP fallback and credit deduction"""
@@ -2081,6 +2525,281 @@ def admin_varsayilan_sablon():
     
     flash("Varsayılan şablon ayarlandı.", "success")
     return redirect(url_for('admin_sablonlar'))
+
+# ══════════════════════════════════════════════════════════════
+# LISTENING AUDIO MANAGEMENT
+# ══════════════════════════════════════════════════════════════
+@app.route('/admin/listening')
+@check_role(['super_admin', 'sirket_admin'])
+def admin_listening():
+    """List listening audio files"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    sirket_id = session['sirket_id'] if session['rol'] != 'super_admin' else 0
+    q = "SELECT * FROM listening_audio WHERE sirket_id=0 OR sirket_id=? ORDER BY created_at DESC"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    audios = c.fetchall()
+    conn.close()
+    
+    return render_template('listening.html', audios=audios)
+
+@app.route('/admin/listening/ekle', methods=['GET', 'POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_listening_ekle():
+    """Add new listening audio"""
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        audio_url = request.form.get('audio_url', '').strip()
+        transcript = request.form.get('transcript', '')
+        duration = int(request.form.get('duration', 0))
+        difficulty = request.form.get('difficulty', 'B1')
+        
+        conn, is_pg = get_db_connection()
+        c = conn.cursor()
+        
+        q = """INSERT INTO listening_audio (title, audio_url, transcript, duration_seconds, difficulty, sirket_id) 
+               VALUES (?,?,?,?,?,?)"""
+        if is_pg:
+            q = q.replace('?', '%s')
+            q += " RETURNING id"
+        c.execute(q, (title, audio_url, transcript, duration, difficulty, session['sirket_id']))
+        
+        if is_pg:
+            audio_id = c.fetchone()[0]
+        else:
+            audio_id = c.lastrowid
+        
+        # Add questions
+        for i in range(1, 11):
+            q_text = request.form.get(f'soru_{i}', '').strip()
+            if not q_text:
+                break
+            
+            q_ins = """INSERT INTO listening_questions 
+                       (audio_id, soru_metni, secenek_a, secenek_b, secenek_c, secenek_d, dogru_cevap, soru_sirasi)
+                       VALUES (?,?,?,?,?,?,?,?)"""
+            if is_pg:
+                q_ins = q_ins.replace('?', '%s')
+            c.execute(q_ins, (
+                audio_id, q_text,
+                request.form.get(f'secenek_a_{i}', ''),
+                request.form.get(f'secenek_b_{i}', ''),
+                request.form.get(f'secenek_c_{i}', ''),
+                request.form.get(f'secenek_d_{i}', ''),
+                request.form.get(f'dogru_{i}', 'A'),
+                i
+            ))
+        
+        conn.commit()
+        conn.close()
+        flash("Listening audio eklendi.", "success")
+        return redirect(url_for('admin_listening'))
+    
+    return render_template('listening_form.html')
+
+# ══════════════════════════════════════════════════════════════
+# EXAM SCHEDULING
+# ══════════════════════════════════════════════════════════════
+@app.route('/admin/randevular')
+@check_role(['super_admin', 'sirket_admin', 'recruiter'])
+def admin_randevular():
+    """View scheduled exams"""
+    exams = get_scheduled_exams(session['sirket_id'], upcoming_only=False)
+    return render_template('randevular.html', exams=exams, timezones=TIMEZONES)
+
+@app.route('/admin/randevu-ekle', methods=['POST'])
+@check_role(['super_admin', 'sirket_admin', 'recruiter'])
+def admin_randevu_ekle():
+    """Schedule exam for candidate"""
+    aday_id = request.form.get('aday_id')
+    exam_date = request.form.get('exam_date')
+    exam_time = request.form.get('exam_time')
+    timezone = request.form.get('timezone', 'Europe/Istanbul')
+    
+    exam_datetime = f"{exam_date} {exam_time}"
+    schedule_exam(aday_id, exam_datetime, timezone, session['sirket_id'])
+    
+    # Send reminder email
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT ad_soyad, email, giris_kodu FROM adaylar WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id,))
+    aday = c.fetchone()
+    conn.close()
+    
+    if aday:
+        send_localized_email(
+            aday['email'] if is_pg else aday[1],
+            'exam_reminder',
+            {
+                'ad_soyad': aday['ad_soyad'] if is_pg else aday[0],
+                'sinav_tarihi': f"{exam_date} {exam_time} ({timezone})",
+                'giris_kodu': aday['giris_kodu'] if is_pg else aday[2]
+            },
+            session.get('lang', 'tr'),
+            session['sirket_id']
+        )
+    
+    flash("Sınav randevusu oluşturuldu ve hatırlatma e-postası gönderildi.", "success")
+    return redirect(url_for('admin_randevular'))
+
+# ══════════════════════════════════════════════════════════════
+# CEFR BENCHMARK REPORT
+# ══════════════════════════════════════════════════════════════
+@app.route('/admin/cefr-rapor/<int:aday_id>')
+@check_role(['super_admin', 'sirket_admin', 'recruiter'])
+def admin_cefr_rapor(aday_id):
+    """View detailed CEFR benchmark report"""
+    report = get_cefr_benchmark_report(aday_id)
+    
+    if not report:
+        flash("Aday bulunamadı.", "danger")
+        return redirect(url_for('admin_adaylar'))
+    
+    # Get candidate info
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT ad_soyad, email FROM adaylar WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id,))
+    aday = c.fetchone()
+    conn.close()
+    
+    return render_template('cefr_rapor.html', report=report, aday=aday, aday_id=aday_id)
+
+# ══════════════════════════════════════════════════════════════
+# PAYMENT ROUTES
+# ══════════════════════════════════════════════════════════════
+@app.route('/payment/create/<int:aday_id>')
+def payment_create(aday_id):
+    """Create payment session for candidate"""
+    amount = float(request.args.get('amount', 500))
+    currency = request.args.get('currency', 'TRY')
+    
+    checkout_url = create_payment_session(aday_id, amount, currency)
+    
+    if checkout_url:
+        return redirect(checkout_url)
+    else:
+        flash("Ödeme sistemi şu anda kullanılamıyor.", "danger")
+        return redirect(url_for('sinav_giris'))
+
+@app.route('/payment/success')
+def payment_success():
+    """Handle successful payment"""
+    session_id = request.args.get('session_id')
+    if session_id and verify_payment(session_id):
+        flash("Ödemeniz başarıyla alındı. Sınava girebilirsiniz.", "success")
+    else:
+        flash("Ödeme doğrulanamadı.", "warning")
+    return redirect(url_for('sinav_giris'))
+
+@app.route('/payment/cancel')
+def payment_cancel():
+    """Handle cancelled payment"""
+    flash("Ödeme iptal edildi.", "info")
+    return redirect(url_for('sinav_giris'))
+
+# ══════════════════════════════════════════════════════════════
+# SPEAKING RECORDING API
+# ══════════════════════════════════════════════════════════════
+@app.route('/api/speaking/record', methods=['POST'])
+def api_speaking_record():
+    """Save speaking recording from browser"""
+    aday_id = session.get('aday_id')
+    if not aday_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    soru_id = data.get('soru_id')
+    audio_base64 = data.get('audio')
+    transcript = data.get('transcript', '')
+    duration = data.get('duration', 0)
+    
+    result = save_speaking_recording(aday_id, soru_id, audio_base64, transcript, duration)
+    return jsonify(result)
+
+@app.route('/api/listening/answers', methods=['POST'])
+def api_listening_answers():
+    """Save listening test answers"""
+    aday_id = session.get('aday_id')
+    if not aday_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    answers = data.get('answers', {})
+    
+    result = save_listening_answers(aday_id, answers)
+    return jsonify(result)
+
+# ══════════════════════════════════════════════════════════════
+# RESIT POLICY MANAGEMENT
+# ══════════════════════════════════════════════════════════════
+@app.route('/admin/resit-ayarlar', methods=['GET', 'POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_resit_ayarlar():
+    """Configure resit/retake policy"""
+    sirket_id = session['sirket_id']
+    conn, is_pg = get_db_connection()
+    
+    if request.method == 'POST':
+        min_days = int(request.form.get('min_days', 30))
+        max_attempts = int(request.form.get('max_attempts', 3))
+        validity = int(request.form.get('validity', 2))
+        
+        c = conn.cursor()
+        
+        # Check if exists
+        q = "SELECT id FROM resit_policy WHERE sirket_id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (sirket_id,))
+        existing = c.fetchone()
+        
+        if existing:
+            q = "UPDATE resit_policy SET min_days_between=?, max_attempts=?, cert_validity_years=? WHERE sirket_id=?"
+            if is_pg:
+                q = q.replace('?', '%s')
+            c.execute(q, (min_days, max_attempts, validity, sirket_id))
+        else:
+            q = "INSERT INTO resit_policy (sirket_id, min_days_between, max_attempts, cert_validity_years) VALUES (?,?,?,?)"
+            if is_pg:
+                q = q.replace('?', '%s')
+            c.execute(q, (sirket_id, min_days, max_attempts, validity))
+        
+        conn.commit()
+        flash("Resit politikası güncellendi.", "success")
+    
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM resit_policy WHERE sirket_id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    policy = c.fetchone()
+    conn.close()
+    
+    return render_template('resit_ayarlar.html', policy=policy)
 
 # User Management
 @app.route('/admin/kullanicilar')
