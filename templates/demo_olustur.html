@@ -1,0 +1,46 @@
+{% extends "dashboard.html" %}
+{% block title %}Demo Şirket Oluştur - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-rocket-takeoff me-2"></i>Hızlı Demo Şirket Oluştur</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Şirket Adı *</label>
+                        <input type="text" name="company_name" class="form-control" placeholder="Demo Corp" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Admin E-posta *</label>
+                        <input type="email" name="admin_email" class="form-control" placeholder="admin@demo.com"
+                            required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Admin Şifresi *</label>
+                        <input type="password" name="admin_password" class="form-control" minlength="8" required>
+                        <small class="text-muted">En az 8 karakter</small>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Demo şirket <strong>100 kredi</strong> ile oluşturulur ve otomatik olarak varsayılan sınav
+                        şablonu eklenir.
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="/admin/sirketler" class="btn btn-secondary">İptal</a>
+                        <button type="submit" class="btn btn-success"><i
+                                class="bi bi-check-lg me-1"></i>Oluştur</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
