@@ -1,0 +1,42 @@
+# Environment
+.env
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Uploads
+static/uploads/*
+static/logos/*
+static/audio/*
+static/cvs/*
+static/screenshots/*
+static/ids/*
+static/videos/*
+!static/*/.gitkeep
+
+# Logs
+*.log
+error.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
