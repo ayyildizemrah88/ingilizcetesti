@@ -1,0 +1,53 @@
+{% extends "dashboard.html" %}
+{% block title %}Aday Ekle - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-person-plus me-2"></i>Yeni Aday Ekle</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" action="/admin/aday-ekle">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Ad Soyad *</label>
+                            <input type="text" name="ad_soyad" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">E-posta</label>
+                            <input type="email" name="email" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">T.C. Kimlik No</label>
+                            <input type="text" name="tc_kimlik" class="form-control" maxlength="11">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cep Telefonu</label>
+                            <input type="text" name="cep_no" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Sınav Süresi (dakika)</label>
+                            <input type="number" name="sinav_suresi" class="form-control" value="30" min="5" max="180">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Soru Limiti</label>
+                            <input type="number" name="soru_limiti" class="form-control" value="10" min="5" max="100">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="/admin/adaylar" class="btn btn-secondary">İptal</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>Kaydet
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
