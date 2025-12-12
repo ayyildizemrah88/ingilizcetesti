@@ -4691,9 +4691,41 @@ def ratelimit_handler(e):
     return jsonify({"error": "Rate limit exceeded", "message": str(e.description)}), 429
 
 # ══════════════════════════════════════════════════════════════
+# INTERNATIONAL FEATURES REGISTRATION
+# ══════════════════════════════════════════════════════════════
+try:
+    from international_features import register_international_features
+    register_international_features(app)
+    logger.info("International features blueprint registered successfully")
+except ImportError as e:
+    logger.warning(f"International features not available: {e}")
+
+# Import CAT engine and CEFR mapper for use in main app
+try:
+    from cat_engine import CATEngine, create_cat_session
+    from cefr_mapper import calculate_skill_levels, get_radar_chart_data, score_to_cefr
+    CAT_AVAILABLE = True
+except ImportError:
+    CAT_AVAILABLE = False
+
+# Accessibility context processor
+@app.context_processor
+def inject_accessibility():
+    return {
+        'accessibility': session.get('accessibility', {
+            'high_contrast': False,
+            'large_text': False,
+            'reduced_motion': False,
+            'colorblind_mode': None,
+            'dyslexia_friendly': False
+        })
+    }
+
+# ══════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════
 if __name__ == '__main__':
     init_db()
     debug_mode = os.getenv('DEBUG', 'False').lower() == 'true'
     app.run(host='0.0.0.0', port=5000, debug=debug_mode)
+
