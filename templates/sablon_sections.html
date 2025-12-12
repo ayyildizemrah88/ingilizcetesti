@@ -1,0 +1,188 @@
+{% extends "dashboard.html" %}
+{% block title %}Bölüm Ayarları - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock me-2"></i>Bölüm Süreleri: {{ sablon.isim if sablon is mapping else sablon[0]
+                    }}
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="alert alert-info mb-4">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Her bölüm için ayrı süre ve soru sayısı belirleyin. IELTS formatı için önerilen:
+                    Listening (30dk), Reading (60dk), Writing (60dk), Speaking (15dk).
+                </div>
+
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div id="sections-container">
+                        {% for s in sections %}
+                        <div class="section-row mb-3 p-3 bg-light rounded">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-4">
+                                    <select name="section_name[]" class="form-select">
+                                        {% for sec in available_sections %}
+                                        <option value="{{ sec }}" {{ 'selected' if s.section_name==sec }}>{{ sec }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="input-group">
+                                        <input type="number" name="section_duration[]" class="form-control"
+                                            value="{{ s.duration_minutes if s is mapping else s[4] }}" min="5">
+                                        <span class="input-group-text">dk</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="input-group">
+                                        <input type="number" name="section_questions[]" class="form-control"
+                                            value="{{ s.question_count if s is mapping else s[5] }}" min="1">
+                                        <span class="input-group-text">soru</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-danger btn-sm"
+                                        onclick="this.closest('.section-row').remove()">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        {% if not sections %}
+                        <div class="section-row mb-3 p-3 bg-light rounded">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-4">
+                                    <select name="section_name[]" class="form-select">
+                                        {% for sec in available_sections %}
+                                        <option value="{{ sec }}">{{ sec }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="input-group">
+                                        <input type="number" name="section_duration[]" class="form-control" value="30"
+                                            min="5">
+                                        <span class="input-group-text">dk</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="input-group">
+                                        <input type="number" name="section_questions[]" class="form-control" value="10"
+                                            min="1">
+                                        <span class="input-group-text">soru</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-danger btn-sm"
+                                        onclick="this.closest('.section-row').remove()">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <button type="button" class="btn btn-outline-secondary mb-4" onclick="addSection()">
+                        <i class="bi bi-plus me-1"></i>Bölüm Ekle
+                    </button>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-primary" onclick="applyIELTS()">
+                            <i class="bi bi-magic me-1"></i>IELTS Formatı Uygula
+                        </button>
+                        <div class="d-flex gap-2">
+                            <a href="/admin/sablonlar" class="btn btn-secondary">İptal</a>
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Kaydet</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function addSection() {
+        const container = document.getElementById('sections-container');
+        const html = `
+    <div class="section-row mb-3 p-3 bg-light rounded">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <select name="section_name[]" class="form-select">
+                    <option value="LISTENING">LISTENING</option>
+                    <option value="READING">READING</option>
+                    <option value="WRITING">WRITING</option>
+                    <option value="SPEAKING">SPEAKING</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="input-group">
+                    <input type="number" name="section_duration[]" class="form-control" value="30" min="5">
+                    <span class="input-group-text">dk</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="input-group">
+                    <input type="number" name="section_questions[]" class="form-control" value="10" min="1">
+                    <span class="input-group-text">soru</span>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="this.closest('.section-row').remove()">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>`;
+        container.insertAdjacentHTML('beforeend', html);
+    }
+
+    function applyIELTS() {
+        document.getElementById('sections-container').innerHTML = `
+    <div class="section-row mb-3 p-3 bg-light rounded">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-4"><select name="section_name[]" class="form-select"><option value="LISTENING" selected>LISTENING</option></select></div>
+            <div class="col-md-3"><div class="input-group"><input type="number" name="section_duration[]" class="form-control" value="30"><span class="input-group-text">dk</span></div></div>
+            <div class="col-md-3"><div class="input-group"><input type="number" name="section_questions[]" class="form-control" value="40"><span class="input-group-text">soru</span></div></div>
+            <div class="col-md-2"><button type="button" class="btn btn-outline-danger btn-sm" onclick="this.closest('.section-row').remove()"><i class="bi bi-trash"></i></button></div>
+        </div>
+    </div>
+    <div class="section-row mb-3 p-3 bg-light rounded">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-4"><select name="section_name[]" class="form-select"><option value="READING" selected>READING</option></select></div>
+            <div class="col-md-3"><div class="input-group"><input type="number" name="section_duration[]" class="form-control" value="60"><span class="input-group-text">dk</span></div></div>
+            <div class="col-md-3"><div class="input-group"><input type="number" name="section_questions[]" class="form-control" value="40"><span class="input-group-text">soru</span></div></div>
+            <div class="col-md-2"><button type="button" class="btn btn-outline-danger btn-sm" onclick="this.closest('.section-row').remove()"><i class="bi bi-trash"></i></button></div>
+        </div>
+    </div>
+    <div class="section-row mb-3 p-3 bg-light rounded">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-4"><select name="section_name[]" class="form-select"><option value="WRITING" selected>WRITING</option></select></div>
+            <div class="col-md-3"><div class="input-group"><input type="number" name="section_duration[]" class="form-control" value="60"><span class="input-group-text">dk</span></div></div>
+            <div class="col-md-3"><div class="input-group"><input type="number" name="section_questions[]" class="form-control" value="2"><span class="input-group-text">soru</span></div></div>
+            <div class="col-md-2"><button type="button" class="btn btn-outline-danger btn-sm" onclick="this.closest('.section-row').remove()"><i class="bi bi-trash"></i></button></div>
+        </div>
+    </div>
+    <div class="section-row mb-3 p-3 bg-light rounded">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-4"><select name="section_name[]" class="form-select"><option value="SPEAKING" selected>SPEAKING</option></select></div>
+            <div class="col-md-3"><div class="input-group"><input type="number" name="section_duration[]" class="form-control" value="15"><span class="input-group-text">dk</span></div></div>
+            <div class="col-md-3"><div class="input-group"><input type="number" name="section_questions[]" class="form-control" value="3"><span class="input-group-text">soru</span></div></div>
+            <div class="col-md-2"><button type="button" class="btn btn-outline-danger btn-sm" onclick="this.closest('.section-row').remove()"><i class="bi bi-trash"></i></button></div>
+        </div>
+    </div>`;
+    }
+</script>
+{% endblock %}
