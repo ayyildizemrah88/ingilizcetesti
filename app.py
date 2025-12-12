@@ -246,6 +246,19 @@ def init_db():
         f'''CREATE TABLE IF NOT EXISTS speaking_answers (
             id {auto_inc}, aday_id INTEGER, soru_id INTEGER, transcript TEXT, score_json TEXT, 
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS credit_logs (
+            id {auto_inc}, sirket_id INTEGER, miktar INTEGER, islem_tipi TEXT, 
+            aciklama TEXT, onceki_bakiye INTEGER, yeni_bakiye INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, created_by INTEGER
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS webhook_configs (
+            id {auto_inc}, sirket_id INTEGER, url TEXT, event_type TEXT, 
+            is_active INTEGER DEFAULT 1, secret_key TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS varsayilan_sablonlar (
+            id {auto_inc}, sirket_id INTEGER UNIQUE, sablon_id INTEGER
         )'''
     ]
     
@@ -373,8 +386,307 @@ def generate_cert_hash(aday_id, puan):
     """Generate certificate verification hash"""
     return hashlib.sha256(f"{aday_id}{puan}{uuid.uuid4()}{int(time.time())}".encode()).hexdigest()[:24]
 
-def send_email(to, subj, body, sid=None):
-    """Send email with multiple SMTP fallback"""
+# ══════════════════════════════════════════════════════════════
+# CREDIT MANAGEMENT FUNCTIONS
+# ══════════════════════════════════════════════════════════════
+def get_company_credit(sirket_id):
+    """Get current credit balance for company"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        from psycopg2.extras import RealDictCursor
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT kredi FROM sirketler WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    result = c.fetchone()
+    conn.close()
+    
+    if result:
+        return result['kredi'] if is_pg else result[0]
+    return 0
+
+def check_credit(sirket_id, required_amount=1):
+    """Check if company has sufficient credit"""
+    current = get_company_credit(sirket_id)
+    return current >= required_amount
+
+def deduct_credit_func(sirket_id, amount, description="", user_id=None):
+    """Deduct credit from company and log transaction"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    # Get current balance
+    q = "SELECT kredi FROM sirketler WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    result = c.fetchone()
+    current = result[0] if result else 0
+    
+    if current < amount:
+        conn.close()
+        return False
+    
+    new_balance = current - amount
+    
+    # Update balance
+    q = "UPDATE sirketler SET kredi=? WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (new_balance, sirket_id))
+    
+    # Log transaction
+    q = "INSERT INTO credit_logs (sirket_id, miktar, islem_tipi, aciklama, onceki_bakiye, yeni_bakiye, created_by) VALUES (?,?,?,?,?,?,?)"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id, -amount, 'HARCAMA', description, current, new_balance, user_id))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def add_credit(sirket_id, amount, description="Manuel ekleme", user_id=None):
+    """Add credit to company and log transaction"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    # Get current balance
+    q = "SELECT kredi FROM sirketler WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    result = c.fetchone()
+    current = result[0] if result else 0
+    
+    new_balance = current + amount
+    
+    # Update balance
+    q = "UPDATE sirketler SET kredi=? WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (new_balance, sirket_id))
+    
+    # Log transaction
+    q = "INSERT INTO credit_logs (sirket_id, miktar, islem_tipi, aciklama, onceki_bakiye, yeni_bakiye, created_by) VALUES (?,?,?,?,?,?,?)"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id, amount, 'YUKLEME', description, current, new_balance, user_id))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+# ══════════════════════════════════════════════════════════════
+# WEBHOOK & NOTIFICATION FUNCTIONS
+# ══════════════════════════════════════════════════════════════
+def send_webhook_notification(sirket_id, event_type, payload):
+    """Send webhook notification to configured URL"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        from psycopg2.extras import RealDictCursor
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM webhook_configs WHERE sirket_id=? AND event_type=? AND is_active=1"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id, event_type))
+    config = c.fetchone()
+    conn.close()
+    
+    if not config:
+        return
+    
+    url = config['url'] if is_pg else config[2]
+    secret = config['secret_key'] if is_pg else config[5]
+    
+    def _send():
+        try:
+            headers = {'Content-Type': 'application/json'}
+            if secret:
+                headers['X-Webhook-Secret'] = secret
+            
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            
+            # Log webhook
+            conn2, is_pg2 = get_db_connection()
+            c2 = conn2.cursor()
+            q2 = "INSERT INTO webhook_logs (aday_id, url, payload, status_code, response_text, is_success) VALUES (?,?,?,?,?,?)"
+            if is_pg2:
+                q2 = q2.replace('?', '%s')
+            c2.execute(q2, (payload.get('aday_id'), url, json.dumps(payload), response.status_code, response.text[:500], 1 if response.ok else 0))
+            conn2.commit()
+            conn2.close()
+        except Exception as e:
+            logger.error(f"Webhook error: {e}")
+    
+    threading.Thread(target=_send).start()
+
+def notify_exam_completion(aday_id, sirket_id):
+    """Notify via webhook and email when exam is completed"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        from psycopg2.extras import RealDictCursor
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT ad_soyad, email, puan, seviye_sonuc, certificate_hash FROM adaylar WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id,))
+    aday = c.fetchone()
+    conn.close()
+    
+    if aday:
+        payload = {
+            'event': 'exam_completed',
+            'aday_id': aday_id,
+            'ad_soyad': aday['ad_soyad'] if is_pg else aday[0],
+            'puan': aday['puan'] if is_pg else aday[2],
+            'seviye': aday['seviye_sonuc'] if is_pg else aday[3],
+            'certificate_hash': aday['certificate_hash'] if is_pg else aday[4]
+        }
+        send_webhook_notification(sirket_id, 'exam_completed', payload)
+
+# ══════════════════════════════════════════════════════════════
+# AI EVALUATION FUNCTIONS (Gemini)
+# ══════════════════════════════════════════════════════════════
+def evaluate_writing_with_ai(answer, reference="", level="B1"):
+    """Evaluate writing answer using Gemini AI"""
+    try:
+        import google.generativeai as genai
+        api_key = os.getenv('GEMINI_API_KEY', '')
+        
+        if not api_key:
+            return {'score': len(answer) // 10, 'feedback': 'AI not configured', 'details': {}}
+        
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-pro')
+        
+        prompt = f"""You are an English teacher evaluating a {level} level writing answer.
+
+Reference/Expected Answer: {reference if reference else 'Free writing task'}
+Student Answer: {answer}
+
+Evaluate based on CEFR {level} criteria:
+1. Task Achievement (0-25)
+2. Coherence & Cohesion (0-25)
+3. Lexical Resource (0-25)
+4. Grammatical Range (0-25)
+
+Return JSON only:
+{{"score": 0-100, "task_achievement": 0-25, "coherence": 0-25, "lexical": 0-25, "grammar": 0-25, "feedback": "brief feedback", "level_achieved": "A1-C2"}}"""
+        
+        response = model.generate_content(prompt)
+        
+        # Parse JSON from response
+        import re
+        json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
+        if json_match:
+            return json.loads(json_match.group())
+        
+        return {'score': 50, 'feedback': response.text[:500], 'details': {}}
+    except Exception as e:
+        logger.error(f"AI evaluation error: {e}")
+        return {'score': len(answer) // 10, 'feedback': f'Evaluation error: {str(e)}', 'details': {}}
+
+def evaluate_speaking_with_ai(transcript, reference="", level="B1"):
+    """Evaluate speaking transcript using Gemini AI"""
+    try:
+        import google.generativeai as genai
+        api_key = os.getenv('GEMINI_API_KEY', '')
+        
+        if not api_key:
+            return {'score': len(transcript) // 10, 'feedback': 'AI not configured'}
+        
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-pro')
+        
+        prompt = f"""You are an English examiner evaluating a {level} level speaking response (transcript).
+
+Topic/Question: {reference if reference else 'General speaking task'}
+Student Transcript: {transcript}
+
+Evaluate based on CEFR {level} criteria:
+1. Fluency & Coherence (0-25)
+2. Lexical Resource (0-25)
+3. Grammatical Range (0-25)
+4. Pronunciation hints from text (0-25)
+
+Return JSON only:
+{{"score": 0-100, "fluency": 0-25, "lexical": 0-25, "grammar": 0-25, "pronunciation": 0-25, "feedback": "brief feedback", "level_achieved": "A1-C2"}}"""
+        
+        response = model.generate_content(prompt)
+        
+        import re
+        json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
+        if json_match:
+            return json.loads(json_match.group())
+        
+        return {'score': 50, 'feedback': response.text[:500]}
+    except Exception as e:
+        logger.error(f"AI speaking evaluation error: {e}")
+        return {'score': len(transcript) // 10, 'feedback': f'Evaluation error: {str(e)}'}
+
+# ══════════════════════════════════════════════════════════════
+# DEMO COMPANY CREATION
+# ══════════════════════════════════════════════════════════════
+def create_demo_company(company_name, admin_email, admin_password):
+    """Create a demo company with admin user"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    try:
+        # Create company
+        kadi = company_name.lower().replace(' ', '-')[:20]
+        q = "INSERT INTO sirketler (isim, kadi, kredi, is_demo, is_active) VALUES (?,?,?,1,1)"
+        if is_pg:
+            q = q.replace('?', '%s')
+            q += " RETURNING id"
+        c.execute(q, (company_name, kadi, 100))
+        
+        if is_pg:
+            sirket_id = c.fetchone()[0]
+        else:
+            sirket_id = c.lastrowid
+        
+        # Create admin user
+        pw_hash = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        q = "INSERT INTO yoneticiler (kadi, sifre, rol, ad_soyad, sirket_id) VALUES (?,?,?,?,?)"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (admin_email, pw_hash, 'sirket_admin', 'Demo Admin', sirket_id))
+        
+        # Create default exam template
+        q = "INSERT INTO sinav_sablonlari (isim, sinav_suresi, soru_limiti, baslangic_seviyesi, sirket_id) VALUES (?,?,?,?,?)"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, ('Varsayilan Sinav', 30, 10, 'B1', sirket_id))
+        
+        conn.commit()
+        conn.close()
+        return sirket_id
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        logger.error(f"Demo company creation error: {e}")
+        return None
+
+def send_email(to, subj, body, sid=None, deduct_credit=True):
+    """Send email with multiple SMTP fallback and credit deduction"""
+    
+    # Check credit before sending
+    if deduct_credit and sid:
+        if not check_credit(sid, 1):
+            logger.warning(f"Insufficient credit for company {sid}")
+            return False
+    
     mail_ids = os.getenv('MAIL_CONFIGS', '1').split(',')
     
     def _send():
@@ -406,6 +718,11 @@ def send_email(to, subj, body, sid=None):
                 s.quit()
                 sent = True
                 error_msg = ''
+                
+                # Deduct credit on successful send
+                if deduct_credit and sid:
+                    deduct_credit_func(sid, 1, f"Email to {to}")
+                    
             except Exception as e:
                 error_msg = str(e)
         
@@ -1576,6 +1893,194 @@ def admin_sirket_duzenle(id):
     
     conn.close()
     return render_template('sirket_form.html', sirket=sirket)
+
+@app.route('/admin/sirket-sil/<int:id>')
+@check_role(['super_admin'])
+def admin_sirket_sil(id):
+    """Permanently delete a company and all related data"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    # Delete related data first
+    tables = ['adaylar', 'sorular', 'sinav_sablonlari', 'yoneticiler', 'credit_logs', 'webhook_configs']
+    for table in tables:
+        q = f"DELETE FROM {table} WHERE sirket_id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        try:
+            c.execute(q, (id,))
+        except:
+            pass
+    
+    # Delete company
+    q = "DELETE FROM sirketler WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (id,))
+    
+    conn.commit()
+    conn.close()
+    
+    log_admin_action(session['user_id'], session['ad_soyad'], 'SIRKET_SIL', id)
+    flash("Şirket ve tüm verileri kalıcı olarak silindi.", "success")
+    return redirect(url_for('admin_sirketler'))
+
+@app.route('/admin/demo-olustur', methods=['GET', 'POST'])
+@check_role(['super_admin'])
+def admin_demo_olustur():
+    """Quick demo company creation"""
+    if request.method == 'POST':
+        company_name = request.form.get('company_name', '').strip()
+        admin_email = request.form.get('admin_email', '').strip()
+        admin_password = request.form.get('admin_password', '')
+        
+        if not company_name or not admin_email or len(admin_password) < 8:
+            flash("Tüm alanlar zorunludur ve şifre en az 8 karakter olmalı.", "danger")
+            return render_template('demo_olustur.html')
+        
+        sirket_id = create_demo_company(company_name, admin_email, admin_password)
+        
+        if sirket_id:
+            log_admin_action(session['user_id'], session['ad_soyad'], 'DEMO_OLUSTUR', sirket_id, company_name)
+            flash(f"Demo şirket oluşturuldu! ID: {sirket_id}, Email: {admin_email}", "success")
+            return redirect(url_for('admin_sirketler'))
+        else:
+            flash("Demo oluşturulurken hata oluştu.", "danger")
+    
+    return render_template('demo_olustur.html')
+
+@app.route('/admin/kredi-yukle/<int:sirket_id>', methods=['GET', 'POST'])
+@check_role(['super_admin'])
+def admin_kredi_yukle(sirket_id):
+    """Add credit to company"""
+    if request.method == 'POST':
+        miktar = int(request.form.get('miktar', 0))
+        aciklama = request.form.get('aciklama', 'Manuel yükleme')
+        
+        if miktar > 0:
+            add_credit(sirket_id, miktar, aciklama, session['user_id'])
+            log_admin_action(session['user_id'], session['ad_soyad'], 'KREDI_YUKLE', sirket_id, f"{miktar} kredi")
+            flash(f"{miktar} kredi yüklendi.", "success")
+        else:
+            flash("Geçerli bir miktar girin.", "danger")
+        
+        return redirect(url_for('admin_sirketler'))
+    
+    return render_template('kredi_yukle.html', sirket_id=sirket_id)
+
+@app.route('/admin/kredi-gecmisi/<int:sirket_id>')
+@check_role(['super_admin', 'sirket_admin'])
+def admin_kredi_gecmisi(sirket_id):
+    """View credit transaction history"""
+    # Check permission
+    if session['rol'] != 'super_admin' and session['sirket_id'] != sirket_id:
+        flash("Bu sayfaya erişim yetkiniz yok.", "danger")
+        return redirect(url_for('admin_dashboard'))
+    
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM credit_logs WHERE sirket_id=? ORDER BY created_at DESC LIMIT 100"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    logs = c.fetchall()
+    
+    # Get company info
+    q = "SELECT isim, kredi FROM sirketler WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    sirket = c.fetchone()
+    conn.close()
+    
+    return render_template('kredi_gecmisi.html', logs=logs, sirket=sirket, sirket_id=sirket_id)
+
+@app.route('/admin/webhook-ayarlar', methods=['GET', 'POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_webhook_ayarlar():
+    """Configure webhook notifications"""
+    sirket_id = session['sirket_id'] if session['rol'] != 'super_admin' else request.args.get('sirket_id', session.get('sirket_id', 0))
+    
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    if request.method == 'POST':
+        url = request.form.get('url', '').strip()
+        event_type = request.form.get('event_type', 'exam_completed')
+        secret_key = request.form.get('secret_key', '')
+        
+        if url:
+            # Check if exists
+            q = "SELECT id FROM webhook_configs WHERE sirket_id=? AND event_type=?"
+            if is_pg:
+                q = q.replace('?', '%s')
+            c.execute(q, (sirket_id, event_type))
+            existing = c.fetchone()
+            
+            if existing:
+                q = "UPDATE webhook_configs SET url=?, secret_key=?, is_active=1 WHERE id=?"
+                if is_pg:
+                    q = q.replace('?', '%s')
+                c.execute(q, (url, secret_key, existing['id'] if is_pg else existing[0]))
+            else:
+                q = "INSERT INTO webhook_configs (sirket_id, url, event_type, secret_key) VALUES (?,?,?,?)"
+                if is_pg:
+                    q = q.replace('?', '%s')
+                c.execute(q, (sirket_id, url, event_type, secret_key))
+            
+            conn.commit()
+            flash("Webhook ayarları kaydedildi.", "success")
+    
+    # Get existing config
+    q = "SELECT * FROM webhook_configs WHERE sirket_id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    webhooks = c.fetchall()
+    conn.close()
+    
+    return render_template('webhook_ayarlar.html', webhooks=webhooks)
+
+@app.route('/admin/varsayilan-sablon', methods=['POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_varsayilan_sablon():
+    """Set default exam template for company"""
+    sablon_id = request.form.get('sablon_id')
+    sirket_id = session['sirket_id']
+    
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    # Check if exists
+    q = "SELECT id FROM varsayilan_sablonlar WHERE sirket_id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    existing = c.fetchone()
+    
+    if existing:
+        q = "UPDATE varsayilan_sablonlar SET sablon_id=? WHERE sirket_id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (sablon_id, sirket_id))
+    else:
+        q = "INSERT INTO varsayilan_sablonlar (sirket_id, sablon_id) VALUES (?,?)"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (sirket_id, sablon_id))
+    
+    conn.commit()
+    conn.close()
+    
+    flash("Varsayılan şablon ayarlandı.", "success")
+    return redirect(url_for('admin_sablonlar'))
 
 # User Management
 @app.route('/admin/kullanicilar')
