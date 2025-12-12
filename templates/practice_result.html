@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Deneme Sonucu - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card border-0 text-center">
+                <div class="card-body p-5">
+                    <div class="display-1 mb-3">🎯</div>
+                    <h2 class="mb-4">Deneme Sınavı Tamamlandı!</h2>
+
+                    <div class="alert alert-warning mb-4">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Bu bir <strong>deneme sınavıdır</strong>. Sonuçlar kayıt altına alınmamıştır.
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <div class="bg-light rounded p-3">
+                                <h3 class="display-5 fw-bold text-primary">{{ score|round(1) }}%</h3>
+                                <small class="text-muted">Doğru Oranı</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-light rounded p-3">
+                                <h3 class="display-5 fw-bold text-success">{{ band }}</h3>
+                                <small class="text-muted">IELTS Band</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-grid gap-2">
+                        <a href="/practice" class="btn btn-primary btn-lg">Yeni Deneme Yap</a>
+                        <a href="/" class="btn btn-outline-secondary">Ana Sayfa</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
