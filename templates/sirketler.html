@@ -1,0 +1,50 @@
+{% extends "dashboard.html" %}
+{% block title %}Şirketler - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-building me-2"></i>Şirketler</h3>
+    <a href="/admin/sirket-ekle" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Yeni Şirket</a>
+</div>
+
+<div class="card border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>İsim</th>
+                        <th>Alt Alan</th>
+                        <th>Kredi</th>
+                        <th>Renk</th>
+                        <th>Durum</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in sirketler %}
+                    <tr>
+                        <td>{{ s[0] if s is not mapping else s.id }}</td>
+                        <td><strong>{{ s[1] if s is not mapping else s.isim }}</strong></td>
+                        <td><code>{{ s[2] if s is not mapping else s.kadi }}</code></td>
+                        <td>{{ s[3] if s is not mapping else s.kredi }}</td>
+                        <td><span class="badge" style="background: {{ s[6] if s is not mapping else s.theme_color }}">{{
+                                s[6] if s is not mapping else s.theme_color }}</span></td>
+                        <td>
+                            {% if (s[4] if s is not mapping else s.is_active) %}
+                            <span class="badge bg-success">Aktif</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Pasif</span>
+                            {% endif %}
+                        </td>
+                        <td><a href="/admin/sirket-duzenle/{{ s[0] if s is not mapping else s.id }}"
+                                class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
