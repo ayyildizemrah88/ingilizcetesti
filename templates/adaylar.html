@@ -1,0 +1,90 @@
+{% extends "dashboard.html" %}
+{% block title %}Adaylar - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-people me-2"></i>Adaylar</h3>
+    <div>
+        <button class="btn btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#bulkModal">
+            <i class="bi bi-upload me-1"></i>Toplu Yükle
+        </button>
+        <a href="/admin/aday-ekle" class="btn btn-primary">
+            <i class="bi bi-person-plus me-1"></i>Yeni Aday
+        </a>
+    </div>
+</div>
+
+<div class="card border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Ad Soyad</th>
+                        <th>Email</th>
+                        <th>Giriş Kodu</th>
+                        <th>Durum</th>
+                        <th>Puan</th>
+                        <th>Seviye</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for aday in adaylar %}
+                    <tr>
+                        <td>{{ aday[0] if aday is not mapping else aday.id }}</td>
+                        <td><strong>{{ aday[1] if aday is not mapping else aday.ad_soyad }}</strong></td>
+                        <td>{{ aday[4] if aday is not mapping else aday.email }}</td>
+                        <td><code>{{ aday[5] if aday is not mapping else aday.giris_kodu }}</code></td>
+                        <td>
+                            {% set durum = aday[8] if aday is not mapping else aday.durum %}
+                            {% if durum == 'Tamamlandi' %}
+                            <span class="badge bg-success">Tamamlandı</span>
+                            {% elif durum == 'Devam' %}
+                            <span class="badge bg-warning">Devam Ediyor</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Bekliyor</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ aday[7] if aday is not mapping else aday.puan }}%</td>
+                        <td>{{ aday[24] if aday is not mapping else aday.seviye_sonuc or '-' }}</td>
+                        <td>
+                            <a href="/admin/aday-sil/{{ aday[0] if aday is not mapping else aday.id }}"
+                                class="btn btn-sm btn-outline-danger"
+                                onclick="return confirm('Bu adayı silmek istediğinize emin misiniz?')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Upload Modal -->
+<div class="modal fade" id="bulkModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/admin/bulk-upload" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Toplu Aday Yükleme</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Excel dosyası yükleyin. Gerekli kolon: <code>ad_soyad</code></p>
+                    <p class="text-muted small">Opsiyonel kolonlar: email, tc_kimlik</p>
+                    <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">Yükle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
