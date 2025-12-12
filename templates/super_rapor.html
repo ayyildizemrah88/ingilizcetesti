@@ -1,0 +1,49 @@
+{% extends "dashboard.html" %}
+{% block title %}Süper Admin Rapor - Skills Test Center{% endblock %}
+
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-bar-chart me-2"></i>Platform Genel Raporu</h3>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card border-0 bg-primary text-white">
+            <div class="card-body text-center py-4">
+                <h2 class="mb-0">{{ sirket }}</h2>
+                <p class="mb-0">Toplam Şirket</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 bg-success text-white">
+            <div class="card-body text-center py-4">
+                <h2 class="mb-0">{{ aday }}</h2>
+                <p class="mb-0">Toplam Aday</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 bg-info text-white">
+            <div class="card-body text-center py-4">
+                <h2 class="mb-0">{{ tamamlanan }}</h2>
+                <p class="mb-0">Tamamlanan Sınav</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 bg-warning">
+            <div class="card-body text-center py-4">
+                <h2 class="mb-0">{{ kredi }}</h2>
+                <p class="mb-0">Toplam Kredi</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 bg-danger text-white">
+            <div class="card-body text-center py-4">
+                <h2 class="mb-0">{{ fraud }}</h2>
+                <p class="mb-0">Şüpheli Olay</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
