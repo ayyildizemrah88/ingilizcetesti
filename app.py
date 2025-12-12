@@ -348,6 +348,31 @@ def init_db():
             id {auto_inc}, aday_id INTEGER, request_type TEXT, 
             status TEXT DEFAULT 'Bekliyor', requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             completed_at TIMESTAMP
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS reading_passages_bank (
+            id {auto_inc}, title TEXT, passage_text TEXT, word_count INTEGER,
+            topic TEXT, difficulty TEXT DEFAULT 'B1', sirket_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS reading_questions (
+            id {auto_inc}, passage_id INTEGER, soru_metni TEXT, soru_tipi TEXT,
+            secenek_a TEXT, secenek_b TEXT, secenek_c TEXT, secenek_d TEXT,
+            dogru_cevap TEXT, sira INTEGER DEFAULT 1
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS practice_exams (
+            id {auto_inc}, aday_id INTEGER, sablon_id INTEGER, 
+            is_practice INTEGER DEFAULT 1, basla_zamani TIMESTAMP,
+            bitis_zamani TIMESTAMP, durum TEXT DEFAULT 'Devam Ediyor'
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS section_timers (
+            id {auto_inc}, sablon_id INTEGER, section_name TEXT,
+            section_order INTEGER DEFAULT 1, duration_minutes INTEGER DEFAULT 30,
+            question_count INTEGER DEFAULT 10
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS exam_sections (
+            id {auto_inc}, aday_id INTEGER, section_name TEXT,
+            started_at TIMESTAMP, ended_at TIMESTAMP, 
+            is_completed INTEGER DEFAULT 0
         )'''
     ]
     
@@ -1609,6 +1634,342 @@ def get_all_tags(sirket_id=0):
     tags = [r[0] for r in c.fetchall()]
     conn.close()
     return tags
+
+# ══════════════════════════════════════════════════════════════
+# READING PASSAGES BANK
+# ══════════════════════════════════════════════════════════════
+def add_reading_passage(title, passage_text, topic, difficulty, sirket_id):
+    """Add a reading passage to the bank"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    word_count = len(passage_text.split())
+    
+    q = """INSERT INTO reading_passages_bank (title, passage_text, word_count, topic, difficulty, sirket_id) 
+           VALUES (?,?,?,?,?,?)"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (title, passage_text, word_count, topic, difficulty, sirket_id))
+    
+    passage_id = c.lastrowid if not is_pg else None
+    if is_pg:
+        c.execute("SELECT currval(pg_get_serial_sequence('reading_passages_bank', 'id'))")
+        passage_id = c.fetchone()[0]
+    
+    conn.commit()
+    conn.close()
+    return passage_id
+
+def add_reading_question(passage_id, soru_metni, soru_tipi, secenekler, dogru_cevap, sira):
+    """Add a question to a reading passage"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = """INSERT INTO reading_questions 
+           (passage_id, soru_metni, soru_tipi, secenek_a, secenek_b, secenek_c, secenek_d, dogru_cevap, sira)
+           VALUES (?,?,?,?,?,?,?,?,?)"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (passage_id, soru_metni, soru_tipi, 
+                  secenekler.get('A', ''), secenekler.get('B', ''),
+                  secenekler.get('C', ''), secenekler.get('D', ''),
+                  dogru_cevap, sira))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def get_reading_passage(passage_id):
+    """Get a reading passage with its questions"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    # Get passage
+    q = "SELECT * FROM reading_passages_bank WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (passage_id,))
+    passage = c.fetchone()
+    
+    # Get questions
+    q = "SELECT * FROM reading_questions WHERE passage_id=? ORDER BY sira"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (passage_id,))
+    questions = c.fetchall()
+    
+    conn.close()
+    
+    return {
+        'passage': dict(passage) if passage else None,
+        'questions': [dict(q) for q in questions]
+    }
+
+def get_random_reading_passage(difficulty='B1', sirket_id=0, exclude_ids=None):
+    """Get a random reading passage for exam"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    exclude_ids = exclude_ids or []
+    
+    if exclude_ids:
+        placeholders = ','.join(['?' if not is_pg else '%s'] * len(exclude_ids))
+        q = f"""SELECT * FROM reading_passages_bank 
+                WHERE difficulty=? AND (sirket_id=0 OR sirket_id=?) AND id NOT IN ({placeholders})
+                ORDER BY RANDOM() LIMIT 1"""
+        params = [difficulty, sirket_id] + exclude_ids
+    else:
+        q = """SELECT * FROM reading_passages_bank 
+               WHERE difficulty=? AND (sirket_id=0 OR sirket_id=?)
+               ORDER BY RANDOM() LIMIT 1"""
+        params = [difficulty, sirket_id]
+    
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, tuple(params))
+    passage = c.fetchone()
+    conn.close()
+    
+    if passage:
+        return get_reading_passage(passage['id'] if is_pg else passage[0])
+    return None
+
+# ══════════════════════════════════════════════════════════════
+# PRACTICE MODE
+# ══════════════════════════════════════════════════════════════
+def start_practice_exam(aday_id, sablon_id):
+    """Start a practice (non-scored) exam"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = """INSERT INTO practice_exams (aday_id, sablon_id, is_practice, basla_zamani) 
+           VALUES (?,?,1,CURRENT_TIMESTAMP)"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id, sablon_id))
+    
+    practice_id = c.lastrowid if not is_pg else None
+    if is_pg:
+        c.execute("SELECT currval(pg_get_serial_sequence('practice_exams', 'id'))")
+        practice_id = c.fetchone()[0]
+    
+    conn.commit()
+    conn.close()
+    return practice_id
+
+def finish_practice_exam(practice_id):
+    """Finish a practice exam"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = "UPDATE practice_exams SET bitis_zamani=CURRENT_TIMESTAMP, durum='Tamamlandi' WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (practice_id,))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def is_practice_mode(aday_id):
+    """Check if candidate is in practice mode"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = "SELECT is_practice FROM adaylar WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id,))
+    result = c.fetchone()
+    conn.close()
+    
+    return bool(result and result[0]) if result else False
+
+# ══════════════════════════════════════════════════════════════
+# SECTION TIMER
+# ══════════════════════════════════════════════════════════════
+EXAM_SECTIONS = ['LISTENING', 'READING', 'WRITING', 'SPEAKING']
+
+def setup_section_timers(sablon_id, sections):
+    """Setup section-based timers for an exam template
+    sections = [{'name': 'LISTENING', 'duration': 30, 'questions': 10}, ...]
+    """
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    # Clear existing
+    q = "DELETE FROM section_timers WHERE sablon_id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sablon_id,))
+    
+    # Add new sections
+    for i, section in enumerate(sections):
+        q = """INSERT INTO section_timers (sablon_id, section_name, section_order, duration_minutes, question_count)
+               VALUES (?,?,?,?,?)"""
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (sablon_id, section['name'], i+1, section['duration'], section['questions']))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def get_section_timers(sablon_id):
+    """Get all section timers for a template"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM section_timers WHERE sablon_id=? ORDER BY section_order"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sablon_id,))
+    sections = c.fetchall()
+    conn.close()
+    return [dict(s) for s in sections]
+
+def start_exam_section(aday_id, section_name):
+    """Start a new section for candidate"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = """INSERT INTO exam_sections (aday_id, section_name, started_at) 
+           VALUES (?,?,CURRENT_TIMESTAMP)"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id, section_name))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def complete_exam_section(aday_id, section_name):
+    """Mark a section as completed"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = """UPDATE exam_sections SET ended_at=CURRENT_TIMESTAMP, is_completed=1 
+           WHERE aday_id=? AND section_name=? AND is_completed=0"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id, section_name))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def get_current_section(aday_id, sablon_id):
+    """Get the current section for a candidate"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    # Get completed sections
+    q = "SELECT section_name FROM exam_sections WHERE aday_id=? AND is_completed=1"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id,))
+    completed = [r['section_name'] if is_pg else r[0] for r in c.fetchall()]
+    
+    # Get all sections for template
+    sections = get_section_timers(sablon_id)
+    
+    # Find next incomplete section
+    for section in sections:
+        if section['section_name'] not in completed:
+            conn.close()
+            return section
+    
+    conn.close()
+    return None  # All sections completed
+
+def get_section_remaining_time(aday_id, section_name, duration_minutes):
+    """Calculate remaining time for a section"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = "SELECT started_at FROM exam_sections WHERE aday_id=? AND section_name=? ORDER BY id DESC LIMIT 1"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id, section_name))
+    result = c.fetchone()
+    conn.close()
+    
+    if not result:
+        return duration_minutes * 60  # Full time in seconds
+    
+    started = result[0]
+    if isinstance(started, str):
+        started = datetime.datetime.fromisoformat(started.replace('Z', '+00:00'))
+    
+    elapsed = (datetime.datetime.now() - started).total_seconds()
+    remaining = (duration_minutes * 60) - elapsed
+    
+    return max(0, int(remaining))
+
+# ══════════════════════════════════════════════════════════════
+# IELTS BAND SCORE CALCULATOR
+# ══════════════════════════════════════════════════════════════
+def calculate_ielts_band(score):
+    """Convert percentage score to IELTS band score (1-9)"""
+    if score >= 90: return 9.0
+    elif score >= 85: return 8.5
+    elif score >= 80: return 8.0
+    elif score >= 75: return 7.5
+    elif score >= 70: return 7.0
+    elif score >= 65: return 6.5
+    elif score >= 60: return 6.0
+    elif score >= 55: return 5.5
+    elif score >= 50: return 5.0
+    elif score >= 45: return 4.5
+    elif score >= 40: return 4.0
+    elif score >= 35: return 3.5
+    elif score >= 30: return 3.0
+    elif score >= 25: return 2.5
+    elif score >= 20: return 2.0
+    else: return 1.0
+
+def calculate_overall_band(listening, reading, writing, speaking):
+    """Calculate overall IELTS band from individual sections"""
+    total = listening + reading + writing + speaking
+    avg = total / 4
+    
+    # Round to nearest 0.5
+    rounded = round(avg * 2) / 2
+    return min(9.0, max(1.0, rounded))
+
+def get_band_description(band):
+    """Get IELTS band score description"""
+    descriptions = {
+        9.0: "Expert User",
+        8.5: "Very Good User",
+        8.0: "Very Good User",
+        7.5: "Good User",
+        7.0: "Good User",
+        6.5: "Competent User",
+        6.0: "Competent User",
+        5.5: "Modest User",
+        5.0: "Modest User",
+        4.5: "Limited User",
+        4.0: "Limited User",
+        3.5: "Extremely Limited User",
+        3.0: "Extremely Limited User",
+        2.5: "Intermittent User",
+        2.0: "Intermittent User",
+        1.0: "Non User"
+    }
+    return descriptions.get(band, "Unknown")
 
 def send_email(to, subj, body, sid=None, deduct_credit=True):
 
@@ -3417,6 +3778,250 @@ def api_all_tags():
     """Get all available tags"""
     tags = get_all_tags(session.get('sirket_id', 0))
     return jsonify({'tags': tags})
+
+# ══════════════════════════════════════════════════════════════
+# READING PASSAGES MANAGEMENT
+# ══════════════════════════════════════════════════════════════
+@app.route('/admin/reading-passages')
+@check_role(['super_admin', 'sirket_admin'])
+def admin_reading_passages():
+    """List all reading passages"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    sirket_id = session['sirket_id'] if session['rol'] != 'super_admin' else 0
+    q = "SELECT * FROM reading_passages_bank WHERE sirket_id=0 OR sirket_id=? ORDER BY created_at DESC"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sirket_id,))
+    passages = c.fetchall()
+    conn.close()
+    
+    return render_template('reading_passages.html', passages=passages)
+
+@app.route('/admin/reading-passages/ekle', methods=['GET', 'POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_reading_passage_ekle():
+    """Add new reading passage"""
+    if request.method == 'POST':
+        title = request.form.get('title')
+        passage_text = request.form.get('passage_text')
+        topic = request.form.get('topic')
+        difficulty = request.form.get('difficulty', 'B1')
+        sirket_id = session['sirket_id']
+        
+        passage_id = add_reading_passage(title, passage_text, topic, difficulty, sirket_id)
+        
+        # Add questions
+        questions = request.form.getlist('questions[]')
+        for i, q_data in enumerate(questions):
+            if q_data:
+                add_reading_question(passage_id, q_data, 'SECMELI', 
+                                   {'A': request.form.get(f'a_{i}', ''),
+                                    'B': request.form.get(f'b_{i}', ''),
+                                    'C': request.form.get(f'c_{i}', ''),
+                                    'D': request.form.get(f'd_{i}', '')},
+                                   request.form.get(f'correct_{i}', 'A'), i+1)
+        
+        flash("Reading passage eklendi.", "success")
+        return redirect(url_for('admin_reading_passages'))
+    
+    return render_template('reading_passage_form.html')
+
+@app.route('/api/reading/random')
+def api_reading_random():
+    """Get a random reading passage for exam"""
+    difficulty = request.args.get('difficulty', 'B1')
+    sirket_id = session.get('sirket_id', 0)
+    
+    passage = get_random_reading_passage(difficulty, sirket_id)
+    return jsonify(passage)
+
+# ══════════════════════════════════════════════════════════════
+# PRACTICE MODE
+# ══════════════════════════════════════════════════════════════
+@app.route('/practice')
+def practice_home():
+    """Practice exam home page"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM sinav_sablonlari WHERE sirket_id=0 ORDER BY isim"
+    c.execute(q)
+    templates = c.fetchall()
+    conn.close()
+    
+    return render_template('practice_home.html', templates=templates)
+
+@app.route('/practice/start/<int:sablon_id>')
+def practice_start(sablon_id):
+    """Start a practice exam"""
+    # Create temporary practice candidate
+    aday_id = session.get('practice_aday_id')
+    
+    if not aday_id:
+        conn, is_pg = get_db_connection()
+        c = conn.cursor()
+        
+        q = """INSERT INTO adaylar (ad_soyad, email, giris_kodu, is_practice) 
+               VALUES (?, ?, ?, 1)"""
+        if is_pg:
+            q = q.replace('?', '%s')
+        practice_code = 'PRACTICE_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        c.execute(q, ('Practice User', 'practice@temp.local', practice_code))
+        
+        if is_pg:
+            c.execute("SELECT currval(pg_get_serial_sequence('adaylar', 'id'))")
+            aday_id = c.fetchone()[0]
+        else:
+            aday_id = c.lastrowid
+        
+        conn.commit()
+        conn.close()
+        
+        session['practice_aday_id'] = aday_id
+    
+    # Start practice exam
+    practice_id = start_practice_exam(aday_id, sablon_id)
+    session['practice_id'] = practice_id
+    session['aday_id'] = aday_id
+    session['is_practice'] = True
+    
+    flash("Deneme sınavı başladı. Bu sınav puanlanmayacaktır.", "info")
+    return redirect(url_for('sinav'))
+
+@app.route('/practice/finish')
+def practice_finish():
+    """Finish practice exam"""
+    practice_id = session.get('practice_id')
+    if practice_id:
+        finish_practice_exam(practice_id)
+    
+    aday_id = session.get('aday_id')
+    is_practice = session.get('is_practice', False)
+    
+    # Calculate score for feedback (but don't save officially)
+    if aday_id:
+        conn, is_pg = get_db_connection()
+        c = conn.cursor()
+        
+        q = "SELECT COUNT(*) FROM cevaplar WHERE aday_id=? AND dogru_mu=1"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (aday_id,))
+        correct = c.fetchone()[0]
+        
+        q = "SELECT COUNT(*) FROM cevaplar WHERE aday_id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (aday_id,))
+        total = c.fetchone()[0]
+        conn.close()
+        
+        score = (correct / total * 100) if total > 0 else 0
+        band = calculate_ielts_band(score)
+    else:
+        score = 0
+        band = 0
+    
+    # Clear practice session
+    session.pop('practice_id', None)
+    session.pop('is_practice', None)
+    
+    return render_template('practice_result.html', score=score, band=band, is_practice=True)
+
+# ══════════════════════════════════════════════════════════════
+# SECTION TIMER MANAGEMENT
+# ══════════════════════════════════════════════════════════════
+@app.route('/admin/sablon-sections/<int:sablon_id>', methods=['GET', 'POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_sablon_sections(sablon_id):
+    """Configure exam sections and their timers"""
+    if request.method == 'POST':
+        sections = []
+        section_names = request.form.getlist('section_name[]')
+        section_durations = request.form.getlist('section_duration[]')
+        section_questions = request.form.getlist('section_questions[]')
+        
+        for i, name in enumerate(section_names):
+            if name:
+                sections.append({
+                    'name': name,
+                    'duration': int(section_durations[i]) if i < len(section_durations) else 30,
+                    'questions': int(section_questions[i]) if i < len(section_questions) else 10
+                })
+        
+        setup_section_timers(sablon_id, sections)
+        flash("Bölüm ayarları kaydedildi.", "success")
+        return redirect(url_for('admin_sablonlar'))
+    
+    # Get existing sections
+    sections = get_section_timers(sablon_id)
+    
+    # Get template info
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT isim FROM sinav_sablonlari WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sablon_id,))
+    sablon = c.fetchone()
+    conn.close()
+    
+    return render_template('sablon_sections.html', 
+                          sablon_id=sablon_id, 
+                          sablon=sablon,
+                          sections=sections, 
+                          available_sections=EXAM_SECTIONS)
+
+@app.route('/api/section/start', methods=['POST'])
+def api_section_start():
+    """Start a new exam section"""
+    aday_id = session.get('aday_id')
+    if not aday_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    section_name = data.get('section')
+    
+    start_exam_section(aday_id, section_name)
+    return jsonify({'status': 'started', 'section': section_name})
+
+@app.route('/api/section/complete', methods=['POST'])
+def api_section_complete():
+    """Complete current exam section"""
+    aday_id = session.get('aday_id')
+    if not aday_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    section_name = data.get('section')
+    
+    complete_exam_section(aday_id, section_name)
+    return jsonify({'status': 'completed', 'section': section_name})
+
+@app.route('/api/section/time')
+def api_section_time():
+    """Get remaining time for current section"""
+    aday_id = session.get('aday_id')
+    if not aday_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    section = request.args.get('section')
+    duration = int(request.args.get('duration', 30))
+    
+    remaining = get_section_remaining_time(aday_id, section, duration)
+    return jsonify({'remaining_seconds': remaining})
 
 # ══════════════════════════════════════════════════════════════
 # RESIT POLICY MANAGEMENT
