@@ -1,0 +1,72 @@
+{% extends "dashboard.html" %}
+{% block title %}Proctoring - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-camera-video me-2"></i>Proctoring - {{ aday.ad_soyad if aday is mapping else aday[0] }}</h3>
+    <a href="/admin/adaylar" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Geri</a>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 text-center">
+            <div class="card-body">
+                <h2 class="display-4 fw-bold text-primary">{{ analysis.total_snapshots }}</h2>
+                <small class="text-muted">Toplam Snapshot</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 text-center">
+            <div class="card-body">
+                <h2
+                    class="display-4 fw-bold text-{{ 'danger' if analysis.suspicious_count > 5 else 'warning' if analysis.suspicious_count > 2 else 'success' }}">
+                    {{ analysis.suspicious_count }}
+                </h2>
+                <small class="text-muted">Şüpheli</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 text-center">
+            <div class="card-body">
+                <h2 class="display-4 fw-bold">{{ analysis.suspicious_rate|round(1) }}%</h2>
+                <small class="text-muted">Şüpheli Oranı</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 text-center">
+            <div class="card-body">
+                <h2
+                    class="display-4 fw-bold text-{{ 'success' if analysis.status == 'OK' else 'warning' if analysis.status == 'REVIEW' else 'danger' }}">
+                    {{ analysis.status }}
+                </h2>
+                <small class="text-muted">Durum</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0">
+    <div class="card-header bg-white">
+        <h6 class="mb-0">Snapshot Galerisi</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            {% for s in snapshots[:20] %}
+            <div class="col-md-2">
+                <div
+                    class="card border-{{ 'danger' if (s.suspicious_score if s is mapping else s[4]) > 50 else 'success' }}">
+                    <img src="data:image/jpeg;base64,{{ s.snapshot_blob if s is mapping else s[2] }}"
+                        class="card-img-top" style="height: 100px; object-fit: cover;">
+                    <div class="card-footer small">
+                        {{ s.created_at if s is mapping else s[5] }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
