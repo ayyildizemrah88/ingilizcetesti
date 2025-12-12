@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Veri Hakları - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card border-0">
+            <div class="card-body p-5 text-center">
+                <i class="bi bi-shield-check text-primary mb-3" style="font-size: 4rem;"></i>
+                <h3>KVKK / GDPR Veri Hakları</h3>
+                <p class="text-muted">Kişisel verilerinizi yönetin</p>
+                <hr>
+                <form method="POST" action="/candidate/privacy">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="d-grid gap-3">
+                        <button type="submit" name="action" value="download" class="btn btn-outline-primary btn-lg">
+                            <i class="bi bi-download me-2"></i>Verilerimi İndir
+                        </button>
+                        <button type="submit" name="action" value="delete" class="btn btn-outline-danger btn-lg"
+                            onclick="return confirm('Tüm verileriniz silinecek. Emin misiniz?')">
+                            <i class="bi bi-trash me-2"></i>Verilerimi Sil
+                        </button>
+                    </div>
+                </form>
+                <a href="/sinav" class="btn btn-link mt-3">Sınava Dön</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
