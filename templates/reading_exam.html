@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% block title %}Reading Comprehension - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3" role="main" aria-labelledby="reading-title">
+    <a href="#questions" class="skip-link sr-only sr-only-focusable">Skip to questions</a>
+
+    <div class="row">
+        <!-- Passage Panel (Left Side) -->
+        <div class="col-lg-6 mb-3 mb-lg-0">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h1 id="reading-title" class="h5 mb-0">
+                        <i class="bi bi-book" aria-hidden="true"></i>
+                        Reading Passage
+                    </h1>
+                    <div class="reading-tools">
+                        <button type="button" class="btn btn-sm btn-light" id="increase-font"
+                            aria-label="Increase font size" title="Increase text size">
+                            A<sup>+</sup>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-light" id="decrease-font"
+                            aria-label="Decrease font size" title="Decrease text size">
+                            A<sup>-</sup>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-body overflow-auto" style="max-height: 75vh;">
+                    <div class="passage-meta mb-3">
+                        <span class="badge bg-secondary">
+                            <i class="bi bi-tag" aria-hidden="true"></i> {{ passage.topic }}
+                        </span>
+                        <span class="badge bg-info">
+                            <i class="bi bi-speedometer" aria-hidden="true"></i> {{ passage.difficulty }}
+                        </span>
+                        <span class="badge bg-light text-dark">
+                            <i class="bi bi-clock" aria-hidden="true"></i> ~{{ (passage.word_count / 200)|int }} min
+                            read
+                        </span>
+                        <span class="badge bg-light text-dark">
+                            {{ passage.word_count }} words
+                        </span>
+                    </div>
+
+                    <h2 class="h4 mb-3">{{ passage.title }}</h2>
+
+                    <article id="passage-text" class="passage-content" style="font-size: 1rem; line-height: 1.8;">
+                        {{ passage.passage_text|safe }}
+                    </article>
+                </div>
+            </div>
+        </div>
+
+        <!-- Questions Panel (Right Side) -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div
+                    class="card-header bg-primary text-white d-flex justify-content-between align-items-center sticky-top">
+                    <h2 id="questions" class="h5 mb-0">
+                        <i class="bi bi-question-circle" aria-hidden="true"></i>
+                        Questions
+                    </h2>
+                    <div class="d-flex align-items-center gap-2">
+                        <span id="timer" class="badge bg-warning text-dark fs-5" role="timer" aria-live="polite">
+                            {{ "%02d:%02d"|format(remaining_time // 60, remaining_time % 60) }}
+                        </span>
+                        <span class="badge bg-light text-dark">
+                            {{ questions|length }} Questions
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card-body overflow-auto" style="max-height: 75vh;">
+                    <form id="reading-form" method="POST" action="{{ url_for('sinav_reading_cevap') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="passage_id" value="{{ passage.id }}">
+
+                        {% for question in questions %}
+                        <div class="question-item mb-4 p-3 border rounded {{ 'bg-light-subtle' if loop.index is odd else '' }}"
+                            id="q-{{ question.id }}" role="group" aria-labelledby="qlabel-{{ question.id }}">
+
+                            <p id="qlabel-{{ question.id }}" class="fw-bold">
+                                <span class="badge bg-primary me-2">{{ loop.index }}</span>
+                                {{ question.soru_metni }}
+                            </p>
+
+                            {% if question.soru_tipi == 'MCQ' or question.soru_tipi == 'SECMELI' %}
+                            <!-- Multiple Choice -->
+                            <div class="options mt-3" role="radiogroup">
+                                {% for opt, text in [('A', question.secenek_a), ('B', question.secenek_b), ('C',
+                                question.secenek_c), ('D', question.secenek_d)] %}
+                                {% if text %}
+                                <div class="form-check mb-2">
+                                    <input type="radio" class="form-check-input" name="q_{{ question.id }}"
+                                        id="q{{ question.id }}_{{ opt }}" value="{{ opt }}" required>
+                                    <label class="form-check-label" for="q{{ question.id }}_{{ opt }}">
+                                        <strong>{{ opt }}.</strong> {{ text }}
+                                    </label>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+
+                            {% elif question.soru_tipi == 'TRUE_FALSE' %}
+                            <!-- True/False/Not Given -->
+                            <div class="options mt-3" role="radiogroup">
+                                {% for val, label in [('TRUE', 'True'), ('FALSE', 'False'), ('NOT_GIVEN', 'Not Given')]
+                                %}
+                                <div class="form-check form-check-inline">
+                                    <input type="radio" class="form-check-input" name="q_{{ question.id }}"
+                                        id="q{{ question.id }}_{{ val }}" value="{{ val }}" required>
+                                    <label class="form-check-label" for="q{{ question.id }}_{{ val }}">
+                                        {{ label }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            {% elif question.soru_tipi == 'FILL_BLANK' %}
+                            <!-- Fill in the blank -->
+                            <div class="mt-3">
+                                <label for="q{{ question.id }}_answer" class="form-label">Your Answer:</label>
+                                <input type="text" class="form-control" name="q_{{ question.id }}"
+                                    id="q{{ question.id }}_answer" placeholder="Type your answer here..."
+                                    maxlength="100" required aria-describedby="hint-{{ question.id }}">
+                                <small id="hint-{{ question.id }}" class="form-text text-muted">
+                                    Write no more than 3 words
+                                </small>
+                            </div>
+
+                            {% elif question.soru_tipi == 'MATCHING' %}
+                            <!-- Matching headings -->
+                            <div class="mt-3">
+                                <label for="q{{ question.id }}_match" class="form-label">Select matching
+                                    heading:</label>
+                                <select class="form-select" name="q_{{ question.id }}" id="q{{ question.id }}_match"
+                                    required>
+                                    <option value="">-- Select --</option>
+                                    {% for opt in question.matching_options %}
+                                    <option value="{{ opt.value }}">{{ opt.text }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        <!-- Navigation -->
+                        <div class="question-nav sticky-bottom bg-white pt-3 pb-2 border-top">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="progress-info">
+                                    <span id="answered-count">0</span> / {{ questions|length }} answered
+                                </div>
+
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="history.back()">
+                                        <i class="bi bi-arrow-left" aria-hidden="true"></i> Back
+                                    </button>
+                                    <button type="submit" class="btn btn-primary" id="submit-btn">
+                                        Submit <i class="bi bi-check-circle" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Highlight text when referencing passage */
+    .passage-content::selection {
+        background: #ffd700;
+        color: #000;
+    }
+
+    .passage-content p {
+        margin-bottom: 1rem;
+        text-align: justify;
+    }
+
+    /* Question navigation dots */
+    .question-dots {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+
+    .question-dot {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .question-dot.answered {
+        background: #198754;
+        border-color: #198754;
+        color: #fff;
+    }
+
+    .question-dot:hover {
+        transform: scale(1.1);
+    }
+
+    /* Split view improvements */
+    @media (max-width: 991px) {
+        .card-body.overflow-auto {
+            max-height: 50vh !important;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const passageText = document.getElementById('passage-text');
+        const form = document.getElementById('reading-form');
+        let currentFontSize = 1;
+
+        // Font size controls
+        document.getElementById('increase-font').addEventListener('click', function () {
+            currentFontSize = Math.min(currentFontSize + 0.1, 1.5);
+            passageText.style.fontSize = currentFontSize + 'rem';
+        });
+
+        document.getElementById('decrease-font').addEventListener('click', function () {
+            currentFontSize = Math.max(currentFontSize - 0.1, 0.8);
+            passageText.style.fontSize = currentFontSize + 'rem';
+        });
+
+        // Track answered questions
+        const answeredCountEl = document.getElementById('answered-count');
+        const inputs = form.querySelectorAll('input[type="radio"], input[type="text"], select');
+        const questionCount = {{ questions| length
+    }};
+
+    function updateAnsweredCount() {
+        const answered = new Set();
+        inputs.forEach(input => {
+            const name = input.name;
+            if (input.type === 'radio' && input.checked) {
+                answered.add(name);
+            } else if (input.type === 'text' && input.value.trim()) {
+                answered.add(name);
+            } else if (input.tagName === 'SELECT' && input.value) {
+                answered.add(name);
+            }
+        });
+        answeredCountEl.textContent = answered.size;
+    }
+
+    inputs.forEach(input => {
+        input.addEventListener('change', updateAnsweredCount);
+        input.addEventListener('input', updateAnsweredCount);
+    });
+
+    // Timer
+    let remainingSeconds = {{ remaining_time }};
+    const timerEl = document.getElementById('timer');
+
+    setInterval(function () {
+        if (remainingSeconds > 0) {
+            remainingSeconds--;
+            const mins = Math.floor(remainingSeconds / 60);
+            const secs = remainingSeconds % 60;
+            timerEl.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+            if (remainingSeconds <= 60) {
+                timerEl.classList.replace('bg-warning', 'bg-danger');
+            }
+
+            if (remainingSeconds === 0) {
+                form.submit();
+            }
+        }
+    }, 1000);
+
+    // Confirm before leaving
+    window.addEventListener('beforeunload', function (e) {
+        e.preventDefault();
+        e.returnValue = '';
+    });
+});
+</script>
+{% endblock %}
