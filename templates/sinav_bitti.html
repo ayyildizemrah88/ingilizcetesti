@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Sınav Tamamlandı - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card border-0 text-center">
+            <div class="card-body p-5">
+                <div class="mb-4">
+                    {% if puan >= 60 %}
+                    <i class="bi bi-trophy-fill text-warning" style="font-size: 5rem;"></i>
+                    {% else %}
+                    <i class="bi bi-emoji-smile text-primary" style="font-size: 5rem;"></i>
+                    {% endif %}
+                </div>
+
+                <h2 class="mb-3">Tebrikler!</h2>
+                <p class="lead text-muted mb-4">Sınavınız başarıyla tamamlandı.</p>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <div class="bg-light rounded-3 p-3">
+                            <h4 class="text-primary mb-0">{{ puan }}%</h4>
+                            <small class="text-muted">Puan</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="bg-light rounded-3 p-3">
+                            <h4 class="text-success mb-0">{{ seviye }}</h4>
+                            <small class="text-muted">Seviye</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="bg-light rounded-3 p-3">
+                            <h4 class="text-info mb-0">{{ dogru }}</h4>
+                            <small class="text-muted">Doğru</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="bg-light rounded-3 p-3">
+                            <h4 class="text-secondary mb-0">{{ total }}</h4>
+                            <small class="text-muted">Toplam Soru</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="bi bi-shield-check me-2"></i>
+                    Sertifika Doğrulama Kodu: <strong>{{ cert_hash }}</strong>
+                </div>
+
+                <a href="/cert/verify/{{ cert_hash }}" class="btn btn-primary mb-2">
+                    <i class="bi bi-patch-check me-2"></i>Sertifikayı Görüntüle
+                </a>
+                <br>
+                <a href="/" class="btn btn-outline-secondary mt-2">
+                    <i class="bi bi-house me-1"></i>Ana Sayfa
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
