@@ -1,0 +1,81 @@
+{% extends "dashboard.html" %}
+{% block title %}Soru Ekle - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Yeni Soru Ekle</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" action="/admin/soru-ekle">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Soru Metni *</label>
+                        <textarea name="soru_metni" class="form-control" rows="3" required
+                            placeholder="I ___ happy."></textarea>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">A Şıkkı</label>
+                            <input type="text" name="secenek_a" class="form-control" placeholder="is">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">B Şıkkı</label>
+                            <input type="text" name="secenek_b" class="form-control" placeholder="am">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">C Şıkkı</label>
+                            <input type="text" name="secenek_c" class="form-control" placeholder="are">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">D Şıkkı</label>
+                            <input type="text" name="secenek_d" class="form-control" placeholder="be">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Doğru Cevap *</label>
+                            <select name="dogru_cevap" class="form-select" required>
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="C">C</option>
+                                <option value="D">D</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Kategori</label>
+                            <select name="kategori" class="form-select">
+                                <option value="Grammar">Grammar</option>
+                                <option value="Vocabulary">Vocabulary</option>
+                                <option value="Reading">Reading</option>
+                                <option value="Listening">Listening</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Zorluk</label>
+                            <select name="zorluk" class="form-select">
+                                <option value="A1">A1</option>
+                                <option value="A2">A2</option>
+                                <option value="B1" selected>B1</option>
+                                <option value="B2">B2</option>
+                                <option value="C1">C1</option>
+                                <option value="C2">C2</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="/admin/sorular" class="btn btn-secondary">İptal</a>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
