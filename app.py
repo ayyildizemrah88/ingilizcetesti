@@ -295,6 +295,19 @@ def init_db():
         f'''CREATE TABLE IF NOT EXISTS resit_policy (
             id {auto_inc}, sirket_id INTEGER UNIQUE, min_days_between INTEGER DEFAULT 30,
             max_attempts INTEGER DEFAULT 3, cert_validity_years INTEGER DEFAULT 2
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS proctoring_snapshots (
+            id {auto_inc}, aday_id INTEGER, snapshot_blob TEXT, 
+            snapshot_type TEXT DEFAULT 'periodic', suspicious_score INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS offline_answers (
+            id {auto_inc}, aday_id INTEGER, soru_id INTEGER, verilen_cevap TEXT,
+            client_timestamp TEXT, synced INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''',
+        f'''CREATE TABLE IF NOT EXISTS sablon_soru_tipleri (
+            id {auto_inc}, sablon_id INTEGER, soru_tipi TEXT
         )'''
     ]
     
@@ -1121,6 +1134,218 @@ def send_localized_email(to, template_key, data, lang='tr', sirket_id=None):
     body = template['body'].format(**data)
     
     return send_email(to, subject, body, sirket_id)
+
+# ══════════════════════════════════════════════════════════════
+# PROCTORING - WEBCAM SNAPSHOTS
+# ══════════════════════════════════════════════════════════════
+def save_proctoring_snapshot(aday_id, snapshot_base64, snapshot_type='periodic', suspicious_score=0):
+    """Save webcam snapshot for proctoring"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = """INSERT INTO proctoring_snapshots (aday_id, snapshot_blob, snapshot_type, suspicious_score) 
+           VALUES (?,?,?,?)"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id, snapshot_base64, snapshot_type, suspicious_score))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def get_proctoring_snapshots(aday_id):
+    """Get all proctoring snapshots for a candidate"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        from psycopg2.extras import RealDictCursor
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT * FROM proctoring_snapshots WHERE aday_id=? ORDER BY created_at"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id,))
+    snapshots = c.fetchall()
+    conn.close()
+    return snapshots
+
+def analyze_proctoring(aday_id):
+    """Analyze proctoring data for suspicious activity"""
+    snapshots = get_proctoring_snapshots(aday_id)
+    
+    total = len(snapshots)
+    suspicious = sum(1 for s in snapshots if (s['suspicious_score'] if isinstance(s, dict) else s[4]) > 50)
+    
+    return {
+        'total_snapshots': total,
+        'suspicious_count': suspicious,
+        'suspicious_rate': (suspicious / total * 100) if total > 0 else 0,
+        'status': 'OK' if suspicious < total * 0.3 else 'REVIEW' if suspicious < total * 0.5 else 'SUSPICIOUS'
+    }
+
+# ══════════════════════════════════════════════════════════════
+# OFFLINE MODE - ANSWER SYNC
+# ══════════════════════════════════════════════════════════════
+def save_offline_answer(aday_id, soru_id, answer, client_timestamp):
+    """Save answer from offline mode"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = """INSERT INTO offline_answers (aday_id, soru_id, verilen_cevap, client_timestamp) 
+           VALUES (?,?,?,?)"""
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id, soru_id, answer, client_timestamp))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def sync_offline_answers(aday_id):
+    """Sync offline answers to main cevaplar table"""
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        from psycopg2.extras import RealDictCursor
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    # Get unsynced offline answers
+    q = "SELECT * FROM offline_answers WHERE aday_id=? AND synced=0 ORDER BY client_timestamp"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id,))
+    answers = c.fetchall()
+    
+    synced_count = 0
+    for ans in answers:
+        soru_id = ans['soru_id'] if is_pg else ans[2]
+        verilen = ans['verilen_cevap'] if is_pg else ans[3]
+        off_id = ans['id'] if is_pg else ans[0]
+        
+        # Check if already exists in main table
+        q = "SELECT id FROM cevaplar WHERE aday_id=? AND soru_id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (aday_id, soru_id))
+        existing = c.fetchone()
+        
+        if not existing:
+            # Get correct answer
+            q = "SELECT dogru_cevap FROM sorular WHERE id=?"
+            if is_pg:
+                q = q.replace('?', '%s')
+            c.execute(q, (soru_id,))
+            soru = c.fetchone()
+            dogru = soru[0] if soru else ''
+            is_correct = 1 if verilen == dogru else 0
+            
+            # Insert to main table
+            q = "INSERT INTO cevaplar (aday_id, soru_id, verilen_cevap, dogru_mu) VALUES (?,?,?,?)"
+            if is_pg:
+                q = q.replace('?', '%s')
+            c.execute(q, (aday_id, soru_id, verilen, is_correct))
+        
+        # Mark as synced
+        q = "UPDATE offline_answers SET synced=1 WHERE id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (off_id,))
+        synced_count += 1
+    
+    conn.commit()
+    conn.close()
+    return {'synced': synced_count}
+
+# ══════════════════════════════════════════════════════════════
+# CUSTOM EXAM TEMPLATES - QUESTION TYPE FILTER
+# ══════════════════════════════════════════════════════════════
+QUESTION_TYPES = ['SECMELI', 'DOGRU_YANLIS', 'ESLESTIRME', 'BOSLUK', 'SIRALAMA', 
+                  'LISTENING', 'SPEAKING', 'WRITING', 'READING']
+
+def set_template_question_types(sablon_id, soru_tipleri):
+    """Set which question types are allowed for a template"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    # Delete existing
+    q = "DELETE FROM sablon_soru_tipleri WHERE sablon_id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sablon_id,))
+    
+    # Insert new
+    for tip in soru_tipleri:
+        q = "INSERT INTO sablon_soru_tipleri (sablon_id, soru_tipi) VALUES (?,?)"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (sablon_id, tip))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def get_template_question_types(sablon_id):
+    """Get allowed question types for a template"""
+    conn, is_pg = get_db_connection()
+    c = conn.cursor()
+    
+    q = "SELECT soru_tipi FROM sablon_soru_tipleri WHERE sablon_id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sablon_id,))
+    types = [r[0] for r in c.fetchall()]
+    conn.close()
+    
+    return types if types else QUESTION_TYPES  # Default: all types
+
+def get_questions_for_template(sablon_id, difficulty='B1', aday_id=None, sirket_id=0):
+    """Get questions filtered by template's allowed types"""
+    allowed_types = get_template_question_types(sablon_id)
+    
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        from psycopg2.extras import RealDictCursor
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    # Get answered questions
+    answered = []
+    if aday_id:
+        q = "SELECT soru_id FROM cevaplar WHERE aday_id=?"
+        if is_pg:
+            q = q.replace('?', '%s')
+        c.execute(q, (aday_id,))
+        answered = [r['soru_id'] if is_pg else r[0] for r in c.fetchall()]
+    
+    # Build type filter
+    type_placeholders = ','.join(['?' if not is_pg else '%s'] * len(allowed_types))
+    
+    if answered:
+        ans_placeholders = ','.join(['?' if not is_pg else '%s'] * len(answered))
+        q = f"""SELECT * FROM sorular 
+                WHERE zorluk=? AND soru_tipi IN ({type_placeholders}) 
+                AND id NOT IN ({ans_placeholders})
+                AND (sirket_id=0 OR sirket_id=?) AND onay_durumu='Onaylandi'
+                ORDER BY RANDOM() LIMIT 1"""
+        params = [difficulty] + allowed_types + answered + [sirket_id]
+    else:
+        q = f"""SELECT * FROM sorular 
+                WHERE zorluk=? AND soru_tipi IN ({type_placeholders})
+                AND (sirket_id=0 OR sirket_id=?) AND onay_durumu='Onaylandi'
+                ORDER BY RANDOM() LIMIT 1"""
+        params = [difficulty] + allowed_types + [sirket_id]
+    
+    if is_pg:
+        q = q.replace('RANDOM()', 'RANDOM()')
+    
+    c.execute(q, tuple(params))
+    question = c.fetchone()
+    conn.close()
+    
+    return dict(question) if question else None
 
 def send_email(to, subj, body, sid=None, deduct_credit=True):
     """Send email with multiple SMTP fallback and credit deduction"""
@@ -2748,6 +2973,118 @@ def api_listening_answers():
     
     result = save_listening_answers(aday_id, answers)
     return jsonify(result)
+
+# ══════════════════════════════════════════════════════════════
+# PROCTORING API
+# ══════════════════════════════════════════════════════════════
+@app.route('/api/proctoring/snapshot', methods=['POST'])
+def api_proctoring_snapshot():
+    """Save webcam snapshot for proctoring"""
+    aday_id = session.get('aday_id')
+    if not aday_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    snapshot = data.get('snapshot')
+    snapshot_type = data.get('type', 'periodic')
+    suspicious_score = data.get('suspicious', 0)
+    
+    save_proctoring_snapshot(aday_id, snapshot, snapshot_type, suspicious_score)
+    return jsonify({'status': 'saved'})
+
+@app.route('/admin/proctoring/<int:aday_id>')
+@check_role(['super_admin', 'sirket_admin', 'recruiter'])
+def admin_proctoring(aday_id):
+    """View proctoring data for candidate"""
+    snapshots = get_proctoring_snapshots(aday_id)
+    analysis = analyze_proctoring(aday_id)
+    
+    # Get candidate info
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT ad_soyad, email FROM adaylar WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (aday_id,))
+    aday = c.fetchone()
+    conn.close()
+    
+    return render_template('proctoring.html', snapshots=snapshots, analysis=analysis, aday=aday, aday_id=aday_id)
+
+# ══════════════════════════════════════════════════════════════
+# OFFLINE SYNC API
+# ══════════════════════════════════════════════════════════════
+@app.route('/api/offline/save', methods=['POST'])
+def api_offline_save():
+    """Save answer when offline (stored in LocalStorage, synced on reconnect)"""
+    aday_id = session.get('aday_id')
+    if not aday_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    soru_id = data.get('soru_id')
+    answer = data.get('answer')
+    timestamp = data.get('timestamp')
+    
+    save_offline_answer(aday_id, soru_id, answer, timestamp)
+    return jsonify({'status': 'saved'})
+
+@app.route('/api/offline/sync', methods=['POST'])
+def api_offline_sync():
+    """Sync all offline answers to main database"""
+    aday_id = session.get('aday_id')
+    if not aday_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    answers = data.get('answers', [])
+    
+    # Save each offline answer
+    for ans in answers:
+        save_offline_answer(aday_id, ans.get('soru_id'), ans.get('answer'), ans.get('timestamp'))
+    
+    # Now sync to main table
+    result = sync_offline_answers(aday_id)
+    return jsonify(result)
+
+# ══════════════════════════════════════════════════════════════
+# TEMPLATE QUESTION TYPES MANAGEMENT
+# ══════════════════════════════════════════════════════════════
+@app.route('/admin/sablon-tipleri/<int:sablon_id>', methods=['GET', 'POST'])
+@check_role(['super_admin', 'sirket_admin'])
+def admin_sablon_tipleri(sablon_id):
+    """Configure which question types are allowed for a template"""
+    if request.method == 'POST':
+        selected_types = request.form.getlist('soru_tipleri')
+        set_template_question_types(sablon_id, selected_types)
+        flash("Sınav tipi ayarları güncellendi.", "success")
+        return redirect(url_for('admin_sablonlar'))
+    
+    current_types = get_template_question_types(sablon_id)
+    
+    # Get template info
+    conn, is_pg = get_db_connection()
+    if is_pg:
+        c = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        c = conn.cursor()
+    
+    q = "SELECT isim FROM sinav_sablonlari WHERE id=?"
+    if is_pg:
+        q = q.replace('?', '%s')
+    c.execute(q, (sablon_id,))
+    sablon = c.fetchone()
+    conn.close()
+    
+    return render_template('sablon_tipleri.html', 
+                          sablon_id=sablon_id, 
+                          sablon=sablon,
+                          current_types=current_types, 
+                          all_types=QUESTION_TYPES)
 
 # ══════════════════════════════════════════════════════════════
 # RESIT POLICY MANAGEMENT
