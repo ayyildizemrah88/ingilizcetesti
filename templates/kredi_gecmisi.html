@@ -1,0 +1,52 @@
+{% extends "dashboard.html" %}
+{% block title %}Kredi Geçmişi - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-clock-history me-2"></i>Kredi Geçmişi</h3>
+    <div>
+        <span class="badge bg-primary fs-5">Mevcut: {{ sirket.kredi if sirket is mapping else sirket[1] }} Kredi</span>
+    </div>
+</div>
+
+<div class="card border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tarih</th>
+                        <th>İşlem</th>
+                        <th>Miktar</th>
+                        <th>Açıklama</th>
+                        <th>Önceki</th>
+                        <th>Yeni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.created_at if log is mapping else log[7] }}</td>
+                        <td>
+                            {% set tip = log.islem_tipi if log is mapping else log[3] %}
+                            <span class="badge bg-{{ 'success' if tip == 'YUKLEME' else 'danger' }}">{{ tip }}</span>
+                        </td>
+                        <td>
+                            {% set miktar = log.miktar if log is mapping else log[2] %}
+                            <strong class="text-{{ 'success' if miktar > 0 else 'danger' }}">{{ miktar }}</strong>
+                        </td>
+                        <td>{{ log.aciklama if log is mapping else log[4] }}</td>
+                        <td>{{ log.onceki_bakiye if log is mapping else log[5] }}</td>
+                        <td>{{ log.yeni_bakiye if log is mapping else log[6] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="/admin/sirketler" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Geri</a>
+</div>
+{% endblock %}
