@@ -1,0 +1,58 @@
+{% extends "dashboard.html" %}
+{% block title %}Kullanıcı Ekle - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-person-plus me-2"></i>Yeni Kullanıcı</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Ad Soyad *</label>
+                        <input type="text" name="ad_soyad" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">E-posta (Kullanıcı Adı) *</label>
+                        <input type="email" name="kadi" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Şifre *</label>
+                        <input type="password" name="sifre" class="form-control" minlength="8" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Rol</label>
+                        <select name="rol" class="form-select">
+                            <option value="recruiter">Recruiter</option>
+                            <option value="sirket_admin">Şirket Admin</option>
+                            {% if session.rol == 'super_admin' %}
+                            <option value="super_admin">Super Admin</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                    {% if session.rol == 'super_admin' and sirketler %}
+                    <div class="mb-3">
+                        <label class="form-label">Şirket</label>
+                        <select name="sirket_id" class="form-select">
+                            {% for s in sirketler %}
+                            <option value="{{ s[0] if s is not mapping else s.id }}">{{ s[1] if s is not mapping else
+                                s.isim }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="/admin/kullanicilar" class="btn btn-secondary">İptal</a>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
