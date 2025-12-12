@@ -1,0 +1,74 @@
+{% extends "dashboard.html" %}
+{% block title %}CEFR Benchmark Raporu - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-bar-chart-line me-2"></i>CEFR Benchmark Raporu</h3>
+    <a href="/admin/adaylar" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Geri</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card border-0 text-center">
+            <div class="card-body">
+                <h2 class="display-1 fw-bold text-primary">{{ report.cefr_level }}</h2>
+                <p class="text-muted">{{ report.cefr_description }}</p>
+                <p class="mb-0"><small>IELTS Equivalent: <strong>{{ report.ielts_equivalent }}</strong></small></p>
+                <hr>
+                <h4 class="text-success">{{ report.overall_score|round(1) }}%</h4>
+                <small class="text-muted">Overall Score</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">Skill Breakdown</h6>
+            </div>
+            <div class="card-body">
+                {% for skill, score in report.skills.items() %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>{{ skill }}</span>
+                        <span>{{ score|round(1) }}% ({{ report.skill_levels[skill] }})</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-{{ 'success' if score > 70 else 'warning' if score > 40 else 'danger' }}"
+                            style="width: {{ score }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 mt-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0">CEFR Scale Reference</h6>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Level</th>
+                    <th>Score Range</th>
+                    <th>Description</th>
+                    <th>IELTS</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for level, data in report.benchmarks.items() %}
+                <tr class="{{ 'table-primary' if level == report.cefr_level }}">
+                    <td><strong>{{ level }}</strong></td>
+                    <td>{{ data.min }}-{{ data.max }}%</td>
+                    <td>{{ data.description }}</td>
+                    <td>{{ data.ielts }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
