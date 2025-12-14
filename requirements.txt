@@ -45,6 +45,10 @@ sendgrid>=6.10.0
 # Excel Export (for reports)
 openpyxl>=3.1.0
 
+# Google Cloud (for backups)
+google-auth>=2.23.0
+google-api-python-client>=2.100.0
+
 # Error Tracking (optional)
 sentry-sdk[flask]>=1.35.0
 
