@@ -1,65 +1,117 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-skillstest}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-securepassword}
-      POSTGRES_DB: ${POSTGRES_DB:-skillstestdb}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skillstest} -d ${POSTGRES_DB:-skillstestdb}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: always
-    networks:
-      - app-network
-
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: always
-    networks:
-      - app-network
-
+  # ══════════════════════════════════════════════════════════════
+  # Main Flask Application
+  # ══════════════════════════════════════════════════════════════
   web:
     build: .
-    image: skillstestcenter/app:latest
-    container_name: skillstest-web
-    restart: always
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    container_name: skillstestcenter-web
     ports:
       - "5000:5000"
     environment:
-      - SECRET_KEY=${SECRET_KEY:-change-this-secret-key-in-production}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-skillstest}:${POSTGRES_PASSWORD:-securepassword}@db:5432/${POSTGRES_DB:-skillstestdb}
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/skillstest
       - REDIS_URL=redis://redis:6379/0
-      - DEBUG=${DEBUG:-False}
-      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret}
+      - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
     volumes:
-      - ./static/uploads:/app/static/uploads
-      - ./static/logos:/app/static/logos
-    networks:
-      - app-network
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    command: gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 run:app
+
+  # ══════════════════════════════════════════════════════════════
+  # PostgreSQL Database
+  # ══════════════════════════════════════════════════════════════
+  db:
+    image: postgres:15-alpine
+    container_name: skillstestcenter-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: skillstest
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # ══════════════════════════════════════════════════════════════
+  # Redis (for Celery and caching)
+  # ══════════════════════════════════════════════════════════════
+  redis:
+    image: redis:7-alpine
+    container_name: skillstestcenter-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # ══════════════════════════════════════════════════════════════
+  # Celery Worker (async tasks)
+  # ══════════════════════════════════════════════════════════════
+  celery-worker:
+    build: .
+    container_name: skillstestcenter-celery
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/skillstest
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    command: celery -A app.celery_app:celery worker --loglevel=info --concurrency=4
+
+  # ══════════════════════════════════════════════════════════════
+  # Celery Beat (scheduled tasks)
+  # ══════════════════════════════════════════════════════════════
+  celery-beat:
+    build: .
+    container_name: skillstestcenter-celery-beat
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/skillstest
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - celery-worker
+    restart: unless-stopped
+    command: celery -A app.celery_app:celery beat --loglevel=info
+
+  # ══════════════════════════════════════════════════════════════
+  # Flower (Celery monitoring - optional)
+  # ══════════════════════════════════════════════════════════════
+  flower:
+    build: .
+    container_name: skillstestcenter-flower
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - celery-worker
+    restart: unless-stopped
+    command: celery -A app.celery_app:celery flower --port=5555
 
 volumes:
   postgres_data:
   redis_data:
-
-networks:
-  app-network:
-    driver: bridge
