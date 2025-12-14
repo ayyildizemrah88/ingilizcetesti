@@ -71,7 +71,8 @@ def sinav():
                           soru=question,
                           soru_no=soru_no,
                           toplam=toplam,
-                          kalan_sure=int(remaining))
+                          kalan_sure=int(remaining),
+                          soru_suresi=candidate.soru_suresi or 0)
 
 
 def select_next_question(candidate, answered_ids):
