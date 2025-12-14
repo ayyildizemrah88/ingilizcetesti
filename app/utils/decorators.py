@@ -41,6 +41,34 @@ def check_role(allowed_roles):
     return decorator
 
 
+def superadmin_required(f):
+    """
+    Only superadmin can access
+    Used for: questions, templates, users, settings
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('rol') != 'superadmin':
+            flash("Bu işlem sadece süper admin tarafından yapılabilir.", "danger")
+            return redirect(url_for('admin.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def customer_or_superadmin(f):
+    """
+    Superadmin and customer can access
+    Used for: candidates, reports
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('rol') not in ['superadmin', 'customer']:
+            flash("Bu işlem için yetkiniz yok.", "danger")
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 def exam_required(f):
     """
     Require active exam session
