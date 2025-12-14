@@ -16,13 +16,19 @@
                         <input type="text" name="isim" class="form-control" required>
                     </div>
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Sınav Süresi (dk)</label>
-                            <input type="number" name="sinav_suresi" class="form-control" value="30">
+                            <input type="number" name="sinav_suresi" class="form-control" value="30" min="1">
+                            <small class="text-muted">Toplam sınav süresi</small>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="form-label">Soru Süresi (sn)</label>
+                            <input type="number" name="soru_suresi" class="form-control" value="60" min="0">
+                            <small class="text-muted">0 = Sınırsız</small>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label">Soru Limiti</label>
-                            <input type="number" name="soru_limiti" class="form-control" value="10">
+                            <input type="number" name="soru_limiti" class="form-control" value="10" min="1">
                         </div>
                     </div>
                     <div class="mb-3 mt-3">
