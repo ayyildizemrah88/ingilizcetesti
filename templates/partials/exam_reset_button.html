@@ -1,0 +1,206 @@
+<!-- Exam Reset Button Component for aday_detay.html -->
+<!-- Add this to the admin actions section in aday_detay.html -->
+
+{% if session.get('rol') == 'superadmin' %}
+<div class="card border-danger mt-4">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor"
+                class="bi bi-exclamation-triangle-fill me-2" viewBox="0 0 16 16">
+                <path
+                    d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z" />
+            </svg>
+            Süper Admin İşlemleri
+        </h5>
+    </div>
+    <div class="card-body">
+
+        <!-- Exam Reset -->
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <h6 class="text-danger">Sınav Hakkını Sıfırla</h6>
+                <p class="text-muted small mb-0">
+                    Bu işlem adayın mevcut sınav sonuçlarını siler ve yeniden sınava girmesine izin verir.
+                    <strong>Bu işlem geri alınamaz!</strong>
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                    data-bs-target="#resetExamModal" {% if aday.durum=='beklemede' %}disabled{% endif %}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        class="bi bi-arrow-counterclockwise me-1" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z" />
+                        <path
+                            d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z" />
+                    </svg>
+                    Sıfırla
+                </button>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- Extend Time (if in exam) -->
+        {% if aday.durum == 'sinavda' %}
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <h6 class="text-warning">Süre Uzat</h6>
+                <p class="text-muted small mb-0">
+                    Teknik sorun yaşayan aday için ek süre verir.
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="input-group">
+                    <input type="number" class="form-control" id="extendMinutes" value="15" min="5" max="60"
+                        style="max-width: 80px;">
+                    <button type="button" class="btn btn-warning" onclick="extendExamTime()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-clock-history me-1" viewBox="0 0 16 16">
+                            <path
+                                d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022l-.074.997zm2.004.45a7.003 7.003 0 0 0-.985-.299l.219-.976c.383.086.76.2 1.126.342l-.36.933zm1.37.71a7.01 7.01 0 0 0-.439-.27l.493-.87a8.025 8.025 0 0 1 .979.654l-.615.789a6.996 6.996 0 0 0-.418-.302zm1.834 1.79a6.99 6.99 0 0 0-.653-.796l.724-.69c.27.285.52.59.747.91l-.818.576z" />
+                            <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0v1z" />
+                            <path
+                                d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5z" />
+                        </svg>
+                        +dk Ekle
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <hr>
+
+        <!-- Generate New Exam Code -->
+        <div class="row">
+            <div class="col-md-8">
+                <h6 class="text-info">Yeni Sınav Kodu Oluştur</h6>
+                <p class="text-muted small mb-0">
+                    Mevcut kod geçersiz olur ve yeni kod e-posta ile gönderilebilir.
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button type="button" class="btn btn-outline-info" onclick="generateNewCode()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        class="bi bi-key me-1" viewBox="0 0 16 16">
+                        <path
+                            d="M0 8a4 4 0 0 1 7.465-2H14a.5.5 0 0 1 .354.146l1.5 1.5a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0L13 9.207l-.646.647a.5.5 0 0 1-.708 0L11 9.207l-.646.647a.5.5 0 0 1-.708 0L9 9.207l-.646.647A.5.5 0 0 1 8 10h-.535A4 4 0 0 1 0 8z" />
+                    </svg>
+                    Yeni Kod
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endif %}
+
+<!-- Reset Exam Modal -->
+<div class="modal fade" id="resetExamModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Sınav Hakkını Sıfırla</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_ops.reset_candidate_exam', candidate_id=aday.id) }}">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <strong>Dikkat!</strong> Bu işlem geri alınamaz.
+                    </div>
+
+                    <p>
+                        <strong>{{ aday.ad_soyad }}</strong> adlı adayın sınav sonuçları silinecek
+                        ve yeniden sınava girebilecek.
+                    </p>
+
+                    {% if aday.toplam_puan %}
+                    <div class="bg-light p-3 rounded mb-3">
+                        <small class="text-muted">Silinecek Sonuçlar:</small>
+                        <ul class="mb-0 mt-2">
+                            <li>Toplam Puan: <strong>{{ aday.toplam_puan }}</strong></li>
+                            <li>CEFR Seviye: <strong>{{ aday.cefr_seviye }}</strong></li>
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="resetReason" class="form-label">Sıfırlama Sebebi <span
+                                class="text-danger">*</span></label>
+                        <select class="form-select" id="resetReason" name="reason" required>
+                            <option value="">Seçiniz...</option>
+                            <option value="İnternet bağlantı sorunu">İnternet bağlantı sorunu</option>
+                            <option value="Sistem hatası">Sistem hatası</option>
+                            <option value="Yanlışlıkla gönderim">Yanlışlıkla gönderim</option>
+                            <option value="Teknik arıza">Teknik arıza</option>
+                            <option value="Elektrik kesintisi">Elektrik kesintisi</option>
+                            <option value="Diğer">Diğer</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Onay için "SİL" yazınız:</label>
+                        <input type="text" class="form-control" id="confirmDelete" placeholder="SİL" autocomplete="off">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-danger" id="confirmResetBtn" disabled>
+                        Sınav Hakkını Sıfırla
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Enable reset button only when "SİL" is typed
+    document.getElementById('confirmDelete').addEventListener('input', function () {
+        const btn = document.getElementById('confirmResetBtn');
+        btn.disabled = this.value !== 'SİL';
+    });
+
+    // Extend exam time
+    function extendExamTime() {
+        const minutes = document.getElementById('extendMinutes').value;
+
+        if (confirm(`${minutes} dakika ek süre verilecek. Onaylıyor musunuz?`)) {
+            fetch(`/api/admin/candidate/{{ aday.id }}/extend-time`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    minutes: parseInt(minutes),
+                    reason: 'Teknik sorun nedeniyle süre uzatıldı'
+                })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('Hata: ' + data.error);
+                    }
+                });
+        }
+    }
+
+    // Generate new exam code
+    function generateNewCode() {
+        if (confirm('Mevcut sınav kodu geçersiz olacak. Yeni kod oluşturulsun mu?')) {
+            fetch('/api/candidate/generate-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ candidate_id: {{ aday.id }}})
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Yeni kod: ${data.exam_code}\n\nGeçerlilik: ${data.expires_at}`);
+                location.reload();
+            }
+        });
+    }
+}
+</script>
