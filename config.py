@@ -10,40 +10,52 @@ class Config:
     """Base configuration"""
     # Flask
     SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
-    
-    # Session
+
+    # Session - UPDATED: Extended to 4 hours for long exams (C1/C2)
     SESSION_TYPE = 'filesystem'
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=2)
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=4)  # Was 2 hours, now 4 hours
     
+    # Remember Me cookie settings
+    REMEMBER_COOKIE_DURATION = timedelta(days=30)
+    REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
+    
+    # Session security
+    SESSION_COOKIE_SECURE = True  # HTTPS only in production
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_REFRESH_EACH_REQUEST = True
+
     # Database
     DATABASE_URL = os.getenv('DATABASE_URL', '')
-    
+
     # CSRF
     WTF_CSRF_ENABLED = True
     WTF_CSRF_TIME_LIMIT = 3600
-    
+
     # Rate Limiting
     RATELIMIT_DEFAULT = "200 per day, 50 per hour"
     RATELIMIT_STORAGE_URL = os.getenv('REDIS_URL', 'memory://')
-    
+
     # Upload
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', '/tmp/uploads')
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB
-    
+
     # Email
     SMTP_HOST = os.getenv('SMTP_HOST', 'smtp.gmail.com')
     SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
     SMTP_USER = os.getenv('SMTP_USER', '')
     SMTP_PASS = os.getenv('SMTP_PASS', '')
-    
+
     # AI Services
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
-    
+
     # Celery
     CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
     CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-    
+
     # Swagger
     SWAGGER = {
         'title': 'Skills Test Center API',
@@ -58,18 +70,22 @@ class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True
     TESTING = False
-    
+
     # SQLAlchemy
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///skillstest_dev.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = True  # Log SQL queries
+    
+    # Development: Allow non-HTTPS cookies
+    SESSION_COOKIE_SECURE = False
+    REMEMBER_COOKIE_SECURE = False
 
 
 class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
     TESTING = False
-    
+
     # SQLAlchemy - PostgreSQL in production
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', '')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -82,7 +98,7 @@ class TestingConfig(Config):
     DEBUG = True
     TESTING = True
     WTF_CSRF_ENABLED = False
-    
+
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
@@ -114,16 +130,16 @@ def validate_production_config():
     """
     import sys
     import logging
-    
+
     logger = logging.getLogger(__name__)
     env = os.getenv('FLASK_ENV', 'development')
-    
+
     if env != 'production':
         return True  # Skip validation in non-production
-    
+
     errors = []
     warnings = []
-    
+
     # Check SECRET_KEY
     secret_key = os.getenv('SECRET_KEY', '')
     if not secret_key:
@@ -132,33 +148,33 @@ def validate_production_config():
         errors.append(f"SECRET_KEY is using a weak default value")
     elif len(secret_key) < 32:
         warnings.append("SECRET_KEY should be at least 32 characters")
-    
+
     # Check JWT_SECRET
     jwt_secret = os.getenv('JWT_SECRET', '')
     if jwt_secret and jwt_secret in WEAK_SECRET_KEYS:
         warnings.append("JWT_SECRET is using a weak default value")
-    
+
     # Check DATABASE_URL
     db_url = os.getenv('DATABASE_URL', '')
     if not db_url:
         errors.append("DATABASE_URL is not set")
     elif 'sqlite' in db_url.lower():
         warnings.append("SQLite is not recommended for production")
-    
+
     # Check SENTRY_DSN (recommended for production)
     sentry_dsn = os.getenv('SENTRY_DSN', '')
     if not sentry_dsn:
         warnings.append("SENTRY_DSN is not set - error tracking disabled")
-    
+
     # Log warnings
     for warning in warnings:
         logger.warning(f"⚠️ Production Warning: {warning}")
-    
+
     # Handle errors
     if errors:
         for error in errors:
             logger.error(f"❌ Production Error: {error}")
-        
+
         print("\n" + "="*60)
         print("❌ CRITICAL PRODUCTION CONFIGURATION ERRORS:")
         print("="*60)
@@ -167,20 +183,19 @@ def validate_production_config():
         print("="*60)
         print("Please fix these issues before deploying to production.")
         print("="*60 + "\n")
-        
+
         # Exit if critical errors
         sys.exit(1)
-    
+
     return True
 
 
 def get_config():
     """Get configuration based on environment"""
     env = os.getenv('FLASK_ENV', 'development')
-    
+
     # Validate production config
     if env == 'production':
         validate_production_config()
-    
-    return config.get(env, config['default'])
 
+    return config.get(env, config['default'])
