@@ -1,0 +1,213 @@
+{% extends "dashboard.html" %}
+{% block title %}Kopya Tespit - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Header -->
+    <div class="col-12 mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2><i class="bi bi-shield-exclamation me-2"></i>Kopya Tespit Dashboard</h2>
+            <div class="d-flex gap-2">
+                <select class="form-select w-auto" id="periodFilter">
+                    <option value="week">Bu Hafta</option>
+                    <option value="month">Bu Ay</option>
+                    <option value="all">Tümü</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-danger text-white">
+            <div class="card-body text-center">
+                <div class="display-4">{{ stats.flagged }}</div>
+                <p class="mb-0">İşaretli Sınav</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-warning">
+            <div class="card-body text-center">
+                <div class="display-4">{{ stats.plagiarism }}</div>
+                <p class="mb-0">Benzerlik Uyarısı</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-info text-white">
+            <div class="card-body text-center">
+                <div class="display-4">{{ stats.ai_detected }}</div>
+                <p class="mb-0">AI Tespit</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-secondary text-white">
+            <div class="card-body text-center">
+                <div class="display-4">{{ stats.proctoring }}</div>
+                <p class="mb-0">Proctoring İhlali</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flagged Cases -->
+    <div class="col-12 mt-4">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-danger text-white d-flex justify-content-between">
+                <h5 class="mb-0">İşaretli Vakalar</h5>
+                <span>İnceleme bekliyor</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Aday</th>
+                                <th>Tarih</th>
+                                <th>İşaretlenme Sebebi</th>
+                                <th>Detay</th>
+                                <th>Durum</th>
+                                <th>İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for case in flagged_cases %}
+                            <tr>
+                                <td>
+                                    <strong>{{ case.candidate.ad_soyad }}</strong><br>
+                                    <small class="text-muted">{{ case.candidate.email }}</small>
+                                </td>
+                                <td>{{ case.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                                <td>
+                                    {% for reason in case.reasons %}
+                                    <span class="badge bg-danger me-1">{{ reason }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% if case.similarity_score %}
+                                    Benzerlik: {{ case.similarity_score }}%<br>
+                                    {% endif %}
+                                    {% if case.ai_probability %}
+                                    AI Olasılık: {{ (case.ai_probability * 100)|round(1) }}%
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span
+                                        class="badge bg-{{ 'warning' if case.status == 'pending' else 'success' if case.status == 'cleared' else 'danger' }}">
+                                        {{ case.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/admin/aday/{{ case.candidate.id }}" class="btn btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <button class="btn btn-outline-success" onclick="clearCase({{ case.id }})">
+                                            <i class="bi bi-check"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="confirmFraud({{ case.id }})">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not flagged_cases %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="bi bi-check-circle fs-1"></i>
+                                    <p class="mt-2">İşaretli vaka yok</p>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Similarity Matrix -->
+    <div class="col-lg-6 mt-4">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Yüksek Benzerlik Çiftleri</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Aday 1</th>
+                            <th>Aday 2</th>
+                            <th>Benzerlik</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pair in similarity_pairs %}
+                        <tr>
+                            <td>{{ pair.candidate1 }}</td>
+                            <td>{{ pair.candidate2 }}</td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-danger" style="width: {{ pair.similarity }}%">
+                                        {{ pair.similarity }}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Proctoring Violations -->
+    <div class="col-lg-6 mt-4">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Proctoring İhlalleri</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Aday</th>
+                            <th>İhlal Tipi</th>
+                            <th>Sayı</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in proctoring_violations %}
+                        <tr>
+                            <td>{{ v.candidate }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'danger' if v.type == 'face_not_visible' else 'warning' }}">
+                                    {{ v.type }}
+                                </span>
+                            </td>
+                            <td>{{ v.count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function clearCase(caseId) {
+        if (!confirm('Bu vaka temiz olarak işaretlensin mi?')) return;
+        fetch(`/api/fraud-cases/${caseId}/clear`, { method: 'POST' })
+            .then(() => location.reload());
+    }
+
+    function confirmFraud(caseId) {
+        if (!confirm('Bu vaka kopya olarak onaylansın mı? Adayın sınavı geçersiz sayılacak.')) return;
+        fetch(`/api/fraud-cases/${caseId}/confirm`, { method: 'POST' })
+            .then(() => location.reload());
+    }
+</script>
+{% endblock %}
