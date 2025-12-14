@@ -1,0 +1,179 @@
+{% extends "dashboard.html" %}
+{% block title %}Toplu Davet - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-people me-2"></i>Toplu Aday Davet</h5>
+            </div>
+            <div class="card-body p-4">
+                <!-- Instructions -->
+                <div class="alert alert-info mb-4">
+                    <h6><i class="bi bi-info-circle me-2"></i>CSV Formatı</h6>
+                    <p class="mb-2">CSV dosyanızda şu sütunlar bulunmalı:</p>
+                    <code>ad_soyad,email,departman,sinav_tarihi</code>
+                    <p class="mt-2 mb-0 small">
+                        <strong>Örnek:</strong> Ahmet Yılmaz,ahmet@sirket.com,IT,2024-01-15
+                    </p>
+                </div>
+
+                <!-- Upload Form -->
+                <form method="POST" enctype="multipart/form-data" id="bulkInviteForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label">CSV Dosyası</label>
+                            <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Sınav Şablonu</label>
+                            <select name="template_id" class="form-select" required>
+                                <option value="">Şablon seçin...</option>
+                                {% for template in templates %}
+                                <option value="{{ template.id }}">{{ template.isim }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Varsayılan Sınav Tarihi</label>
+                            <input type="date" name="default_date" class="form-control">
+                            <small class="text-muted">CSV'de tarih yoksa bu tarih kullanılır</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Email Gönderimi</label>
+                            <div class="form-check form-switch mt-2">
+                                <input type="checkbox" name="send_emails" class="form-check-input" id="sendEmails"
+                                    checked>
+                                <label class="form-check-label" for="sendEmails">
+                                    Davetiye emaili gönder
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Email Template -->
+                    <div class="mb-4">
+                        <label class="form-label">Email Şablonu</label>
+                        <textarea name="email_template" class="form-control" rows="6">Sayın {ad_soyad},
+
+{sirket_adi} adına İngilizce yeterlilik sınavına davetlisiniz.
+
+Sınav Tarihi: {sinav_tarihi}
+Giriş Kodu: {giris_kodu}
+Sınav Linki: {sinav_linki}
+
+Başarılar dileriz.</textarea>
+                        <small class="text-muted">Kullanılabilir değişkenler: {ad_soyad}, {email}, {giris_kodu},
+                            {sinav_tarihi}, {sinav_linki}, {sirket_adi}</small>
+                    </div>
+
+                    <!-- Preview -->
+                    <div id="previewSection" class="d-none mb-4">
+                        <h6><i class="bi bi-eye me-2"></i>Önizleme</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered" id="previewTable">
+                                <thead class="table-light">
+                                    <tr></tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <p class="text-muted small">
+                            Toplam: <span id="totalCount">0</span> aday
+                        </p>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-outline-secondary" onclick="previewCSV()">
+                            <i class="bi bi-eye me-1"></i>Önizle
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send me-1"></i>Davet Gönder
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Recent Imports -->
+        {% if recent_imports %}
+        <div class="card border-0 shadow mt-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Son İçe Aktarmalar</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tarih</th>
+                            <th>Aday Sayısı</th>
+                            <th>Başarılı</th>
+                            <th>Hatalı</th>
+                            <th>Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for imp in recent_imports %}
+                        <tr>
+                            <td>{{ imp.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ imp.total_count }}</td>
+                            <td class="text-success">{{ imp.success_count }}</td>
+                            <td class="text-danger">{{ imp.error_count }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if imp.status == 'completed' else 'warning' }}">
+                                    {{ imp.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function previewCSV() {
+        const fileInput = document.querySelector('input[name="csv_file"]');
+        if (!fileInput.files[0]) {
+            alert('Lütfen bir CSV dosyası seçin.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const lines = e.target.result.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+
+            const thead = document.querySelector('#previewTable thead tr');
+            thead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+
+            const tbody = document.querySelector('#previewTable tbody');
+            tbody.innerHTML = '';
+
+            let count = 0;
+            for (let i = 1; i < Math.min(lines.length, 6); i++) {
+                if (lines[i].trim()) {
+                    const cells = lines[i].split(',').map(c => c.trim());
+                    tbody.innerHTML += `<tr>${cells.map(c => `<td>${c}</td>`).join('')}</tr>`;
+                    count++;
+                }
+            }
+
+            document.getElementById('totalCount').textContent = lines.length - 1;
+            document.getElementById('previewSection').classList.remove('d-none');
+        };
+        reader.readAsText(fileInput.files[0]);
+    }
+</script>
+{% endblock %}
