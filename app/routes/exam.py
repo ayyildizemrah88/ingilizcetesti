@@ -241,3 +241,376 @@ def sonuc(giris_kodu):
         return redirect(url_for('index'))
     
     return render_template('sinav_bitti.html', aday=candidate)
+
+
+# ══════════════════════════════════════════════════════════════════
+# PAUSE/RESUME FUNCTIONALITY
+# ══════════════════════════════════════════════════════════════════
+
+@exam_bp.route('/sinav/pause', methods=['POST'])
+@exam_required
+def pause_exam():
+    """
+    Pause the current exam session
+    ---
+    tags:
+      - Exam
+    """
+    from app.models import Candidate
+    from datetime import datetime
+    
+    aday_id = session.get('aday_id')
+    candidate = Candidate.query.get(aday_id)
+    
+    if not candidate:
+        return jsonify({'status': 'error', 'message': 'Aday bulunamadı'}), 404
+    
+    if candidate.is_paused:
+        return jsonify({'status': 'already_paused'})
+    
+    # Save current question ID for resume
+    current_question_id = request.json.get('current_question_id')
+    
+    candidate.is_paused = True
+    candidate.paused_at = datetime.utcnow()
+    candidate.last_question_id = current_question_id
+    candidate.sinav_durumu = 'duraklatildi'
+    
+    db.session.commit()
+    
+    return jsonify({
+        'status': 'paused',
+        'message': 'Sınav duraklatıldı. Kaldığınız yerden devam edebilirsiniz.'
+    })
+
+
+@exam_bp.route('/sinav/resume', methods=['POST'])
+@exam_required
+def resume_exam():
+    """
+    Resume a paused exam session
+    ---
+    tags:
+      - Exam
+    """
+    from app.models import Candidate
+    from datetime import datetime
+    
+    aday_id = session.get('aday_id')
+    candidate = Candidate.query.get(aday_id)
+    
+    if not candidate:
+        return jsonify({'status': 'error', 'message': 'Aday bulunamadı'}), 404
+    
+    if not candidate.is_paused:
+        return jsonify({'status': 'not_paused'})
+    
+    # Calculate paused duration
+    paused_duration = (datetime.utcnow() - candidate.paused_at).total_seconds()
+    candidate.total_paused_seconds = (candidate.total_paused_seconds or 0) + int(paused_duration)
+    
+    candidate.is_paused = False
+    candidate.paused_at = None
+    candidate.sinav_durumu = 'devam_ediyor'
+    
+    db.session.commit()
+    
+    return jsonify({
+        'status': 'resumed',
+        'last_question_id': candidate.last_question_id,
+        'message': 'Sınava devam ediliyor.'
+    })
+
+
+# ══════════════════════════════════════════════════════════════════
+# PRACTICE MODE
+# ══════════════════════════════════════════════════════════════════
+
+@exam_bp.route('/practice')
+def practice_mode():
+    """
+    Start a practice exam (results not saved to profile)
+    ---
+    tags:
+      - Exam
+    """
+    from app.models import Candidate
+    from datetime import datetime
+    import secrets
+    
+    # Create a temporary practice candidate
+    practice_code = f"PRACTICE-{secrets.token_hex(4).upper()}"
+    
+    candidate = Candidate(
+        ad_soyad="Deneme Kullanıcısı",
+        giris_kodu=practice_code,
+        is_practice=True,
+        sinav_suresi=15,  # Shorter duration for practice
+        soru_limiti=10,   # Fewer questions
+        soru_suresi=0,    # No time limit per question
+        sinav_durumu='devam_ediyor',
+        baslama_tarihi=datetime.utcnow()
+    )
+    
+    db.session.add(candidate)
+    db.session.commit()
+    
+    session['aday_id'] = candidate.id
+    session['is_practice'] = True
+    
+    flash("🎯 Deneme modu başladı. Sonuçlar kaydedilmeyecek.", "info")
+    return redirect(url_for('exam.sinav'))
+
+
+@exam_bp.route('/practice/finish')
+@exam_required
+def finish_practice():
+    """
+    Finish practice mode and show results without saving
+    ---
+    tags:
+      - Exam
+    """
+    from app.models import Candidate, ExamAnswer, Question
+    
+    aday_id = session.get('aday_id')
+    candidate = Candidate.query.get(aday_id)
+    
+    if not candidate or not candidate.is_practice:
+        return redirect(url_for('exam.sinav_bitti'))
+    
+    # Calculate scores for display only
+    answers = ExamAnswer.query.filter_by(aday_id=aday_id).all()
+    
+    category_scores = {}
+    for answer in answers:
+        question = Question.query.get(answer.soru_id)
+        if question:
+            cat = question.kategori or 'general'
+            if cat not in category_scores:
+                category_scores[cat] = {'correct': 0, 'total': 0}
+            category_scores[cat]['total'] += 1
+            if answer.dogru_mu:
+                category_scores[cat]['correct'] += 1
+    
+    # Calculate total for display
+    candidate.calculate_total_score()
+    candidate.seviye_sonuc = candidate.get_cefr_level()
+    
+    # Clear session
+    session.clear()
+    
+    return render_template('practice_result.html',
+                          aday=candidate,
+                          category_scores=category_scores,
+                          is_practice=True)
+
+
+# ══════════════════════════════════════════════════════════════════
+# LISTENING REPLAY
+# ══════════════════════════════════════════════════════════════════
+
+@exam_bp.route('/listening/replay', methods=['POST'])
+@exam_required
+def listening_replay():
+    """
+    Use a listening replay (max 2 per exam)
+    ---
+    tags:
+      - Exam
+    """
+    from app.models import Candidate
+    
+    MAX_REPLAYS = 2
+    
+    aday_id = session.get('aday_id')
+    candidate = Candidate.query.get(aday_id)
+    
+    if not candidate:
+        return jsonify({'status': 'error'}), 404
+    
+    replays_used = candidate.listening_replays_used or 0
+    
+    if replays_used >= MAX_REPLAYS:
+        return jsonify({
+            'status': 'limit_reached',
+            'message': f'Maksimum {MAX_REPLAYS} tekrar hakkınız var.',
+            'replays_remaining': 0
+        })
+    
+    candidate.listening_replays_used = replays_used + 1
+    db.session.commit()
+    
+    return jsonify({
+        'status': 'ok',
+        'replays_remaining': MAX_REPLAYS - candidate.listening_replays_used,
+        'message': f'Tekrar hakkı kullanıldı. Kalan: {MAX_REPLAYS - candidate.listening_replays_used}'
+    })
+
+
+# ══════════════════════════════════════════════════════════════════
+# READING WPM TRACKING
+# ══════════════════════════════════════════════════════════════════
+
+@exam_bp.route('/reading/wpm', methods=['POST'])
+@exam_required
+def track_reading_wpm():
+    """
+    Track reading words per minute
+    ---
+    tags:
+      - Exam
+    """
+    from app.models import Candidate
+    
+    aday_id = session.get('aday_id')
+    candidate = Candidate.query.get(aday_id)
+    
+    if not candidate:
+        return jsonify({'status': 'error'}), 404
+    
+    word_count = request.json.get('word_count', 0)
+    reading_time_seconds = request.json.get('reading_time_seconds', 1)
+    
+    # Calculate WPM
+    wpm = (word_count / reading_time_seconds) * 60 if reading_time_seconds > 0 else 0
+    
+    # Store average WPM
+    if candidate.reading_wpm:
+        candidate.reading_wpm = (candidate.reading_wpm + wpm) / 2
+    else:
+        candidate.reading_wpm = wpm
+    
+    db.session.commit()
+    
+    return jsonify({
+        'status': 'ok',
+        'wpm': round(wpm, 1),
+        'average_wpm': round(candidate.reading_wpm, 1)
+    })
+
+
+# ══════════════════════════════════════════════════════════════════
+# BENCHMARK CALCULATION
+# ══════════════════════════════════════════════════════════════════
+
+def calculate_benchmark_percentile(candidate):
+    """
+    Calculate percentile ranking compared to other candidates
+    """
+    from app.models import Candidate
+    
+    # Get all completed candidates with scores
+    all_candidates = Candidate.query.filter(
+        Candidate.sinav_durumu == 'tamamlandi',
+        Candidate.puan > 0,
+        Candidate.is_practice == False,
+        Candidate.id != candidate.id
+    ).all()
+    
+    if not all_candidates:
+        return 50.0  # No comparison data, assume median
+    
+    scores = [c.puan for c in all_candidates]
+    below_count = sum(1 for s in scores if s < candidate.puan)
+    
+    percentile = (below_count / len(scores)) * 100
+    return round(percentile, 1)
+
+
+@exam_bp.route('/benchmark/<int:candidate_id>')
+def get_benchmark(candidate_id):
+    """
+    Get benchmark comparison for a candidate
+    ---
+    tags:
+      - Exam
+    """
+    from app.models import Candidate
+    
+    candidate = Candidate.query.get_or_404(candidate_id)
+    
+    if candidate.sinav_durumu != 'tamamlandi':
+        return jsonify({'status': 'exam_not_completed'}), 400
+    
+    # Calculate and store percentile
+    percentile = calculate_benchmark_percentile(candidate)
+    candidate.benchmark_percentile = percentile
+    db.session.commit()
+    
+    return jsonify({
+        'status': 'ok',
+        'percentile': percentile,
+        'message': f"Aynı seviyedeki adayların %{percentile}'inden daha iyi performans gösterdiniz."
+    })
+
+
+# ══════════════════════════════════════════════════════════════════
+# ANSWER ANALYSIS DASHBOARD
+# ══════════════════════════════════════════════════════════════════
+
+@exam_bp.route('/analysis/<giris_kodu>')
+def answer_analysis(giris_kodu):
+    """
+    Detailed answer analysis dashboard
+    ---
+    tags:
+      - Exam
+    """
+    from app.models import Candidate, ExamAnswer, Question
+    
+    candidate = Candidate.query.filter_by(giris_kodu=giris_kodu).first_or_404()
+    
+    if candidate.sinav_durumu != 'tamamlandi':
+        flash("Sınav henüz tamamlanmamış.", "warning")
+        return redirect(url_for('index'))
+    
+    # Get all answers with questions
+    answers = ExamAnswer.query.filter_by(aday_id=candidate.id).all()
+    
+    analysis = {
+        'total': len(answers),
+        'correct': sum(1 for a in answers if a.dogru_mu),
+        'wrong': sum(1 for a in answers if not a.dogru_mu),
+        'categories': {},
+        'difficulty_breakdown': {},
+        'strengths': [],
+        'weaknesses': []
+    }
+    
+    # Analyze by category and difficulty
+    for answer in answers:
+        question = Question.query.get(answer.soru_id)
+        if question:
+            # Category analysis
+            cat = question.kategori or 'general'
+            if cat not in analysis['categories']:
+                analysis['categories'][cat] = {'correct': 0, 'total': 0, 'percentage': 0}
+            analysis['categories'][cat]['total'] += 1
+            if answer.dogru_mu:
+                analysis['categories'][cat]['correct'] += 1
+            
+            # Difficulty analysis
+            diff = question.zorluk or 'B1'
+            if diff not in analysis['difficulty_breakdown']:
+                analysis['difficulty_breakdown'][diff] = {'correct': 0, 'total': 0}
+            analysis['difficulty_breakdown'][diff]['total'] += 1
+            if answer.dogru_mu:
+                analysis['difficulty_breakdown'][diff]['correct'] += 1
+    
+    # Calculate percentages and find strengths/weaknesses
+    for cat, data in analysis['categories'].items():
+        if data['total'] > 0:
+            data['percentage'] = round((data['correct'] / data['total']) * 100, 1)
+            if data['percentage'] >= 70:
+                analysis['strengths'].append(cat)
+            elif data['percentage'] < 50:
+                analysis['weaknesses'].append(cat)
+    
+    # Calculate benchmark
+    analysis['benchmark_percentile'] = calculate_benchmark_percentile(candidate)
+    
+    return render_template('answer_analysis.html',
+                          aday=candidate,
+                          analysis=analysis)
+
