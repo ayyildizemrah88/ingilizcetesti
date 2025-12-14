@@ -33,6 +33,13 @@ class Question(db.Model):
     irt_difficulty = db.Column(db.Float)  # 'b' parameter
     irt_guessing = db.Column(db.Float, default=0.25)  # 'c' parameter
     
+    # Calibration Analytics
+    times_answered = db.Column(db.Integer, default=0)
+    times_correct = db.Column(db.Integer, default=0)
+    calculated_difficulty = db.Column(db.Float)  # Actual measured difficulty
+    calibration_warning = db.Column(db.Boolean, default=False)  # Mismatch flag
+    last_calibrated = db.Column(db.DateTime)
+    
     # Relationships
     company = db.relationship('Company', backref='questions')
     
