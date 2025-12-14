@@ -34,5 +34,6 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Start with Gunicorn
-CMD ["gunicorn", "--workers", "2", "--threads", "4", "--bind", "0.0.0.0:5000", "app:app", "--timeout", "300", "--access-logfile", "-", "--error-logfile", "-"]
+# Start with Gunicorn - using run.py as entry point
+CMD ["gunicorn", "--workers", "2", "--threads", "4", "--bind", "0.0.0.0:5000", "run:app", "--timeout", "300", "--access-logfile", "-", "--error-logfile", "-"]
+
