@@ -1,0 +1,284 @@
+{% extends "dashboard.html" %}
+{% block title %}Analytics Dashboard - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Header -->
+    <div class="col-12 mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2><i class="bi bi-speedometer2 me-2"></i>Analytics Dashboard</h2>
+            <div class="btn-group">
+                <button class="btn btn-outline-primary active" data-period="week">Hafta</button>
+                <button class="btn btn-outline-primary" data-period="month">Ay</button>
+                <button class="btn btn-outline-primary" data-period="year">Yıl</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Real-time Stats -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="display-4">{{ stats.active_exams }}</div>
+                        <p class="mb-0">Aktif Sınav</p>
+                    </div>
+                    <i class="bi bi-play-circle fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="display-4">{{ stats.today_completed }}</div>
+                        <p class="mb-0">Bugün Tamamlanan</p>
+                    </div>
+                    <i class="bi bi-check-circle fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="display-4">{{ stats.total_candidates }}</div>
+                        <p class="mb-0">Toplam Aday</p>
+                    </div>
+                    <i class="bi bi-people fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="display-4">{{ stats.avg_score|round(1) }}%</div>
+                        <p class="mb-0">Ortalama Puan</p>
+                    </div>
+                    <i class="bi bi-graph-up fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="col-lg-8 mt-4">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Sınav Tamamlama Trendi</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="completionTrend" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 mt-4">
+        <div class="card border-0 shadow h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">CEFR Dağılımı</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="cefrPie" height="180"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="col-lg-6 mt-4">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Şirket Bazlı Performans</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="companyChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mt-4">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Beceri Ortalamaları</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="skillsRadar" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Performers -->
+    <div class="col-lg-6 mt-4">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-white d-flex justify-content-between">
+                <h5 class="mb-0">En Yüksek Puanlar</h5>
+                <span class="badge bg-success">Bu Hafta</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <tbody>
+                        {% for candidate in top_performers %}
+                        <tr>
+                            <td>
+                                <span class="badge bg-primary me-2">{{ loop.index }}</span>
+                                {{ candidate.ad_soyad }}
+                            </td>
+                            <td class="text-end">
+                                <span class="badge bg-success">{{ candidate.puan|round(1) }}%</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="col-lg-6 mt-4">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-white d-flex justify-content-between">
+                <h5 class="mb-0">Uyarılar</h5>
+                <span class="badge bg-danger">{{ alerts|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for alert in alerts %}
+                    <div class="list-group-item d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle text-{{ alert.severity }} me-3"></i>
+                        <div>
+                            <p class="mb-0">{{ alert.message }}</p>
+                            <small class="text-muted">{{ alert.time }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if not alerts %}
+                    <div class="list-group-item text-center text-muted py-4">
+                        <i class="bi bi-check-circle fs-3"></i>
+                        <p class="mb-0 mt-2">Uyarı yok</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Health -->
+    <div class="col-12 mt-4">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-heart-pulse me-2"></i>Sistem Durumu</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-success p-2 me-3"><i class="bi bi-server"></i></span>
+                            <div>
+                                <h6 class="mb-0">API</h6>
+                                <small class="text-success">Çalışıyor</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-success p-2 me-3"><i class="bi bi-database"></i></span>
+                            <div>
+                                <h6 class="mb-0">Database</h6>
+                                <small class="text-success">{{ stats.db_response_time }}ms</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-success p-2 me-3"><i class="bi bi-cpu"></i></span>
+                            <div>
+                                <h6 class="mb-0">Celery</h6>
+                                <small class="text-success">{{ stats.celery_queue }} görev</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-success p-2 me-3"><i class="bi bi-hdd"></i></span>
+                            <div>
+                                <h6 class="mb-0">Redis</h6>
+                                <small class="text-success">Bağlı</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Completion Trend
+    new Chart(document.getElementById('completionTrend'), {
+        type: 'line',
+        data: {
+            labels: {{ trend_labels| tojson | safe }},
+        datasets: [{
+            label: 'Tamamlanan',
+            data: {{ trend_data| tojson | safe }},
+        borderColor: '#667eea',
+        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+        fill: true,
+        tension: 0.4
+        }]
+    },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+});
+
+    // CEFR Pie
+    new Chart(document.getElementById('cefrPie'), {
+        type: 'doughnut',
+        data: {
+            labels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+            datasets: [{
+                data: {{ cefr_distribution| tojson | safe }
+    },
+        backgroundColor: ['#6c757d', '#17a2b8', '#28a745', '#ffc107', '#fd7e14', '#dc3545']
+        }]
+    }
+});
+
+    // Company Chart
+    new Chart(document.getElementById('companyChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ company_names| tojson | safe }},
+        datasets: [{
+            label: 'Ortalama Puan',
+            data: {{ company_scores| tojson | safe }},
+        backgroundColor: '#667eea'
+        }]
+    },
+        options: { scales: { y: { beginAtZero: true, max: 100 } } }
+});
+
+    // Skills Radar
+    new Chart(document.getElementById('skillsRadar'), {
+        type: 'radar',
+        data: {
+            labels: ['Grammar', 'Vocabulary', 'Reading', 'Listening', 'Speaking', 'Writing'],
+            datasets: [{
+                label: 'Ortalama',
+                data: {{ skill_averages| tojson | safe }
+    },
+        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+        borderColor: '#667eea'
+        }]
+    },
+        options: { scales: { r: { beginAtZero: true, max: 100 } } }
+});
+</script>
+{% endblock %}
