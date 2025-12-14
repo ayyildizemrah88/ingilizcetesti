@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}Detaylı Analiz - Skills Test Center{% endblock %}
+
+{% block extra_css %}
+<style>
+    .strength-badge {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+    }
+
+    .weakness-badge {
+        background: linear-gradient(135deg, #dc3545, #fd7e14);
+        color: white;
+    }
+
+    .benchmark-card {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+
+    .category-card {
+        transition: transform 0.3s;
+    }
+
+    .category-card:hover {
+        transform: translateY(-5px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <!-- Header -->
+        <div class="col-12 mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="bi bi-graph-up me-2"></i>Detaylı Sınav Analizi</h2>
+                    <p class="text-muted mb-0">{{ aday.ad_soyad }} - {{ aday.giris_kodu }}</p>
+                </div>
+                <div>
+                    <a href="/exam/sonuc/{{ aday.giris_kodu }}" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-left me-2"></i>Sonuçlara Dön
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow h-100 text-center">
+                <div class="card-body">
+                    <div class="display-4 text-primary mb-2">{{ analysis.correct }}</div>
+                    <h5 class="text-success">Doğru Cevap</h5>
+                    <p class="text-muted mb-0">{{ analysis.total }} sorudan</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow h-100 text-center">
+                <div class="card-body">
+                    <div class="display-4 text-danger mb-2">{{ analysis.wrong }}</div>
+                    <h5 class="text-danger">Yanlış Cevap</h5>
+                    <p class="text-muted mb-0">Gelişime açık</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow h-100 benchmark-card">
+                <div class="card-body text-center">
+                    <div class="display-4 mb-2">%{{ analysis.benchmark_percentile }}</div>
+                    <h5>Sıralama</h5>
+                    <p class="mb-0 small opacity-75">Diğer adaylardan daha iyi</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Strengths & Weaknesses -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0 text-success">
+                        <i class="bi bi-check-circle me-2"></i>Güçlü Yönler
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if analysis.strengths %}
+                    {% for strength in analysis.strengths %}
+                    <span class="badge strength-badge p-2 me-2 mb-2 text-capitalize">
+                        <i class="bi bi-star-fill me-1"></i>{{ strength }}
+                    </span>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted mb-0">Henüz güçlü yön belirlenmedi.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0 text-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Gelişim Alanları
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if analysis.weaknesses %}
+                    {% for weakness in analysis.weaknesses %}
+                    <span class="badge weakness-badge p-2 me-2 mb-2 text-capitalize">
+                        <i class="bi bi-arrow-up me-1"></i>{{ weakness }}
+                    </span>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted mb-0">Tebrikler! Tüm alanlarda iyi performans.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Performance -->
+        <div class="col-12 mb-4">
+            <div class="card border-0 shadow">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Kategori Bazlı Performans</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        {% for cat, data in analysis.categories.items() %}
+                        <div class="col-md-4">
+                            <div class="card category-card border h-100">
+                                <div class="card-body text-center">
+                                    <h6 class="text-capitalize text-muted">{{ cat }}</h6>
+                                    <div class="display-6 
+                                        {% if data.percentage >= 70 %}text-success
+                                        {% elif data.percentage >= 50 %}text-warning
+                                        {% else %}text-danger{% endif %}">
+                                        {{ data.percentage }}%
+                                    </div>
+                                    <small class="text-muted">{{ data.correct }}/{{ data.total }} doğru</small>
+
+                                    <div class="progress mt-3" style="height: 8px;">
+                                        <div class="progress-bar 
+                                            {% if data.percentage >= 70 %}bg-success
+                                            {% elif data.percentage >= 50 %}bg-warning
+                                            {% else %}bg-danger{% endif %}" style="width: {{ data.percentage }}%">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Difficulty Breakdown -->
+        <div class="col-12 mb-4">
+            <div class="card border-0 shadow">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-layers me-2"></i>Zorluk Seviyesi Analizi</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for level in ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] %}
+                        {% if level in analysis.difficulty_breakdown %}
+                        {% set data = analysis.difficulty_breakdown[level] %}
+                        {% set pct = (data.correct / data.total * 100) if data.total > 0 else 0 %}
+                        <div class="col-md-2 col-4 text-center mb-3">
+                            <div class="badge 
+                                {% if pct >= 70 %}bg-success
+                                {% elif pct >= 50 %}bg-warning
+                                {% else %}bg-danger{% endif %} 
+                                fs-5 mb-2 p-2">{{ level }}</div>
+                            <div class="small text-muted">{{ data.correct }}/{{ data.total }}</div>
+                            <div class="small">{{ pct|round(0) }}%</div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reading Stats -->
+        {% if aday.reading_wpm %}
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow">
+                <div class="card-body text-center">
+                    <i class="bi bi-book fs-1 text-info mb-3"></i>
+                    <h4>Okuma Hızı</h4>
+                    <div class="display-5 text-info">{{ aday.reading_wpm|round(0) }}</div>
+                    <p class="text-muted">kelime/dakika (WPM)</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recommendations -->
+        <div class="col-12">
+            <div class="card border-0 shadow bg-light">
+                <div class="card-body">
+                    <h5><i class="bi bi-lightbulb me-2"></i>Öneriler</h5>
+                    <ul class="mb-0">
+                        {% if analysis.weaknesses %}
+                        <li>
+                            <strong>{{ analysis.weaknesses|join(', ') }}</strong> kategorilerinde pratik yapmanız
+                            önerilir.
+                        </li>
+                        {% endif %}
+                        {% if aday.reading_wpm and aday.reading_wpm < 200 %} <li>Okuma hızınızı artırmak için günlük
+                            İngilizce okuma yapın.</li>
+                            {% endif %}
+                            <li>Düzenli olarak kelime çalışması yaparak vocabulary puanınızı artırabilirsiniz.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
