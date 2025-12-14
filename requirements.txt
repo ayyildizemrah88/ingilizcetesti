@@ -1,27 +1,52 @@
-# Skills Test Center - Production Requirements
-Flask==3.0.0
-Flask-Limiter==3.5.0
-Flask-WTF==1.2.1
-Flask-Session==0.5.0
-python-dotenv==1.0.0
-gunicorn==21.2.0
-eventlet==0.33.3
-bcrypt==4.0.1
-Werkzeug==3.0.1
-psycopg2-binary==2.9.9
-redis==5.0.1
-PyJWT==2.8.0
-pandas==2.1.3
-openpyxl==3.1.2
-fpdf2==2.7.6
-qrcode==7.4.2
-Pillow==10.1.0
-requests==2.31.0
-psutil==5.9.6
-markupsafe==2.1.3
-stripe==7.8.0
-google-generativeai==0.3.2
-pytz==2023.3
-sentry-sdk[flask]==1.38.0
-pytest==7.4.3
-cryptography==41.0.7
+# Skills Test Center - Dependencies
+# Updated for modular architecture with Celery, SQLAlchemy, and Swagger
+
+# Core Flask
+Flask>=2.3.0
+Werkzeug>=2.3.0
+python-dotenv>=1.0.0
+
+# Database
+Flask-SQLAlchemy>=3.0.0
+Flask-Migrate>=4.0.0
+psycopg2-binary>=2.9.0
+SQLAlchemy>=2.0.0
+
+# Security
+Flask-WTF>=1.2.0
+bcrypt>=4.0.0
+PyJWT>=2.8.0
+
+# Rate Limiting
+Flask-Limiter>=3.5.0
+
+# API Documentation
+flasgger>=0.9.7
+
+# Async Task Queue
+celery>=5.3.0
+redis>=5.0.0
+
+# AI Services
+google-generativeai>=0.3.0
+openai>=1.0.0
+
+# PDF & QR
+fpdf>=1.7.2
+qrcode>=7.4.0
+Pillow>=10.0.0
+
+# HTTP Requests
+requests>=2.31.0
+
+# Error Tracking (optional)
+sentry-sdk[flask]>=1.35.0
+
+# Production Server
+gunicorn>=21.0.0
+gevent>=23.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-flask>=1.2.0
+coverage>=7.3.0
