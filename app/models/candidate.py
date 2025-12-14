@@ -89,9 +89,20 @@ class Candidate(db.Model):
         return self.puan
     
     def get_cefr_level(self):
-        """Get CEFR level from score"""
-        from app.services.cefr_mapper import score_to_cefr
-        return score_to_cefr(self.puan)
+        """Get CEFR level from score - inline to avoid circular import"""
+        score = self.puan or 0
+        if score >= 90:
+            return 'C2'
+        elif score >= 75:
+            return 'C1'
+        elif score >= 60:
+            return 'B2'
+        elif score >= 40:
+            return 'B1'
+        elif score >= 20:
+            return 'A2'
+        else:
+            return 'A1'
     
     def to_dict(self):
         """Convert to dictionary"""
