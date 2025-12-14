@@ -47,6 +47,12 @@ class Candidate(db.Model):
     baslama_tarihi = db.Column(db.DateTime)
     bitis_tarihi = db.Column(db.DateTime)
     
+    # Pause/Resume support
+    is_paused = db.Column(db.Boolean, default=False)
+    paused_at = db.Column(db.DateTime)
+    total_paused_seconds = db.Column(db.Integer, default=0)
+    last_question_id = db.Column(db.Integer)  # Resume from this question
+    
     # Certificate
     certificate_hash = db.Column(db.String(64), unique=True)
     
@@ -60,6 +66,11 @@ class Candidate(db.Model):
     tags = db.Column(db.Text)  # JSON tags
     consent_given = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Analytics
+    reading_wpm = db.Column(db.Float)  # Words per minute for reading
+    listening_replays_used = db.Column(db.Integer, default=0)  # Number of replay uses
+    benchmark_percentile = db.Column(db.Float)  # Compared to other candidates
     
     # Relationships
     company = db.relationship('Company', backref='candidates')
