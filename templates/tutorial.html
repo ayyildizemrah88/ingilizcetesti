@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% block title %}Sınav Öncesi Hazırlık - Skills Test Center{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tutorial-card {
+        transition: transform 0.3s, box-shadow 0.3s;
+        border: none;
+    }
+
+    .tutorial-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .step-number {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    .check-item {
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 0.5rem;
+        background: #f8f9fa;
+        display: flex;
+        align-items: center;
+    }
+
+    .check-item.success {
+        background: #d4edda;
+    }
+
+    .check-item.warning {
+        background: #fff3cd;
+    }
+
+    .check-item.error {
+        background: #f8d7da;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="text-center mb-5">
+        <h1><i class="bi bi-mortarboard me-2"></i>Sınav Öncesi Hazırlık</h1>
+        <p class="lead text-muted">Sınava başlamadan önce sistemi tanıyın</p>
+    </div>
+
+    <!-- System Check -->
+    <div class="row mb-5">
+        <div class="col-lg-6 mx-auto">
+            <div class="card border-0 shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Sistem Kontrolü</h5>
+                </div>
+                <div class="card-body">
+                    <div id="browserCheck" class="check-item">
+                        <i class="bi bi-globe fs-4 me-3"></i>
+                        <span>Tarayıcı Uyumluluğu</span>
+                        <span class="ms-auto badge bg-secondary">Kontrol ediliyor...</span>
+                    </div>
+                    <div id="cameraCheck" class="check-item">
+                        <i class="bi bi-camera-video fs-4 me-3"></i>
+                        <span>Kamera Erişimi</span>
+                        <span class="ms-auto badge bg-secondary">Kontrol ediliyor...</span>
+                    </div>
+                    <div id="micCheck" class="check-item">
+                        <i class="bi bi-mic fs-4 me-3"></i>
+                        <span>Mikrofon Erişimi</span>
+                        <span class="ms-auto badge bg-secondary">Kontrol ediliyor...</span>
+                    </div>
+                    <div id="connectionCheck" class="check-item">
+                        <i class="bi bi-wifi fs-4 me-3"></i>
+                        <span>İnternet Bağlantısı</span>
+                        <span class="ms-auto badge bg-secondary">Kontrol ediliyor...</span>
+                    </div>
+                    <button class="btn btn-primary w-100 mt-3" onclick="runSystemCheck()">
+                        <i class="bi bi-arrow-repeat me-2"></i>Tekrar Kontrol Et
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Question Types -->
+    <h3 class="text-center mb-4">Soru Tipleri</h3>
+    <div class="row g-4 mb-5">
+        <!-- MCQ -->
+        <div class="col-md-4">
+            <div class="card tutorial-card h-100">
+                <div class="card-body text-center">
+                    <div class="step-number mx-auto mb-3">1</div>
+                    <h5>Çoktan Seçmeli</h5>
+                    <p class="text-muted">4 seçenek arasından doğru cevabı seçin</p>
+                    <div class="bg-light p-3 rounded text-start">
+                        <p class="mb-2"><strong>Örnek:</strong></p>
+                        <p class="small">She ___ to the store yesterday.</p>
+                        <div class="d-flex flex-column gap-1">
+                            <span class="badge bg-secondary">A) go</span>
+                            <span class="badge bg-success">B) went ✓</span>
+                            <span class="badge bg-secondary">C) goes</span>
+                            <span class="badge bg-secondary">D) going</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reading -->
+        <div class="col-md-4">
+            <div class="card tutorial-card h-100">
+                <div class="card-body text-center">
+                    <div class="step-number mx-auto mb-3">2</div>
+                    <h5>Reading Passage</h5>
+                    <p class="text-muted">Paragrafı okuyun, soruları cevaplayın</p>
+                    <div class="bg-light p-3 rounded text-start">
+                        <p class="small"><em>"The history of coffee dates back to..."</em></p>
+                        <hr>
+                        <p class="small mb-1"><strong>İpucu:</strong></p>
+                        <ul class="small mb-0">
+                            <li>Önce soruları okuyun</li>
+                            <li>Anahtar kelimeleri bulun</li>
+                            <li>Zamanı iyi yönetin</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Listening -->
+        <div class="col-md-4">
+            <div class="card tutorial-card h-100">
+                <div class="card-body text-center">
+                    <div class="step-number mx-auto mb-3">3</div>
+                    <h5>Listening</h5>
+                    <p class="text-muted">Sesi dinleyin, soruları cevaplayın</p>
+                    <div class="bg-light p-3 rounded text-start">
+                        <p class="small mb-2"><i class="bi bi-volume-up"></i> Ses otomatik başlar</p>
+                        <p class="small mb-1"><strong>Not:</strong></p>
+                        <ul class="small mb-0">
+                            <li>2 tekrar hakkınız var</li>
+                            <li>Not alabilirsiniz</li>
+                            <li>Kulaklık önerilir</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Speaking -->
+        <div class="col-md-4">
+            <div class="card tutorial-card h-100">
+                <div class="card-body text-center">
+                    <div class="step-number mx-auto mb-3">4</div>
+                    <h5>Speaking</h5>
+                    <p class="text-muted">Soruyu okuyun, cevabınızı kaydedin</p>
+                    <div class="bg-light p-3 rounded text-start">
+                        <p class="small"><i class="bi bi-mic-fill text-danger"></i> Kayıt başladığında konuşun</p>
+                        <p class="small mb-1"><strong>Değerlendirme:</strong></p>
+                        <ul class="small mb-0">
+                            <li>Akıcılık</li>
+                            <li>Telaffuz</li>
+                            <li>Gramer & Kelime</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Writing -->
+        <div class="col-md-4">
+            <div class="card tutorial-card h-100">
+                <div class="card-body text-center">
+                    <div class="step-number mx-auto mb-3">5</div>
+                    <h5>Writing</h5>
+                    <p class="text-muted">Verilen konuda essay yazın</p>
+                    <div class="bg-light p-3 rounded text-start">
+                        <p class="small">Minimum 150-250 kelime</p>
+                        <p class="small mb-1"><strong>Yapı:</strong></p>
+                        <ul class="small mb-0">
+                            <li>Giriş paragrafı</li>
+                            <li>Ana bölümler</li>
+                            <li>Sonuç</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timer -->
+        <div class="col-md-4">
+            <div class="card tutorial-card h-100 border-warning">
+                <div class="card-body text-center">
+                    <div class="step-number mx-auto mb-3 bg-warning text-dark">
+                        <i class="bi bi-clock"></i>
+                    </div>
+                    <h5>Süre Yönetimi</h5>
+                    <p class="text-muted">Her soru için süre sınırı olabilir</p>
+                    <div class="bg-light p-3 rounded text-start">
+                        <p class="small mb-2"><i class="bi bi-exclamation-triangle text-warning"></i> Süre bitince
+                            otomatik geçiş</p>
+                        <p class="small mb-0">
+                            <strong>Toplam süre:</strong> Ekranın üstünde<br>
+                            <strong>Soru süresi:</strong> Soru altında
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="row mb-5">
+        <div class="col-lg-8 mx-auto">
+            <div class="card border-0 shadow bg-gradient"
+                style="background: linear-gradient(135deg, #667eea20, #764ba220);">
+                <div class="card-body p-4">
+                    <h4><i class="bi bi-lightbulb me-2"></i>Önemli İpuçları</h4>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                <span>Sessiz bir ortamda sınava girin</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                <span>İnternet bağlantınızın stabil olduğundan emin olun</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                <span>Sınav sırasında sayfayı yenilemeyin</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                <span>Tüm soruları cevaplamaya çalışın</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Button -->
+    <div class="text-center">
+        <a href="/exam/sinav" class="btn btn-primary btn-lg px-5">
+            <i class="bi bi-play-fill me-2"></i>Sınava Başla
+        </a>
+        <p class="text-muted mt-2 small">Hazır olduğunuzda butona tıklayın</p>
+    </div>
+</div>
+
+<script>
+    function runSystemCheck() {
+        // Browser check
+        const browserCheck = document.getElementById('browserCheck');
+        browserCheck.classList.add('success');
+        browserCheck.querySelector('.badge').className = 'ms-auto badge bg-success';
+        browserCheck.querySelector('.badge').textContent = 'Uyumlu ✓';
+
+        // Camera check
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(() => {
+                const cameraCheck = document.getElementById('cameraCheck');
+                cameraCheck.classList.add('success');
+                cameraCheck.querySelector('.badge').className = 'ms-auto badge bg-success';
+                cameraCheck.querySelector('.badge').textContent = 'Erişim var ✓';
+            })
+            .catch(() => {
+                const cameraCheck = document.getElementById('cameraCheck');
+                cameraCheck.classList.add('warning');
+                cameraCheck.querySelector('.badge').className = 'ms-auto badge bg-warning';
+                cameraCheck.querySelector('.badge').textContent = 'İzin gerekli';
+            });
+
+        // Microphone check
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(() => {
+                const micCheck = document.getElementById('micCheck');
+                micCheck.classList.add('success');
+                micCheck.querySelector('.badge').className = 'ms-auto badge bg-success';
+                micCheck.querySelector('.badge').textContent = 'Erişim var ✓';
+            })
+            .catch(() => {
+                const micCheck = document.getElementById('micCheck');
+                micCheck.classList.add('warning');
+                micCheck.querySelector('.badge').className = 'ms-auto badge bg-warning';
+                micCheck.querySelector('.badge').textContent = 'İzin gerekli';
+            });
+
+        // Connection check
+        const connectionCheck = document.getElementById('connectionCheck');
+        if (navigator.onLine) {
+            connectionCheck.classList.add('success');
+            connectionCheck.querySelector('.badge').className = 'ms-auto badge bg-success';
+            connectionCheck.querySelector('.badge').textContent = 'Bağlı ✓';
+        } else {
+            connectionCheck.classList.add('error');
+            connectionCheck.querySelector('.badge').className = 'ms-auto badge bg-danger';
+            connectionCheck.querySelector('.badge').textContent = 'Bağlantı yok';
+        }
+    }
+
+    // Run on load
+    document.addEventListener('DOMContentLoaded', runSystemCheck);
+</script>
+{% endblock %}
