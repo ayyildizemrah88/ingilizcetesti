@@ -96,9 +96,14 @@
                     <input type="hidden" name="cevap" id="selectedAnswer" value="">
 
                     <div class="d-flex justify-content-between mt-4">
-                        <a href="/candidate/privacy" class="btn btn-outline-secondary">
-                            <i class="bi bi-shield-check me-1"></i>Veri Hakları
-                        </a>
+                        <div class="d-flex gap-2">
+                            <a href="/candidate/privacy" class="btn btn-outline-secondary">
+                                <i class="bi bi-shield-check me-1"></i>Veri Hakları
+                            </a>
+                            <button type="button" class="btn btn-outline-warning" onclick="pauseExam()">
+                                <i class="bi bi-pause-fill me-1"></i>Duraklat
+                            </button>
+                        </div>
                         <button type="submit" class="btn btn-primary btn-lg px-5" id="submitBtn" disabled>
                             Sonraki <i class="bi bi-arrow-right ms-2"></i>
                         </button>
@@ -270,6 +275,35 @@
     window.addEventListener('offline', () => {
         console.log('Offline mode activated');
     });
+
+    // ══════════════════════════════════════════════════════════════
+    // PAUSE/RESUME
+    // ══════════════════════════════════════════════════════════════
+    async function pauseExam() {
+        if (!confirm('Sınavı duraklatmak istiyor musunuz? Kaldığınız yerden devam edebilirsiniz.')) {
+            return;
+        }
+
+        try {
+            const resp = await fetch('/exam/sinav/pause', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ current_question_id: {{ soru.id }} })
+    });
+
+    const data = await resp.json();
+
+    if (data.status === 'paused') {
+        alert('✅ ' + data.message);
+        window.location.href = '/sinav-giris';
+    } else if (data.status === 'already_paused') {
+        alert('Sınav zaten duraklatılmış.');
+    }
+        } catch (e) {
+        console.error('Pause failed:', e);
+        alert('Duraklatma başarısız. İnternet bağlantınızı kontrol edin.');
+    }
+    }
 
     // ══════════════════════════════════════════════════════════════
     // INIT
