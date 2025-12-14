@@ -12,7 +12,7 @@
                     <p class="text-muted">Giriş kodunuzu girerek sınava başlayın</p>
                 </div>
 
-                <form method="POST" action="/sinav-giris">
+                <form method="POST" action="{{ url_for('auth.sinav_giris') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="mb-4">
