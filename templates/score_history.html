@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Sınav Geçmişi - Skills Test Center{% endblock %}
+
+{% block extra_css %}
+<style>
+    .history-card {
+        border-left: 4px solid;
+        transition: transform 0.2s;
+    }
+
+    .history-card:hover {
+        transform: translateX(5px);
+    }
+
+    .history-card.A1 {
+        border-color: #6c757d;
+    }
+
+    .history-card.A2 {
+        border-color: #17a2b8;
+    }
+
+    .history-card.B1 {
+        border-color: #28a745;
+    }
+
+    .history-card.B2 {
+        border-color: #ffc107;
+    }
+
+    .history-card.C1 {
+        border-color: #fd7e14;
+    }
+
+    .history-card.C2 {
+        border-color: #dc3545;
+    }
+
+    .trend-up {
+        color: #28a745;
+    }
+
+    .trend-down {
+        color: #dc3545;
+    }
+
+    .trend-same {
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-clock-history me-2"></i>Sınav Geçmişi</h2>
+            <p class="text-muted mb-0">Tüm sınav sonuçlarınız</p>
+        </div>
+        <a href="/exam/progress" class="btn btn-outline-primary">
+            <i class="bi bi-graph-up me-2"></i>Gelişim Grafiği
+        </a>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <div class="display-5 text-primary">{{ exams|length }}</div>
+                    <small class="text-muted">Toplam Sınav</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <div class="display-5 text-success">{{ avg_score|round(1) }}%</div>
+                    <small class="text-muted">Ortalama Puan</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <div class="display-5 text-info">{{ best_level }}</div>
+                    <small class="text-muted">En Yüksek Seviye</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <div class="display-5 {% if improvement > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {% if improvement > 0 %}+{% endif %}{{ improvement|round(1) }}%
+                    </div>
+                    <small class="text-muted">Son Gelişim</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exam History List -->
+    <div class="card border-0 shadow">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Sınav Listesi</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if exams %}
+            {% for exam in exams %}
+            <div class="history-card {{ exam.seviye_sonuc }} p-4 border-bottom">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <div
+                            class="badge bg-{{ 'success' if exam.puan >= 60 else 'warning' if exam.puan >= 40 else 'danger' }} fs-5 p-2">
+                            {{ exam.seviye_sonuc or 'B1' }}
+                        </div>
+                    </div>
+                    <div class="col">
+                        <h6 class="mb-1">{{ exam.bitis_tarihi.strftime('%d %B %Y, %H:%M') if exam.bitis_tarihi else
+                            'Tamamlanmadı' }}</h6>
+                        <small class="text-muted">
+                            Puan: {{ exam.puan|round(1) }}% |
+                            Band: {{ exam.band_score|round(1) if exam.band_score else '-' }}
+                        </small>
+                    </div>
+                    <div class="col-auto">
+                        <div class="d-flex gap-2">
+                            {% if loop.index > 1 %}
+                            {% set prev_score = exams[loop.index - 2].puan or 0 %}
+                            {% set diff = exam.puan - prev_score %}
+                            <span
+                                class="{% if diff > 0 %}trend-up{% elif diff < 0 %}trend-down{% else %}trend-same{% endif %}">
+                                <i
+                                    class="bi bi-{% if diff > 0 %}arrow-up{% elif diff < 0 %}arrow-down{% else %}dash{% endif %}"></i>
+                                {{ diff|abs|round(1) }}%
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <div class="d-flex gap-2">
+                            <a href="/exam/analysis/{{ exam.giris_kodu }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-bar-chart"></i> Analiz
+                            </a>
+                            <a href="/exam/sonuc/{{ exam.giris_kodu }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-eye"></i> Detay
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Skill breakdown -->
+                <div class="row mt-3 g-2">
+                    <div class="col">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-info" style="width: {{ exam.p_grammar or 0 }}%"
+                                title="Grammar: {{ exam.p_grammar|round(1) }}%"></div>
+                        </div>
+                        <small class="text-muted">Grammar</small>
+                    </div>
+                    <div class="col">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: {{ exam.p_vocabulary or 0 }}%"></div>
+                        </div>
+                        <small class="text-muted">Vocabulary</small>
+                    </div>
+                    <div class="col">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-warning" style="width: {{ exam.p_reading or 0 }}%"></div>
+                        </div>
+                        <small class="text-muted">Reading</small>
+                    </div>
+                    <div class="col">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-danger" style="width: {{ exam.p_listening or 0 }}%"></div>
+                        </div>
+                        <small class="text-muted">Listening</small>
+                    </div>
+                    <div class="col">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" style="width: {{ exam.p_speaking or 0 }}%"></div>
+                        </div>
+                        <small class="text-muted">Speaking</small>
+                    </div>
+                    <div class="col">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-secondary" style="width: {{ exam.p_writing or 0 }}%"></div>
+                        </div>
+                        <small class="text-muted">Writing</small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox fs-1 text-muted"></i>
+                <p class="text-muted mt-2">Henüz sınav geçmişiniz yok.</p>
+                <a href="/sinav-giris" class="btn btn-primary">
+                    <i class="bi bi-pencil-square me-2"></i>İlk Sınavınıza Girin
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
