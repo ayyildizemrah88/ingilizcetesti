@@ -12,7 +12,8 @@ class ExamTemplate(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     isim = db.Column(db.String(255), nullable=False)
-    sinav_suresi = db.Column(db.Integer, default=30)  # minutes
+    sinav_suresi = db.Column(db.Integer, default=30)  # minutes (total exam)
+    soru_suresi = db.Column(db.Integer, default=60)  # seconds per question (0 = unlimited)
     soru_limiti = db.Column(db.Integer, default=25)
     baslangic_seviyesi = db.Column(db.String(10), default='B1')
     
