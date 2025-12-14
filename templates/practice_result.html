@@ -1,42 +1,84 @@
 {% extends "base.html" %}
-{% block title %}Deneme Sonucu - Skills Test Center{% endblock %}
+{% block title %}Deneme Sonuçları - Skills Test Center{% endblock %}
 
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-6">
-            <div class="card border-0 text-center">
-                <div class="card-body p-5">
-                    <div class="display-1 mb-3">🎯</div>
-                    <h2 class="mb-4">Deneme Sınavı Tamamlandı!</h2>
+        <div class="col-lg-8">
+            <!-- Practice Mode Banner -->
+            <div class="alert alert-info d-flex align-items-center mb-4">
+                <i class="bi bi-mortarboard fs-4 me-3"></i>
+                <div>
+                    <strong>🎯 Deneme Modu Sonuçları</strong>
+                    <p class="mb-0 small">Bu sonuçlar kaydedilmedi. Gerçek sınava girmek için kayıt olun.</p>
+                </div>
+            </div>
 
-                    <div class="alert alert-warning mb-4">
-                        <i class="bi bi-exclamation-triangle me-1"></i>
-                        Bu bir <strong>deneme sınavıdır</strong>. Sonuçlar kayıt altına alınmamıştır.
+            <!-- Score Card -->
+            <div class="card border-0 shadow-lg mb-4">
+                <div class="card-body text-center p-5">
+                    <div class="display-1 fw-bold text-primary mb-3">
+                        {{ aday.seviye_sonuc or 'B1' }}
                     </div>
+                    <h4 class="text-muted mb-4">Tahmini Seviyeniz</h4>
 
-                    <div class="row g-3 mb-4">
-                        <div class="col-6">
-                            <div class="bg-light rounded p-3">
-                                <h3 class="display-5 fw-bold text-primary">{{ score|round(1) }}%</h3>
-                                <small class="text-muted">Doğru Oranı</small>
+                    <div class="row g-4 mt-3">
+                        <div class="col-4">
+                            <div class="h3 mb-1 text-success">
+                                {{ (aday.puan or 0)|round(1) }}%
                             </div>
+                            <small class="text-muted">Genel Puan</small>
                         </div>
-                        <div class="col-6">
-                            <div class="bg-light rounded p-3">
-                                <h3 class="display-5 fw-bold text-success">{{ band }}</h3>
-                                <small class="text-muted">IELTS Band</small>
+                        <div class="col-4">
+                            <div class="h3 mb-1 text-info">
+                                {{ category_scores|length }}
                             </div>
+                            <small class="text-muted">Kategori</small>
                         </div>
-                    </div>
-
-                    <hr>
-
-                    <div class="d-grid gap-2">
-                        <a href="/practice" class="btn btn-primary btn-lg">Yeni Deneme Yap</a>
-                        <a href="/" class="btn btn-outline-secondary">Ana Sayfa</a>
+                        <div class="col-4">
+                            <div class="h3 mb-1 text-warning">
+                                {% set total_q = namespace(value=0) %}
+                                {% for cat, data in category_scores.items() %}
+                                {% set total_q.value = total_q.value + data.total %}
+                                {% endfor %}
+                                {{ total_q.value }}
+                            </div>
+                            <small class="text-muted">Cevaplanan</small>
+                        </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Category Breakdown -->
+            <div class="card border-0 shadow mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Kategori Performansı</h5>
+                </div>
+                <div class="card-body">
+                    {% for cat, data in category_scores.items() %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-capitalize">{{ cat }}</span>
+                            <span class="text-muted">{{ data.correct }}/{{ data.total }}</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            {% set pct = (data.correct / data.total * 100) if data.total > 0 else 0 %}
+                            <div class="progress-bar {% if pct >= 70 %}bg-success{% elif pct >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                style="width: {{ pct }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- CTA -->
+            <div class="text-center">
+                <a href="/exam/practice" class="btn btn-outline-primary btn-lg me-2">
+                    <i class="bi bi-arrow-repeat me-2"></i>Tekrar Dene
+                </a>
+                <a href="/sinav-giris" class="btn btn-primary btn-lg">
+                    <i class="bi bi-pencil-square me-2"></i>Gerçek Sınava Gir
+                </a>
             </div>
         </div>
     </div>
