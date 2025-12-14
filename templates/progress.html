@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}Gelişim Takibi - Skills Test Center{% endblock %}
+
+{% block extra_css %}
+<style>
+    .skill-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .skill-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .legend-color {
+        width: 20px;
+        height: 4px;
+        border-radius: 2px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-graph-up me-2"></i>Gelişim Takibi</h2>
+            <p class="text-muted mb-0">Zaman içindeki performansınız</p>
+        </div>
+        <a href="/candidate/history" class="btn btn-outline-secondary">
+            <i class="bi bi-list me-2"></i>Sınav Listesi
+        </a>
+    </div>
+
+    <!-- Main Chart -->
+    <div class="card border-0 shadow mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Genel Puan Trendi</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="progressChart" height="100"></canvas>
+        </div>
+    </div>
+
+    <!-- Skill Charts -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Beceri Bazlı Gelişim</h5>
+                </div>
+                <div class="card-body">
+                    <div class="skill-legend">
+                        <div class="skill-legend-item">
+                            <div class="legend-color" style="background: #0d6efd;"></div>
+                            <small>Grammar</small>
+                        </div>
+                        <div class="skill-legend-item">
+                            <div class="legend-color" style="background: #198754;"></div>
+                            <small>Vocabulary</small>
+                        </div>
+                        <div class="skill-legend-item">
+                            <div class="legend-color" style="background: #ffc107;"></div>
+                            <small>Reading</small>
+                        </div>
+                        <div class="skill-legend-item">
+                            <div class="legend-color" style="background: #dc3545;"></div>
+                            <small>Listening</small>
+                        </div>
+                        <div class="skill-legend-item">
+                            <div class="legend-color" style="background: #6f42c1;"></div>
+                            <small>Speaking</small>
+                        </div>
+                        <div class="skill-legend-item">
+                            <div class="legend-color" style="background: #17a2b8;"></div>
+                            <small>Writing</small>
+                        </div>
+                    </div>
+                    <canvas id="skillsChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Mevcut Beceri Dağılımı</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="radarChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CEFR Progress -->
+    <div class="card border-0 shadow">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">CEFR Seviye İlerlemesi</h5>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-center">
+                {% set levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] %}
+                {% for level in levels %}
+                <div class="col-2 text-center">
+                    <div class="position-relative">
+                        <div
+                            class="badge {% if level == current_level %}bg-primary fs-4 p-2{% else %}bg-light text-muted{% endif %}">
+                            {{ level }}
+                        </div>
+                        {% if level == current_level %}
+                        <div class="position-absolute top-100 start-50 translate-middle">
+                            <i class="bi bi-caret-up-fill text-primary"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="progress mt-4" style="height: 20px;">
+                {% set level_pct = {'A1': 16.6, 'A2': 33.3, 'B1': 50, 'B2': 66.6, 'C1': 83.3, 'C2': 100} %}
+                <div class="progress-bar bg-primary" style="width: {{ level_pct.get(current_level, 50) }}%">
+                    {{ current_level }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Data from backend
+    const examDates = {{ exam_dates| tojson | safe }};
+    const overallScores = {{ overall_scores| tojson | safe }};
+    const skillData = {{ skill_data| tojson | safe }};
+
+    // Progress Chart
+    new Chart(document.getElementById('progressChart'), {
+        type: 'line',
+        data: {
+            labels: examDates,
+            datasets: [{
+                label: 'Genel Puan',
+                data: overallScores,
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+
+    // Skills Chart
+    new Chart(document.getElementById('skillsChart'), {
+        type: 'line',
+        data: {
+            labels: examDates,
+            datasets: [
+                { label: 'Grammar', data: skillData.grammar, borderColor: '#0d6efd', tension: 0.4 },
+                { label: 'Vocabulary', data: skillData.vocabulary, borderColor: '#198754', tension: 0.4 },
+                { label: 'Reading', data: skillData.reading, borderColor: '#ffc107', tension: 0.4 },
+                { label: 'Listening', data: skillData.listening, borderColor: '#dc3545', tension: 0.4 },
+                { label: 'Speaking', data: skillData.speaking, borderColor: '#6f42c1', tension: 0.4 },
+                { label: 'Writing', data: skillData.writing, borderColor: '#17a2b8', tension: 0.4 }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, max: 100 } }
+        }
+    });
+
+    // Radar Chart
+    const latestSkills = {
+        grammar: skillData.grammar[skillData.grammar.length - 1] || 0,
+        vocabulary: skillData.vocabulary[skillData.vocabulary.length - 1] || 0,
+        reading: skillData.reading[skillData.reading.length - 1] || 0,
+        listening: skillData.listening[skillData.listening.length - 1] || 0,
+        speaking: skillData.speaking[skillData.speaking.length - 1] || 0,
+        writing: skillData.writing[skillData.writing.length - 1] || 0
+    };
+
+    new Chart(document.getElementById('radarChart'), {
+        type: 'radar',
+        data: {
+            labels: ['Grammar', 'Vocabulary', 'Reading', 'Listening', 'Speaking', 'Writing'],
+            datasets: [{
+                label: 'Mevcut',
+                data: Object.values(latestSkills),
+                backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                borderColor: '#667eea',
+                pointBackgroundColor: '#667eea'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
