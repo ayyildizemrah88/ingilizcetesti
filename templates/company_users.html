@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block title %}Şirket Kullanıcıları - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
+                            class="bi bi-people me-2" viewBox="0 0 16 16">
+                            <path
+                                d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8Zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.014.002H7.022ZM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816ZM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0Zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
+                        </svg>
+                        Şirket Kullanıcıları
+                    </h5>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#inviteUserModal">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-person-plus me-1" viewBox="0 0 16 16">
+                            <path
+                                d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H1s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C9.516 10.68 8.289 10 6 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z" />
+                            <path fill-rule="evenodd"
+                                d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5Z" />
+                        </svg>
+                        Kullanıcı Davet Et
+                    </button>
+                </div>
+                <div class="card-body">
+
+                    <!-- Info Alert -->
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        <strong>Çoklu Kullanıcı Desteği:</strong> Şirketiniz için birden fazla admin kullanıcısı
+                        ekleyebilirsiniz.
+                        Her kullanıcıya farklı yetkiler atayabilirsiniz.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+
+                    <!-- Users Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Kullanıcı</th>
+                                    <th>E-posta</th>
+                                    <th>Rol</th>
+                                    <th>Yetkiler</th>
+                                    <th>Son Giriş</th>
+                                    <th>Durum</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for admin in admins %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle me-2"
+                                                style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                                                {{ admin.user.ad_soyad[:1] }}
+                                            </div>
+                                            <div>
+                                                <strong>{{ admin.user.ad_soyad }}</strong>
+                                                {% if admin.role == 'owner' %}
+                                                <span class="badge bg-primary ms-1">Sahip</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ admin.user.email }}</td>
+                                    <td>
+                                        <span
+                                            class="badge {% if admin.role == 'owner' %}bg-primary{% elif admin.role == 'admin' %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {{ admin.role | title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if admin.can_invite_candidates %}
+                                        <span class="badge bg-light text-dark me-1">Davet</span>
+                                        {% endif %}
+                                        {% if admin.can_view_reports %}
+                                        <span class="badge bg-light text-dark me-1">Rapor</span>
+                                        {% endif %}
+                                        {% if admin.can_manage_users %}
+                                        <span class="badge bg-light text-dark me-1">Kullanıcı</span>
+                                        {% endif %}
+                                        {% if admin.can_purchase_credits %}
+                                        <span class="badge bg-light text-dark me-1">Kredi</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if admin.last_login %}
+                                        <small class="text-muted">{{ admin.last_login.strftime('%d.%m.%Y %H:%M')
+                                            }}</small>
+                                        {% else %}
+                                        <small class="text-muted">Henüz giriş yapmadı</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if admin.is_active %}
+                                        <span class="badge bg-success">Aktif</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Pasif</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if admin.role != 'owner' and can_manage_users %}
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary"
+                                                onclick="editPermissions({{ admin.id }})" title="Yetkileri Düzenle">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                                    fill="currentColor" viewBox="0 0 16 16">
+                                                    <path
+                                                        d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z" />
+                                                </svg>
+                                            </button>
+                                            <button class="btn btn-outline-danger" onclick="removeUser({{ admin.id }})"
+                                                title="Kullanıcıyı Kaldır">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                                    fill="currentColor" viewBox="0 0 16 16">
+                                                    <path
+                                                        d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5.5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Zm3 .5a.5.5 0 0 1 .5-.5.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6Z" />
+                                                    <path
+                                                        d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        Henüz kullanıcı eklenmemiş.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pending Invitations -->
+                    {% if invitations %}
+                    <h6 class="mt-4 mb-3">Bekleyen Davetler</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>E-posta</th>
+                                    <th>Rol</th>
+                                    <th>Davet Tarihi</th>
+                                    <th>Geçerlilik</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for inv in invitations %}
+                                <tr>
+                                    <td>{{ inv.email }}</td>
+                                    <td><span class="badge bg-secondary">{{ inv.role }}</span></td>
+                                    <td><small>{{ inv.created_at.strftime('%d.%m.%Y') }}</small></td>
+                                    <td>
+                                        {% if inv.is_expired() %}
+                                        <span class="badge bg-danger">Süresi Doldu</span>
+                                        {% else %}
+                                        <span class="badge bg-warning">Bekliyor</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                            onclick="resendInvite({{ inv.id }})">
+                                            Tekrar Gönder
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                            onclick="cancelInvite({{ inv.id }})">
+                                            İptal
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invite User Modal -->
+<div class="modal fade" id="inviteUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Kullanıcı Davet Et</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="inviteForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="inviteEmail" class="form-label">E-posta Adresi</label>
+                        <input type="email" class="form-control" id="inviteEmail" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="inviteRole" class="form-label">Rol</label>
+                        <select class="form-select" id="inviteRole">
+                            <option value="admin">Admin</option>
+                            <option value="viewer">Görüntüleyici</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Yetkiler</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="permInvite" checked>
+                            <label class="form-check-label" for="permInvite">Aday davet edebilir</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="permReports" checked>
+                            <label class="form-check-label" for="permReports">Raporları görüntüleyebilir</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="permTemplates">
+                            <label class="form-check-label" for="permTemplates">Şablonları yönetebilir</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="permCredits">
+                            <label class="form-check-label" for="permCredits">Kredi satın alabilir</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-send me-1" viewBox="0 0 16 16">
+                            <path
+                                d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576 6.636 10.07Zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z" />
+                        </svg>
+                        Davet Gönder
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-circle {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 14px;
+    }
+</style>
+
+<script>
+    document.getElementById('inviteForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const data = {
+            email: document.getElementById('inviteEmail').value,
+            role: document.getElementById('inviteRole').value,
+            permissions: {
+                can_invite_candidates: document.getElementById('permInvite').checked,
+                can_view_reports: document.getElementById('permReports').checked,
+                can_manage_templates: document.getElementById('permTemplates').checked,
+                can_purchase_credits: document.getElementById('permCredits').checked
+            }
+        };
+
+        fetch('/api/company/invite-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Davet gönderildi!');
+                    location.reload();
+                } else {
+                    alert('Hata: ' + result.error);
+                }
+            });
+    });
+
+    function editPermissions(adminId) {
+        // Open edit modal
+        alert('Yetki düzenleme modalı açılacak - Admin ID: ' + adminId);
+    }
+
+    function removeUser(adminId) {
+        if (confirm('Bu kullanıcıyı şirketten kaldırmak istediğinize emin misiniz?')) {
+            fetch(`/api/company/admin/${adminId}`, {
+                method: 'DELETE'
+            })
+                .then(r => r.json())
+                .then(result => {
+                    if (result.success) {
+                        location.reload();
+                    }
+                });
+        }
+    }
+
+    function resendInvite(invId) {
+        fetch(`/api/company/invite/${invId}/resend`, { method: 'POST' })
+            .then(r => r.json())
+            .then(result => alert(result.message || 'Davet tekrar gönderildi'));
+    }
+
+    function cancelInvite(invId) {
+        if (confirm('Daveti iptal etmek istediğinize emin misiniz?')) {
+            fetch(`/api/company/invite/${invId}`, { method: 'DELETE' })
+                .then(() => location.reload());
+        }
+    }
+</script>
+{% endblock %}
