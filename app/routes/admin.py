@@ -9,6 +9,10 @@ from app.extensions import db
 admin_bp = Blueprint('admin', __name__)
 
 
+# ══════════════════════════════════════════════════════════════
+# DECORATORS
+# ══════════════════════════════════════════════════════════════
+
 def login_required(f):
     """Require admin login"""
     @wraps(f)
@@ -20,17 +24,26 @@ def login_required(f):
     return decorated
 
 
-def check_role(allowed_roles):
-    """Check if user has required role"""
-    def decorator(f):
-        @wraps(f)
-        def decorated(*args, **kwargs):
-            if session.get('rol') not in allowed_roles:
-                flash("Bu işlem için yetkiniz yok.", "danger")
-                return redirect(url_for('admin.dashboard'))
-            return f(*args, **kwargs)
-        return decorated
-    return decorator
+def superadmin_required(f):
+    """Only superadmin can access - for questions, users, settings"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get('rol') != 'superadmin':
+            flash("Bu işlem sadece süper admin tarafından yapılabilir.", "danger")
+            return redirect(url_for('admin.dashboard'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def customer_or_superadmin(f):
+    """Superadmin and customer can access - for candidates, reports"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get('rol') not in ['superadmin', 'customer']:
+            flash("Bu işlem için yetkiniz yok.", "danger")
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return decorated
 
 
 @admin_bp.route('/')
@@ -174,6 +187,7 @@ def aday_detay(id):
 
 @admin_bp.route('/sorular')
 @login_required
+@superadmin_required
 def sorular():
     """
     Question bank management
@@ -202,6 +216,7 @@ def sorular():
 
 @admin_bp.route('/soru/ekle', methods=['GET', 'POST'])
 @login_required
+@superadmin_required
 def soru_ekle():
     """
     Add new question
@@ -236,7 +251,7 @@ def soru_ekle():
 
 @admin_bp.route('/kullanicilar')
 @login_required
-@check_role(['superadmin', 'admin'])
+@superadmin_required
 def kullanicilar():
     """
     User management
@@ -258,6 +273,7 @@ def kullanicilar():
 
 @admin_bp.route('/ayarlar', methods=['GET', 'POST'])
 @login_required
+@superadmin_required
 def ayarlar():
     """
     Company settings
