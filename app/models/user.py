@@ -15,7 +15,7 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     sifre_hash = db.Column(db.String(255), nullable=False)
     ad_soyad = db.Column(db.String(255))
-    rol = db.Column(db.String(50), default='admin')  # superadmin, admin, viewer
+    rol = db.Column(db.String(50), default='customer')  # superadmin, customer
     sirket_id = db.Column(db.Integer, db.ForeignKey('sirketler.id'), index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -23,6 +23,42 @@ class User(db.Model):
     
     # Relationships
     company = db.relationship('Company', backref='users')
+    
+    # ══════════════════════════════════════════════════════════════
+    # ROLE HELPERS
+    # ══════════════════════════════════════════════════════════════
+    
+    def is_superadmin(self):
+        """Check if user is superadmin"""
+        return self.rol == 'superadmin'
+    
+    def is_customer(self):
+        """Check if user is customer"""
+        return self.rol == 'customer'
+    
+    def can_manage_questions(self):
+        """Only superadmin can manage questions"""
+        return self.is_superadmin()
+    
+    def can_manage_users(self):
+        """Only superadmin can manage users"""
+        return self.is_superadmin()
+    
+    def can_manage_templates(self):
+        """Only superadmin can manage exam templates"""
+        return self.is_superadmin()
+    
+    def can_invite_candidates(self):
+        """Superadmin and customer can invite candidates"""
+        return self.rol in ['superadmin', 'customer']
+    
+    def can_view_reports(self):
+        """Superadmin and customer can view reports"""
+        return self.rol in ['superadmin', 'customer']
+    
+    def can_download_reports(self):
+        """Superadmin and customer can download reports"""
+        return self.rol in ['superadmin', 'customer']
     
     def set_password(self, password):
         """Hash and set password"""
