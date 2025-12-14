@@ -6,6 +6,45 @@ from app.celery_app import celery
 import os
 import json
 import base64
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def capture_ai_error(exception, task_type, context=None):
+    """
+    Capture AI evaluation errors to Sentry and log them.
+    
+    Args:
+        exception: The exception that occurred
+        task_type: Type of AI task (speaking_evaluation, writing_evaluation)
+        context: Additional context dictionary
+    """
+    # Log the error
+    logger.error(f"AI Task Error [{task_type}]: {str(exception)}", extra=context or {})
+    
+    # Try to send to Sentry
+    try:
+        import sentry_sdk
+        
+        # Set context
+        if context:
+            sentry_sdk.set_context("ai_task", {
+                "task_type": task_type,
+                **context
+            })
+        
+        # Set tags for filtering
+        sentry_sdk.set_tag("task_type", task_type)
+        sentry_sdk.set_tag("service", "ai_evaluation")
+        
+        # Capture the exception
+        sentry_sdk.capture_exception(exception)
+        
+    except ImportError:
+        pass  # Sentry not installed, just log
+    except Exception as e:
+        logger.warning(f"Sentry capture failed: {e}")
 
 
 @celery.task(bind=True, max_retries=2, default_retry_delay=30)
@@ -46,6 +85,11 @@ def evaluate_speaking(self, recording_id):
         }
         
     except Exception as e:
+        # Capture error in Sentry with context
+        capture_ai_error(e, 'speaking_evaluation', {
+            'recording_id': recording_id,
+            'task_id': self.request.id
+        })
         raise self.retry(exc=e)
 
 
@@ -75,6 +119,11 @@ def evaluate_writing(self, answer_id):
         return {'status': 'completed', 'score': answer.ai_score}
         
     except Exception as e:
+        # Capture error in Sentry
+        capture_ai_error(e, 'writing_evaluation', {
+            'answer_id': answer_id,
+            'task_id': self.request.id
+        })
         raise self.retry(exc=e)
 
 
