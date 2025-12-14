@@ -39,6 +39,9 @@ Pillow>=10.0.0
 # HTTP Requests
 requests>=2.31.0
 
+# Email Service
+sendgrid>=6.10.0
+
 # Error Tracking (optional)
 sentry-sdk[flask]>=1.35.0
 
@@ -50,3 +53,6 @@ gevent>=23.0.0
 pytest>=7.4.0
 pytest-flask>=1.2.0
 coverage>=7.3.0
+
+# Excel Export (for reports)
+openpyxl>=3.1.0
