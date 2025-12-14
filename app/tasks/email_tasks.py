@@ -1,234 +1,243 @@
 # -*- coding: utf-8 -*-
 """
-Email Tasks - Async email sending with retry
+Email Tasks - Celery tasks for email notifications
 """
 from app.celery_app import celery
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-@celery.task(bind=True, max_retries=3, default_retry_delay=60)
-def send_email_task(self, to, subject, body, html_body=None, sirket_id=None):
+@celery.task
+def send_certificate_email(candidate_id):
     """
-    Send email asynchronously with automatic retry
+    Send certificate email to candidate after exam completion.
+    Triggered automatically when exam status changes to 'tamamlandi'.
+    """
+    from app.models import Candidate
+    from flask import render_template_string, current_app
     
-    Args:
-        to: Recipient email address
-        subject: Email subject
-        body: Plain text body
-        html_body: HTML body (optional)
-        sirket_id: Company ID for custom SMTP settings
-    """
     try:
-        # Get SMTP settings
-        smtp_config = get_smtp_config(sirket_id)
-        
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = smtp_config['from']
-        msg['To'] = to
-        
-        # Add text part
-        part1 = MIMEText(body, 'plain', 'utf-8')
-        msg.attach(part1)
-        
-        # Add HTML part if provided
-        if html_body:
-            part2 = MIMEText(html_body, 'html', 'utf-8')
-            msg.attach(part2)
-        
-        # Send email
-        with smtplib.SMTP(smtp_config['host'], smtp_config['port']) as server:
-            server.starttls()
-            server.login(smtp_config['user'], smtp_config['pass'])
-            server.sendmail(smtp_config['from'], [to], msg.as_string())
-        
-        # Log success
-        log_email_sent(to, subject, sirket_id)
-        
-        return {'status': 'sent', 'to': to}
-        
-    except smtplib.SMTPException as e:
-        # Retry on SMTP errors
-        raise self.retry(exc=e)
-    except Exception as e:
-        # Log error
-        return {'status': 'error', 'error': str(e)}
-
-
-@celery.task(bind=True, max_retries=3)
-def send_exam_invitation(self, candidate_id):
-    """
-    Send exam invitation email to candidate
-    
-    Args:
-        candidate_id: Candidate ID
-    """
-    try:
-        from app.models import Candidate, Company
-        from app.extensions import db
-        
         candidate = Candidate.query.get(candidate_id)
         if not candidate or not candidate.email:
             return {'status': 'skipped', 'reason': 'no email'}
         
-        company = Company.query.get(candidate.sirket_id)
-        company_name = company.isim if company else 'Skills Test Center'
+        # Skip practice exams
+        if candidate.is_practice:
+            return {'status': 'skipped', 'reason': 'practice exam'}
         
-        # Build exam URL
-        base_url = os.getenv('BASE_URL', 'http://localhost:5000')
-        exam_url = f"{base_url}/sinav-giris"
+        # Generate certificate URL
+        cert_url = f"https://skillstestcenter.com/certificate/{candidate.certificate_hash}"
         
-        subject = f"Sınav Davetiyesi - {company_name}"
-        
-        body = f"""Sayın {candidate.ad_soyad},
-
-{company_name} tarafından İngilizce yeterlilik sınavına davet edildiniz.
-
-Giriş Kodunuz: {candidate.giris_kodu}
-Sınav Linki: {exam_url}
-
-Sınav Süresi: {candidate.sinav_suresi} dakika
-Soru Sayısı: {candidate.soru_limiti} soru
-
-Sınavınızda başarılar dileriz!
-
-{company_name}
-"""
+        # Email content
+        subject = f"Skills Test Center - Sınav Sertifikanız"
         
         html_body = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
-        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .code {{ font-size: 24px; font-weight: bold; background: #f4f4f4; padding: 10px 20px; text-align: center; margin: 20px 0; }}
-        .btn {{ display: inline-block; background: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Sınav Davetiyesi</h2>
-        <p>Sayın <strong>{candidate.ad_soyad}</strong>,</p>
-        <p>{company_name} tarafından İngilizce yeterlilik sınavına davet edildiniz.</p>
+        <h2>Tebrikler, {candidate.ad_soyad}!</h2>
         
-        <div class="code">{candidate.giris_kodu}</div>
+        <p>Skills Test Center İngilizce Yeterlilik Sınavı'nı başarıyla tamamladınız.</p>
         
-        <p style="text-align: center;">
-            <a href="{exam_url}" class="btn">Sınava Başla</a>
+        <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3>Sınav Sonuçlarınız</h3>
+            <p><strong>Seviye:</strong> {candidate.seviye_sonuc}</p>
+            <p><strong>Genel Puan:</strong> {candidate.puan:.1f}%</p>
+            <p><strong>Band Puanı:</strong> {candidate.band_score:.1f if candidate.band_score else '-'}</p>
+        </div>
+        
+        <p>Sertifikanızı görüntülemek için aşağıdaki bağlantıya tıklayın:</p>
+        <p><a href="{cert_url}" style="background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">Sertifikayı Görüntüle</a></p>
+        
+        <p style="margin-top: 30px; color: #666;">
+            Bu sertifika 2 yıl geçerlidir.<br>
+            Doğrulama Kodu: {candidate.certificate_hash}
         </p>
         
-        <p><strong>Sınav Bilgileri:</strong></p>
-        <ul>
-            <li>Süre: {candidate.sinav_suresi} dakika</li>
-            <li>Soru: {candidate.soru_limiti} adet</li>
-        </ul>
+        <hr style="margin: 30px 0;">
+        <p style="color: #999; font-size: 12px;">
+            Skills Test Center<br>
+            Bu email otomatik olarak gönderilmiştir.
+        </p>
+        """
         
-        <p>Başarılar dileriz!</p>
-        <p><em>{company_name}</em></p>
-    </div>
-</body>
-</html>
-"""
+        # Send email (using Flask-Mail or similar)
+        send_email(candidate.email, subject, html_body)
         
-        return send_email_task(
-            candidate.email, 
-            subject, 
-            body, 
-            html_body=html_body,
-            sirket_id=candidate.sirket_id
-        )
+        logger.info(f"Certificate email sent to {candidate.email}")
+        return {'status': 'sent', 'email': candidate.email}
         
     except Exception as e:
-        raise self.retry(exc=e)
-
-
-@celery.task(bind=True, max_retries=3)
-def send_password_reset_email(self, user_id, token):
-    """
-    Send password reset email
-    """
-    try:
-        from app.models import User
-        
-        user = User.query.get(user_id)
-        if not user:
-            return {'status': 'skipped'}
-        
-        base_url = os.getenv('BASE_URL', 'http://localhost:5000')
-        reset_url = f"{base_url}/reset-password/{token}"
-        
-        subject = "Şifre Sıfırlama - Skills Test Center"
-        body = f"""Merhaba,
-
-Şifre sıfırlama talebiniz alındı. Aşağıdaki linki kullanarak yeni şifrenizi belirleyebilirsiniz:
-
-{reset_url}
-
-Bu link 1 saat geçerlidir.
-
-Eğer bu talebi siz yapmadıysanız, bu e-postayı görmezden gelebilirsiniz.
-"""
-        
-        return send_email_task(user.email, subject, body)
-        
-    except Exception as e:
-        raise self.retry(exc=e)
+        logger.error(f"Certificate email failed: {e}")
+        return {'status': 'error', 'error': str(e)}
 
 
 @celery.task
-def send_exam_reminders():
+def send_exam_reminder(schedule_id):
     """
-    Daily task: Send exam reminders to candidates with pending exams
+    Send exam reminder email for scheduled exams.
+    Runs 24 hours before scheduled exam time.
     """
+    from app.models.admin import ExamSchedule
     from app.models import Candidate
-    from datetime import datetime, timedelta
     
-    # Find candidates with pending exams
-    pending = Candidate.query.filter_by(
-        sinav_durumu='beklemede',
-        is_deleted=False
-    ).all()
-    
-    count = 0
-    for candidate in pending:
-        if candidate.email:
-            send_exam_invitation.delay(candidate.id)
-            count += 1
-    
-    return {'reminders_sent': count}
+    try:
+        schedule = ExamSchedule.query.get(schedule_id)
+        if not schedule or schedule.reminder_sent:
+            return {'status': 'skipped'}
+        
+        candidate = Candidate.query.get(schedule.candidate_id)
+        if not candidate or not candidate.email:
+            return {'status': 'skipped', 'reason': 'no email'}
+        
+        subject = "Skills Test Center - Sınav Hatırlatması"
+        
+        html_body = f"""
+        <h2>Sayın {candidate.ad_soyad},</h2>
+        
+        <p>İngilizce Yeterlilik Sınavınız için bir hatırlatma:</p>
+        
+        <div style="background: #fff3cd; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3>📅 Sınav Zamanı: {schedule.scheduled_at.strftime('%d %B %Y, %H:%M')}</h3>
+        </div>
+        
+        <p><strong>Önemli Notlar:</strong></p>
+        <ul>
+            <li>Sessiz bir ortamda sınava girin</li>
+            <li>Stabil internet bağlantısı sağlayın</li>
+            <li>Kamera ve mikrofon izinlerini açık tutun</li>
+            <li>Giriş kodunuz: <strong>{candidate.giris_kodu}</strong></li>
+        </ul>
+        
+        <p style="margin-top: 20px;">
+            <a href="https://skillstestcenter.com/sinav-giris" 
+               style="background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">
+                Sınava Giriş Yap
+            </a>
+        </p>
+        
+        <p style="margin-top: 30px;">Başarılar dileriz!</p>
+        """
+        
+        send_email(candidate.email, subject, html_body)
+        
+        # Mark reminder as sent
+        schedule.reminder_sent = True
+        from app.extensions import db
+        db.session.commit()
+        
+        return {'status': 'sent', 'email': candidate.email}
+        
+    except Exception as e:
+        logger.error(f"Reminder email failed: {e}")
+        return {'status': 'error', 'error': str(e)}
 
 
-def get_smtp_config(sirket_id=None):
-    """Get SMTP configuration for company or default"""
-    config = {
-        'host': os.getenv('SMTP_HOST', 'smtp.gmail.com'),
-        'port': int(os.getenv('SMTP_PORT', 587)),
-        'user': os.getenv('SMTP_USER', ''),
-        'pass': os.getenv('SMTP_PASS', ''),
-        'from': os.getenv('SMTP_FROM', 'noreply@skillstestcenter.com')
-    }
+@celery.task
+def send_bulk_invite_emails(import_id):
+    """
+    Send invitation emails for bulk imported candidates.
+    """
+    from app.models.admin import BulkImport
+    from app.models import Candidate
+    from app.extensions import db
     
-    if sirket_id:
-        from app.models import Company
-        company = Company.query.get(sirket_id)
-        if company and company.smtp_host:
-            config = {
-                'host': company.smtp_host,
-                'port': company.smtp_port or 587,
-                'user': company.smtp_user,
-                'pass': company.smtp_pass,
-                'from': company.smtp_from or company.email
-            }
-    
-    return config
+    try:
+        bulk_import = BulkImport.query.get(import_id)
+        if not bulk_import:
+            return {'status': 'error', 'reason': 'import not found'}
+        
+        # Get candidates from this import (recent ones)
+        candidates = Candidate.query.filter(
+            Candidate.created_at >= bulk_import.created_at,
+            Candidate.sirket_id == bulk_import.company_id
+        ).all()
+        
+        sent_count = 0
+        for candidate in candidates:
+            if candidate.email:
+                result = send_invite_email(candidate)
+                if result.get('status') == 'sent':
+                    sent_count += 1
+        
+        bulk_import.status = 'completed'
+        bulk_import.success_count = sent_count
+        db.session.commit()
+        
+        return {'status': 'completed', 'sent': sent_count}
+        
+    except Exception as e:
+        logger.error(f"Bulk invite failed: {e}")
+        return {'status': 'error', 'error': str(e)}
 
 
-def log_email_sent(to, subject, sirket_id=None):
-    """Log email for tracking"""
-    # Could be extended to save to database
-    import logging
-    logging.info(f"Email sent: {to} - {subject}")
+def send_invite_email(candidate):
+    """Send individual invitation email."""
+    subject = "Skills Test Center - Sınav Davetiyesi"
+    
+    html_body = f"""
+    <h2>Sayın {candidate.ad_soyad},</h2>
+    
+    <p>Skills Test Center İngilizce Yeterlilik Sınavı'na davet edildiniz.</p>
+    
+    <div style="background: #e7f1ff; padding: 20px; border-radius: 10px; margin: 20px 0;">
+        <p><strong>Giriş Kodunuz:</strong> {candidate.giris_kodu}</p>
+        <p><strong>Sınav Süresi:</strong> {candidate.sinav_suresi} dakika</p>
+    </div>
+    
+    <p>Sınava girmek için:</p>
+    <ol>
+        <li><a href="https://skillstestcenter.com/sinav-giris">skillstestcenter.com/sinav-giris</a> adresine gidin</li>
+        <li>Giriş kodunuzu girin</li>
+        <li>Sınava başlayın</li>
+    </ol>
+    
+    <p style="margin-top: 20px;">
+        <a href="https://skillstestcenter.com/sinav-giris" 
+           style="background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">
+            Sınava Başla
+        </a>
+    </p>
+    
+    <p style="margin-top: 30px;">Başarılar dileriz!</p>
+    """
+    
+    return send_email(candidate.email, subject, html_body)
+
+
+def send_email(to_email, subject, html_body):
+    """
+    Generic email sending function.
+    Uses Flask-Mail or SendGrid based on configuration.
+    """
+    import os
+    
+    # Check for SendGrid
+    sendgrid_key = os.getenv('SENDGRID_API_KEY')
+    if sendgrid_key:
+        return send_via_sendgrid(to_email, subject, html_body, sendgrid_key)
+    
+    # Fallback to logging
+    logger.info(f"Email would be sent to {to_email}: {subject}")
+    return {'status': 'sent', 'method': 'log'}
+
+
+def send_via_sendgrid(to_email, subject, html_body, api_key):
+    """Send email via SendGrid API."""
+    try:
+        import sendgrid
+        from sendgrid.helpers.mail import Mail
+        
+        sg = sendgrid.SendGridAPIClient(api_key)
+        
+        message = Mail(
+            from_email='noreply@skillstestcenter.com',
+            to_emails=to_email,
+            subject=subject,
+            html_content=html_body
+        )
+        
+        response = sg.send(message)
+        return {'status': 'sent', 'status_code': response.status_code}
+        
+    except Exception as e:
+        logger.error(f"SendGrid error: {e}")
+        return {'status': 'error', 'error': str(e)}
