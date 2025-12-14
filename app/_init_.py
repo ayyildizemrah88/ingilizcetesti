@@ -1,0 +1,131 @@
+# -*- coding: utf-8 -*-
+"""
+Flask Application Factory
+"""
+import os
+import logging
+from flask import Flask
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+from config import get_config
+
+
+def create_app(config_class=None):
+    """
+    Application factory pattern for Flask
+    
+    Args:
+        config_class: Configuration class to use (optional)
+    
+    Returns:
+        Flask application instance
+    """
+    app = Flask(__name__, 
+                template_folder='../templates',
+                static_folder='../static')
+    
+    # Load configuration
+    if config_class is None:
+        config_class = get_config()
+    app.config.from_object(config_class)
+    
+    # Proxy fix for deployment behind reverse proxy
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+    
+    # Configure logging
+    configure_logging(app)
+    
+    # Initialize extensions
+    from app.extensions import init_extensions
+    init_extensions(app)
+    
+    # Register blueprints
+    register_blueprints(app)
+    
+    # Register error handlers
+    register_error_handlers(app)
+    
+    # Register context processors
+    register_context_processors(app)
+    
+    # Initialize database
+    with app.app_context():
+        from app.extensions import db
+        db.create_all()
+    
+    return app
+
+
+def configure_logging(app):
+    """Configure application logging"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    app.logger.setLevel(logging.INFO)
+
+
+def register_blueprints(app):
+    """Register all Flask blueprints"""
+    # Import blueprints
+    from app.routes.auth import auth_bp
+    from app.routes.admin import admin_bp
+    from app.routes.exam import exam_bp
+    from app.routes.api import api_bp
+    
+    # Register with URL prefixes
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(exam_bp, url_prefix='/exam')
+    app.register_blueprint(api_bp, url_prefix='/api')
+    
+    # Register international features if available
+    try:
+        from international_features import register_international_features
+        register_international_features(app)
+    except ImportError:
+        app.logger.warning("International features module not available")
+
+
+def register_error_handlers(app):
+    """Register error handlers"""
+    from flask import render_template, jsonify
+    
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return render_template('404.html'), 404
+    
+    @app.errorhandler(500)
+    def internal_error(error):
+        from app.extensions import db
+        db.session.rollback()
+        return render_template('500.html'), 500
+    
+    @app.errorhandler(429)
+    def ratelimit_handler(e):
+        return jsonify({"error": "Rate limit exceeded", "message": str(e.description)}), 429
+
+
+def register_context_processors(app):
+    """Register context processors for templates"""
+    from flask import session
+    
+    @app.context_processor
+    def inject_accessibility():
+        return {
+            'accessibility': session.get('accessibility', {
+                'high_contrast': False,
+                'large_text': False,
+                'reduced_motion': False,
+                'colorblind_mode': None,
+                'dyslexia_friendly': False
+            })
+        }
+    
+    @app.context_processor
+    def inject_user():
+        return {
+            'current_user': session.get('kullanici'),
+            'current_role': session.get('rol'),
+            'current_company': session.get('sirket_id')
+        }
