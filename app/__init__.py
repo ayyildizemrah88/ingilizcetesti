@@ -32,6 +32,9 @@ def create_app(config_class=None):
     # Proxy fix for deployment behind reverse proxy
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
     
+    # Initialize Sentry for error tracking (production)
+    init_sentry(app)
+    
     # Configure logging
     configure_logging(app)
     
@@ -63,6 +66,49 @@ def configure_logging(app):
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     app.logger.setLevel(logging.INFO)
+
+
+def init_sentry(app):
+    """
+    Initialize Sentry SDK for error tracking.
+    Only active if SENTRY_DSN is configured.
+    """
+    import os
+    
+    sentry_dsn = os.getenv('SENTRY_DSN')
+    if not sentry_dsn:
+        app.logger.info("Sentry DSN not configured - error tracking disabled")
+        return
+    
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        from sentry_sdk.integrations.celery import CeleryIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+        
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            integrations=[
+                FlaskIntegration(),
+                CeleryIntegration(),
+                SqlalchemyIntegration(),
+            ],
+            # Performance monitoring
+            traces_sample_rate=0.1,  # 10% of transactions
+            # Send user info
+            send_default_pii=False,
+            # Environment
+            environment=os.getenv('FLASK_ENV', 'development'),
+            # Release version
+            release=os.getenv('APP_VERSION', '2.0.0'),
+        )
+        
+        app.logger.info("✅ Sentry initialized for error tracking")
+        
+    except ImportError:
+        app.logger.warning("sentry-sdk not installed - pip install sentry-sdk[flask]")
+    except Exception as e:
+        app.logger.error(f"Sentry initialization failed: {e}")
 
 
 def register_blueprints(app):
