@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Çok Hızlı Gidiyorsunuz - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0" style="border-radius: 20px;">
+                <div class="card-body text-center p-5">
+                    
+                    <!-- Icon -->
+                    <div class="mb-4">
+                        <div style="width: 120px; height: 120px; margin: 0 auto; background: linear-gradient(135deg, #ffc107, #ff9800); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" fill="white" viewBox="0 0 16 16">
+                                <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022l-.074.997zm2.004.45a7.003 7.003 0 0 0-.985-.299l.219-.976c.383.086.76.2 1.126.342l-.36.933zm1.37.71a7.01 7.01 0 0 0-.439-.27l.493-.87a8.025 8.025 0 0 1 .979.654l-.615.789a6.996 6.996 0 0 0-.418-.302zm1.834 1.79a6.99 6.99 0 0 0-.653-.796l.724-.69c.27.285.52.59.747.91l-.818.576zm.744 1.352a7.08 7.08 0 0 0-.214-.468l.893-.45a7.976 7.976 0 0 1 .45 1.088l-.95.313a7.023 7.023 0 0 0-.179-.483zm.53 2.507a6.991 6.991 0 0 0-.1-1.025l.985-.17c.067.386.106.778.116 1.17l-1 .025zm-.131 1.538c.033-.17.06-.339.081-.51l.993.123a7.957 7.957 0 0 1-.23 1.155l-.964-.267c.046-.165.086-.332.12-.501zm-.952 2.379c.184-.29.346-.594.486-.908l.914.405c-.16.36-.345.706-.555 1.038l-.845-.535zm-.964 1.205c.122-.122.239-.248.35-.378l.758.653a8.073 8.073 0 0 1-.401.432l-.707-.707z"/>
+                                <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0v1z"/>
+                                <path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <!-- Message -->
+                    <h2 class="mb-3" style="color: #2c3e50; font-weight: 600;">
+                        Biraz Yavaşlayın! 🐢
+                    </h2>
+                    
+                    <p class="text-muted mb-4" style="font-size: 1.1rem;">
+                        Çok hızlı işlem yapıyorsunuz. Güvenlik önlemi olarak geçici bir bekleme süresi uygulandı.
+                    </p>
+                    
+                    <!-- Countdown Timer -->
+                    <div class="mb-4">
+                        <div class="d-inline-block px-4 py-3 rounded-3" style="background: #f8f9fa;">
+                            <span class="text-muted">Tekrar deneyebilirsiniz:</span>
+                            <div id="countdown" class="display-4 text-primary fw-bold mt-2">30</div>
+                            <span class="text-muted">saniye</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Tips -->
+                    <div class="alert alert-light border-0" style="background: linear-gradient(135deg, #e3f2fd, #f3e5f5); border-radius: 15px;">
+                        <p class="mb-2"><strong>💡 İpucu:</strong></p>
+                        <ul class="list-unstyled mb-0 text-start ps-3">
+                            <li>• Butonlara çok hızlı basmayın</li>
+                            <li>• Sayfayı sürekli yenilemeyin</li>
+                            <li>• Form gönderimlerinde sabırlı olun</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Action Button -->
+                    <button id="retryBtn" class="btn btn-primary btn-lg px-5 mt-3" disabled onclick="window.history.back()">
+                        <span id="btnText">Lütfen Bekleyin...</span>
+                    </button>
+                    
+                </div>
+            </div>
+            
+            <!-- Support -->
+            <p class="text-center text-muted mt-4">
+                Bu bir hata olduğunu düşünüyorsanız, 
+                <a href="mailto:support@skillstestcenter.com">destek ekibimizle</a> iletişime geçin.
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+    }
+    
+    .card {
+        animation: fadeIn 0.5s ease-out;
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    #countdown {
+        font-size: 3rem;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+</style>
+
+<script>
+    let seconds = 30;
+    const countdownEl = document.getElementById('countdown');
+    const retryBtn = document.getElementById('retryBtn');
+    const btnText = document.getElementById('btnText');
+    
+    const timer = setInterval(() => {
+        seconds--;
+        countdownEl.textContent = seconds;
+        
+        if (seconds <= 0) {
+            clearInterval(timer);
+            retryBtn.disabled = false;
+            btnText.textContent = 'Geri Dön';
+            countdownEl.textContent = '✓';
+        }
+    }, 1000);
+</script>
+{% endblock %}
