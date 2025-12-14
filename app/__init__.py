@@ -112,33 +112,47 @@ def init_sentry(app):
 
 def register_blueprints(app):
     """Register all Flask blueprints"""
-    # Import blueprints
+    # ===========================================
+    # CORE BLUEPRINTS
+    # ===========================================
     from app.routes.auth import auth_bp
     from app.routes.admin import admin_bp
     from app.routes.exam import exam_bp
     from app.routes.api import api_bp
     from app.routes.analytics import analytics_bp
     from app.routes.candidate import candidate_bp
-    
-    # NEW: Import new blueprints
+
+    # ===========================================
+    # NEW FEATURE BLUEPRINTS
+    # ===========================================
     from app.routes.health import health_bp
     from app.routes.admin_ops import admin_ops_bp
     from app.routes.candidate_auth import candidate_auth_bp
+    from app.routes.certificate import certificate_bp
+    from app.routes.question_import import question_import_bp
 
-    # Register with URL prefixes
+    # ===========================================
+    # REGISTER CORE BLUEPRINTS
+    # ===========================================
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(exam_bp, url_prefix='/exam')
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(analytics_bp, url_prefix='/analytics')
     app.register_blueprint(candidate_bp, url_prefix='/candidate')
-    
-    # NEW: Register new blueprints
-    app.register_blueprint(health_bp)  # /health endpoints
-    app.register_blueprint(admin_ops_bp)  # Admin operations
-    app.register_blueprint(candidate_auth_bp)  # TC Kimlik login
 
-    # Register international features if available
+    # ===========================================
+    # REGISTER NEW FEATURE BLUEPRINTS
+    # ===========================================
+    app.register_blueprint(health_bp)           # /health, /health/detailed
+    app.register_blueprint(admin_ops_bp)        # /admin/candidate/<id>/reset-exam
+    app.register_blueprint(candidate_auth_bp)   # /sinav-giris (TC Kimlik login)
+    app.register_blueprint(certificate_bp)      # /certificate/download, /verify/<hash>
+    app.register_blueprint(question_import_bp)  # /admin/sorular/import
+
+    # ===========================================
+    # OPTIONAL: International features
+    # ===========================================
     try:
         from international_features import register_international_features
         register_international_features(app)
@@ -160,7 +174,6 @@ def register_error_handlers(app):
         db.session.rollback()
         return render_template('500.html'), 500
 
-    # NEW: 429 Rate Limit Error Handler with custom template
     @app.errorhandler(429)
     def ratelimit_handler(e):
         return render_template('429.html'), 429
