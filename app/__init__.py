@@ -124,8 +124,22 @@ def register_context_processors(app):
     
     @app.context_processor
     def inject_user():
+        rol = session.get('rol')
+        is_superadmin = (rol == 'superadmin')
+        is_customer = (rol == 'customer')
+        
         return {
             'current_user': session.get('kullanici'),
-            'current_role': session.get('rol'),
-            'current_company': session.get('sirket_id')
+            'current_role': rol,
+            'current_company': session.get('sirket_id'),
+            # Permission flags for menu visibility
+            'is_superadmin': is_superadmin,
+            'is_customer': is_customer,
+            'can_manage_questions': is_superadmin,
+            'can_manage_users': is_superadmin,
+            'can_manage_settings': is_superadmin,
+            'can_manage_templates': is_superadmin,
+            'can_invite_candidates': is_superadmin or is_customer,
+            'can_view_reports': is_superadmin or is_customer,
+            'can_download_reports': is_superadmin or is_customer
         }
