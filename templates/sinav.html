@@ -57,7 +57,7 @@
 
                 <h4 class="mb-4">{{ soru.soru_metni }}</h4>
 
-                <form method="POST" action="/sinav" id="examForm">
+                <form method="POST" action="{{ url_for('exam.sinav_cevap') }}" id="examForm">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="soru_id" value="{{ soru.id }}">
 
