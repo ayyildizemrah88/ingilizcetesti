@@ -18,7 +18,8 @@ class Candidate(db.Model):
     giris_kodu = db.Column(db.String(20), unique=True, index=True)
     
     # Exam settings
-    sinav_suresi = db.Column(db.Integer, default=30)
+    sinav_suresi = db.Column(db.Integer, default=30)  # minutes (total exam)
+    soru_suresi = db.Column(db.Integer, default=60)  # seconds per question (0 = unlimited)
     soru_limiti = db.Column(db.Integer, default=25)
     current_difficulty = db.Column(db.String(10), default='B1')
     
