@@ -47,7 +47,18 @@
                     <span class="badge bg-primary fs-6">Soru {{ soru_no }} / {{ toplam }}</span>
                     <span class="badge bg-secondary ms-2">{{ soru.zorluk if soru.zorluk else 'B1' }}</span>
                 </div>
-                <div class="timer" id="timer">--:--</div>
+                <div class="d-flex align-items-center gap-3">
+                    {% if soru_suresi and soru_suresi > 0 %}
+                    <div class="text-center">
+                        <small class="text-muted d-block">Soru Süresi</small>
+                        <div class="timer text-info" id="questionTimer">--:--</div>
+                    </div>
+                    {% endif %}
+                    <div class="text-center">
+                        <small class="text-muted d-block">Toplam</small>
+                        <div class="timer" id="timer">--:--</div>
+                    </div>
+                </div>
             </div>
 
             <div class="card-body p-4">
@@ -102,12 +113,14 @@
 {% block extra_js %}
 <script>
     let remainingSeconds = {{ kalan_sure }};
+    let questionSeconds = {{ soru_suresi or 0 }};  // Soru başına süre (0 = sınırsız)
     const timerEl = document.getElementById('timer');
+    const questionTimerEl = document.getElementById('questionTimer');
     const OFFLINE_KEY = 'skills_offline_answers';
     let webcamStream = null;
 
     // ══════════════════════════════════════════════════════════════
-    // TIMER
+    // TOTAL EXAM TIMER
     // ══════════════════════════════════════════════════════════════
     function updateTimer() {
         const mins = Math.floor(remainingSeconds / 60);
@@ -127,6 +140,34 @@
 
         remainingSeconds--;
         setTimeout(updateTimer, 1000);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // PER-QUESTION TIMER
+    // ══════════════════════════════════════════════════════════════
+    function updateQuestionTimer() {
+        if (!questionTimerEl || questionSeconds <= 0) return;
+
+        const mins = Math.floor(questionSeconds / 60);
+        const secs = questionSeconds % 60;
+        questionTimerEl.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+        if (questionSeconds <= 10) {
+            questionTimerEl.classList.remove('text-info');
+            questionTimerEl.classList.add('danger');
+        } else if (questionSeconds <= 30) {
+            questionTimerEl.classList.remove('text-info');
+            questionTimerEl.classList.add('warning');
+        }
+
+        if (questionSeconds <= 0) {
+            // Süre doldu - otomatik gönder
+            document.getElementById('examForm').submit();
+            return;
+        }
+
+        questionSeconds--;
+        setTimeout(updateQuestionTimer, 1000);
     }
 
     function selectOption(btn, answer) {
@@ -234,6 +275,7 @@
     // INIT
     // ══════════════════════════════════════════════════════════════
     updateTimer();
+    updateQuestionTimer();  // Soru başına timer
     initWebcam();
     syncOfflineAnswers();
 </script>
