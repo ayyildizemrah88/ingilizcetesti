@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Çalışma Planı - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="text-center mb-5">
+        <h1><i class="bi bi-calendar-check me-2"></i>Kişiselleştirilmiş Çalışma Planı</h1>
+        <p class="lead text-muted">{{ aday.ad_soyad }} için AI tarafından hazırlandı</p>
+    </div>
+
+    <!-- Current Level -->
+    <div class="row mb-4">
+        <div class="col-lg-4">
+            <div class="card border-0 shadow text-center h-100">
+                <div class="card-body">
+                    <div class="display-3 text-primary mb-2">{{ aday.seviye_sonuc or 'B1' }}</div>
+                    <h5>Mevcut Seviye</h5>
+                    <p class="text-muted mb-0">Son sınav: {{ aday.puan|round(1) }}%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow text-center h-100">
+                <div class="card-body">
+                    <div class="display-3 text-success mb-2">{{ target_level }}</div>
+                    <h5>Hedef Seviye</h5>
+                    <p class="text-muted mb-0">Tahmini süre: {{ estimated_weeks }} hafta</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow text-center h-100">
+                <div class="card-body">
+                    <div class="display-3 text-info mb-2">{{ plan.weekly_plan|length }}</div>
+                    <h5>Haftalık Gün</h5>
+                    <p class="text-muted mb-0">Günlük ortalama 30 dk</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Priority Areas -->
+    <div class="card border-0 shadow mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Öncelikli Çalışma Alanları</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                {% for topic in plan.priority_topics %}
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center p-3 bg-light rounded">
+                        <span class="badge bg-danger fs-5 me-3">{{ loop.index }}</span>
+                        <span class="fw-bold text-capitalize">{{ topic }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Plan -->
+    <div class="card border-0 shadow mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Haftalık Program</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Gün</th>
+                            <th>Odak Konusu</th>
+                            <th>Süre</th>
+                            <th>Aktiviteler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day in plan.weekly_plan %}
+                        <tr>
+                            <td><strong>{{ day.day }}</strong></td>
+                            <td>
+                                <span class="badge bg-primary">{{ day.focus }}</span>
+                            </td>
+                            <td>{{ day.duration_minutes }} dk</td>
+                            <td>
+                                {% for activity in day.activities %}
+                                <span class="badge bg-light text-dark me-1">{{ activity }}</span>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resources -->
+    <div class="card border-0 shadow mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-book me-2"></i>Önerilen Kaynaklar</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                {% for resource in plan.recommended_resources %}
+                <div class="col-md-6">
+                    <div class="d-flex align-items-start p-3 border rounded">
+                        <div class="me-3">
+                            {% if resource.type == 'video' %}
+                            <i class="bi bi-play-circle fs-3 text-danger"></i>
+                            {% elif resource.type == 'article' %}
+                            <i class="bi bi-file-text fs-3 text-primary"></i>
+                            {% else %}
+                            <i class="bi bi-question-circle fs-3 text-success"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h6 class="mb-1">{{ resource.title }}</h6>
+                            <small class="text-muted">{{ resource.url }}</small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Goals -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow h-100">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0"><i class="bi bi-trophy me-2"></i>Aylık Hedefler</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for goal in plan.monthly_goals %}
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="bi bi-check-circle text-success me-3"></i>
+                            {{ goal }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Önemli İpuçları</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for tip in plan.tips %}
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="bi bi-star text-warning me-3"></i>
+                            {{ tip }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="text-center">
+        <a href="/exam/analysis/{{ aday.giris_kodu }}" class="btn btn-outline-primary btn-lg me-2">
+            <i class="bi bi-bar-chart me-2"></i>Detaylı Analiz
+        </a>
+        <a href="/sinav-giris" class="btn btn-primary btn-lg">
+            <i class="bi bi-pencil-square me-2"></i>Yeni Sınav
+        </a>
+    </div>
+</div>
+{% endblock %}
