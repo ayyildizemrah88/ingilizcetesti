@@ -4,7 +4,7 @@ Flask Application Factory
 """
 import os
 import logging
-from flask import Flask
+from flask import Flask, render_template
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import get_config
@@ -50,6 +50,9 @@ def create_app(config_class=None):
 
     # Register context processors
     register_context_processors(app)
+
+    # Register CLI commands
+    register_cli_commands(app)
 
     # Initialize database
     with app.app_context():
@@ -116,6 +119,11 @@ def register_blueprints(app):
     from app.routes.api import api_bp
     from app.routes.analytics import analytics_bp
     from app.routes.candidate import candidate_bp
+    
+    # NEW: Import new blueprints
+    from app.routes.health import health_bp
+    from app.routes.admin_ops import admin_ops_bp
+    from app.routes.candidate_auth import candidate_auth_bp
 
     # Register with URL prefixes
     app.register_blueprint(auth_bp)
@@ -124,6 +132,11 @@ def register_blueprints(app):
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(analytics_bp, url_prefix='/analytics')
     app.register_blueprint(candidate_bp, url_prefix='/candidate')
+    
+    # NEW: Register new blueprints
+    app.register_blueprint(health_bp)  # /health endpoints
+    app.register_blueprint(admin_ops_bp)  # Admin operations
+    app.register_blueprint(candidate_auth_bp)  # TC Kimlik login
 
     # Register international features if available
     try:
@@ -147,9 +160,10 @@ def register_error_handlers(app):
         db.session.rollback()
         return render_template('500.html'), 500
 
+    # NEW: 429 Rate Limit Error Handler with custom template
     @app.errorhandler(429)
     def ratelimit_handler(e):
-        return jsonify({"error": "Rate limit exceeded", "message": str(e.description)}), 429
+        return render_template('429.html'), 429
 
 
 def register_context_processors(app):
@@ -188,3 +202,13 @@ def register_context_processors(app):
             'can_view_reports': is_superadmin or is_customer,
             'can_download_reports': is_superadmin or is_customer
         }
+
+
+def register_cli_commands(app):
+    """Register Flask CLI commands"""
+    try:
+        from app.cli import register_commands
+        register_commands(app)
+        app.logger.info("✅ CLI commands registered")
+    except ImportError:
+        app.logger.warning("CLI module not available")
