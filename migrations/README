@@ -1,0 +1,20 @@
+# Migrations Configuration
+# This folder contains database migration files managed by Flask-Migrate (Alembic)
+#
+# USAGE:
+#   Initialize migrations (first time only):
+#     flask db init
+#
+#   Create a new migration:
+#     flask db migrate -m "Add new column"
+#
+#   Apply migrations to database:
+#     flask db upgrade
+#
+#   Rollback last migration:
+#     flask db downgrade
+#
+# IMPORTANT:
+#   - Always commit migration files to version control
+#   - Test migrations on a copy of production data before deploying
+#   - Never edit migrations that have been applied to production
