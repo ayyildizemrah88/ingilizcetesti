@@ -59,6 +59,16 @@ def evaluate_speaking(self, recording_id):
         from app.models import SpeakingRecording, Candidate
         from app.extensions import db
         
+        # AI Rate Limiting
+        try:
+            from app.utils.ai_rate_limiter import ai_limiter
+            allowed, error_msg = ai_limiter.check_limit('speaking_evaluation', str(recording_id))
+            if not allowed:
+                logger.warning(f"AI rate limit exceeded for speaking: {recording_id}")
+                return {'status': 'rate_limited', 'error': 'Too many AI requests. Please wait.'}
+        except ImportError:
+            pass  # Rate limiter not available, continue
+        
         recording = SpeakingRecording.query.get(recording_id)
         if not recording:
             return {'status': 'error', 'reason': 'recording not found'}
@@ -104,6 +114,16 @@ def evaluate_writing(self, answer_id):
     try:
         from app.models.exam import WritingAnswer
         from app.extensions import db
+        
+        # AI Rate Limiting
+        try:
+            from app.utils.ai_rate_limiter import ai_limiter
+            allowed, error_msg = ai_limiter.check_limit('writing_evaluation', str(answer_id))
+            if not allowed:
+                logger.warning(f"AI rate limit exceeded for writing: {answer_id}")
+                return {'status': 'rate_limited', 'error': 'Too many AI requests. Please wait.'}
+        except ImportError:
+            pass  # Rate limiter not available, continue
         
         answer = WritingAnswer.query.get(answer_id)
         if not answer:
