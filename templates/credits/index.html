@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Kredi Yönetimi{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">💳 Kredi Yönetimi</h2>
+            <p class="text-muted mb-0">Sınav kredisi satın alın ve bakiyenizi yönetin</p>
+        </div>
+        <div class="text-end">
+            <p class="mb-0 text-muted">Mevcut Bakiye</p>
+            <h2 class="mb-0 text-primary fw-bold">{{ current_credits }} Kredi</h2>
+        </div>
+    </div>
+
+    <!-- Credit Packages -->
+    <div class="row g-4 mb-5">
+        {% for package_id, package in packages.items() %}
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 {% if package.get('popular') %}border-primary{% endif %}">
+                {% if package.get('popular') %}
+                <div class="card-header bg-primary text-white text-center py-2">
+                    ⭐ En Popüler
+                </div>
+                {% endif %}
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ package.name }}</h5>
+                    <div class="my-4">
+                        <span class="display-4 fw-bold text-primary">{{ package.credits }}</span>
+                        <span class="text-muted">Kredi</span>
+                    </div>
+                    <p class="text-muted">{{ package.description }}</p>
+
+                    {% if package.get('discount') %}
+                    <p class="text-success mb-2">
+                        <i class="fas fa-tag"></i> %{{ package.discount }} İndirim
+                    </p>
+                    {% endif %}
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <p class="mb-1 fw-bold">₺{{ package.price_try }}</p>
+                        <small class="text-muted">${{ package.price_usd }} / €{{ package.price_eur }}</small>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('credits.purchase', package_id=package_id, region='TR') }}"
+                            class="btn {% if package.get('popular') %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                            🇹🇷 TL ile Öde
+                        </a>
+                        <a href="{{ url_for('credits.purchase', package_id=package_id, region='US') }}"
+                            class="btn btn-outline-secondary btn-sm">
+                            🌍 USD/Kart ile Öde
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Transaction History -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">📋 Son İşlemler</h5>
+        </div>
+        <div class="card-body">
+            {% if transactions %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>Açıklama</th>
+                            <th>Miktar</th>
+                            <th>Tür</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in transactions %}
+                        <tr>
+                            <td>{{ t.created_at.strftime('%d.%m.%Y %H:%M') if t.created_at else '-' }}</td>
+                            <td>{{ t.description or '-' }}</td>
+                            <td class="{% if t.amount > 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                {% if t.amount > 0 %}+{% endif %}{{ t.amount }}
+                            </td>
+                            <td>
+                                {% if t.transaction_type == 'purchase' %}
+                                <span class="badge bg-success">Satın Alma</span>
+                                {% elif t.transaction_type == 'usage' %}
+                                <span class="badge bg-secondary">Kullanım</span>
+                                {% elif t.transaction_type == 'refund' %}
+                                <span class="badge bg-warning">İade</span>
+                                {% else %}
+                                <span class="badge bg-info">{{ t.transaction_type }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-receipt fa-3x mb-3"></i>
+                <p>Henüz işlem bulunmuyor.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
