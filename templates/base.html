@@ -82,6 +82,39 @@
     <!-- Skip Link for Screen Readers -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
+    <!-- Top Bar with Language Selector -->
+    <div class="bg-dark text-white py-1">
+        <div class="container d-flex justify-content-end align-items-center">
+            <!-- Language Selector -->
+            <div class="dropdown">
+                <button class="btn btn-link btn-sm text-white text-decoration-none dropdown-toggle p-0" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                    {% if current_language_info %}
+                    {{ current_language_info.flag }} {{ current_language_info.name }}
+                    {% else %}
+                    🇹🇷 Türkçe
+                    {% endif %}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
+                    {% if supported_languages %}
+                    {% for code, lang in supported_languages.items() %}
+                    <li>
+                        <a class="dropdown-item {% if current_language == code %}active{% endif %}"
+                            href="{{ url_for('set_language', lang=code) }}">
+                            {{ lang.flag }} {{ lang.name }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                    {% else %}
+                    <li><a class="dropdown-item" href="/set-language/tr">🇹🇷 Türkçe</a></li>
+                    <li><a class="dropdown-item" href="/set-language/en">🇬🇧 English</a></li>
+                    <li><a class="dropdown-item" href="/set-language/de">🇩🇪 Deutsch</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
     {% block navbar %}{% endblock %}
 
     <main id="main-content" role="main" class="container py-4">
