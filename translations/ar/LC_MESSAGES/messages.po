@@ -1,0 +1,169 @@
+# Skills Test Center - Arabic Translation
+# Language: العربية (ar)
+# Direction: RTL (Right-to-Left)
+
+msgid ""
+msgstr ""
+"Project-Id-Version: Skills Test Center 2.0\n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: Navigation
+msgid "Dashboard"
+msgstr "لوحة التحكم"
+
+msgid "Candidates"
+msgstr "المرشحون"
+
+msgid "Reports"
+msgstr "التقارير"
+
+msgid "Settings"
+msgstr "الإعدادات"
+
+msgid "Logout"
+msgstr "تسجيل الخروج"
+
+#: Login Page
+msgid "Login"
+msgstr "تسجيل الدخول"
+
+msgid "Email"
+msgstr "البريد الإلكتروني"
+
+msgid "Password"
+msgstr "كلمة المرور"
+
+msgid "Forgot Password?"
+msgstr "هل نسيت كلمة المرور؟"
+
+msgid "Login successful!"
+msgstr "تم تسجيل الدخول بنجاح!"
+
+msgid "Invalid email or password."
+msgstr "البريد الإلكتروني أو كلمة المرور غير صحيحة."
+
+#: 2FA
+msgid "Two-Factor Authentication"
+msgstr "المصادقة الثنائية"
+
+msgid "Enter verification code"
+msgstr "أدخل رمز التحقق"
+
+msgid "Enter the 6-digit code from your authenticator app"
+msgstr "أدخل الرمز المكون من 6 أرقام من تطبيق المصادقة"
+
+msgid "Verify"
+msgstr "تحقق"
+
+msgid "Use backup code instead"
+msgstr "استخدم رمز النسخ الاحتياطي بدلاً من ذلك"
+
+msgid "2FA enabled successfully!"
+msgstr "تم تفعيل المصادقة الثنائية بنجاح!"
+
+msgid "2FA disabled successfully!"
+msgstr "تم تعطيل المصادقة الثنائية بنجاح!"
+
+#: Credits
+msgid "Credit Management"
+msgstr "إدارة الرصيد"
+
+msgid "Buy Credits"
+msgstr "شراء رصيد"
+
+msgid "Current Balance"
+msgstr "الرصيد الحالي"
+
+msgid "credits"
+msgstr "رصيد"
+
+msgid "Purchase"
+msgstr "شراء"
+
+msgid "Payment successful!"
+msgstr "تمت عملية الدفع بنجاح!"
+
+#: Exam
+msgid "Start Exam"
+msgstr "بدء الاختبار"
+
+msgid "Time Remaining"
+msgstr "الوقت المتبقي"
+
+msgid "Next Question"
+msgstr "السؤال التالي"
+
+msgid "Previous Question"
+msgstr "السؤال السابق"
+
+msgid "Submit Exam"
+msgstr "تسليم الاختبار"
+
+msgid "Exam completed!"
+msgstr "اكتمل الاختبار!"
+
+#: Results
+msgid "Your Score"
+msgstr "نتيجتك"
+
+msgid "CEFR Level"
+msgstr "مستوى CEFR"
+
+msgid "Download Certificate"
+msgstr "تحميل الشهادة"
+
+msgid "View Detailed Report"
+msgstr "عرض التقرير المفصل"
+
+#: Common
+msgid "Save"
+msgstr "حفظ"
+
+msgid "Cancel"
+msgstr "إلغاء"
+
+msgid "Delete"
+msgstr "حذف"
+
+msgid "Edit"
+msgstr "تعديل"
+
+msgid "Search"
+msgstr "بحث"
+
+msgid "Loading..."
+msgstr "جاري التحميل..."
+
+msgid "Error"
+msgstr "خطأ"
+
+msgid "Success"
+msgstr "نجاح"
+
+msgid "Warning"
+msgstr "تحذير"
+
+msgid "Confirm"
+msgstr "تأكيد"
+
+msgid "Yes"
+msgstr "نعم"
+
+msgid "No"
+msgstr "لا"
+
+#: Errors
+msgid "Page not found"
+msgstr "الصفحة غير موجودة"
+
+msgid "Server error"
+msgstr "خطأ في الخادم"
+
+msgid "Access denied"
+msgstr "تم رفض الوصول"
+
+msgid "Session expired"
+msgstr "انتهت صلاحية الجلسة"
