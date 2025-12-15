@@ -52,9 +52,15 @@ def create_app(config_class=None):
     register_context_processors(app)
     
     # Initialize database
+    # NOTE: In production, use Flask-Migrate: flask db upgrade
+    # db.create_all() is only for development/testing
     with app.app_context():
         from app.extensions import db
-        db.create_all()
+        if app.config.get('TESTING') or os.getenv('FLASK_ENV') == 'development':
+            # Only create tables in development/testing
+            # In production, migrations are handled by: flask db upgrade
+            db.create_all()
+            app.logger.info("Database tables created (development mode)")
     
     return app
 
