@@ -1,0 +1,168 @@
+# Skills Test Center - French Translation
+# Language: Français (fr)
+
+msgid ""
+msgstr ""
+"Project-Id-Version: Skills Test Center 2.0\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: Navigation
+msgid "Dashboard"
+msgstr "Tableau de bord"
+
+msgid "Candidates"
+msgstr "Candidats"
+
+msgid "Reports"
+msgstr "Rapports"
+
+msgid "Settings"
+msgstr "Paramètres"
+
+msgid "Logout"
+msgstr "Déconnexion"
+
+#: Login Page
+msgid "Login"
+msgstr "Connexion"
+
+msgid "Email"
+msgstr "E-mail"
+
+msgid "Password"
+msgstr "Mot de passe"
+
+msgid "Forgot Password?"
+msgstr "Mot de passe oublié?"
+
+msgid "Login successful!"
+msgstr "Connexion réussie!"
+
+msgid "Invalid email or password."
+msgstr "E-mail ou mot de passe invalide."
+
+#: 2FA
+msgid "Two-Factor Authentication"
+msgstr "Authentification à Deux Facteurs"
+
+msgid "Enter verification code"
+msgstr "Entrez le code de vérification"
+
+msgid "Enter the 6-digit code from your authenticator app"
+msgstr "Entrez le code à 6 chiffres de votre application d'authentification"
+
+msgid "Verify"
+msgstr "Vérifier"
+
+msgid "Use backup code instead"
+msgstr "Utiliser le code de secours"
+
+msgid "2FA enabled successfully!"
+msgstr "2FA activé avec succès!"
+
+msgid "2FA disabled successfully!"
+msgstr "2FA désactivé avec succès!"
+
+#: Credits
+msgid "Credit Management"
+msgstr "Gestion des Crédits"
+
+msgid "Buy Credits"
+msgstr "Acheter des Crédits"
+
+msgid "Current Balance"
+msgstr "Solde Actuel"
+
+msgid "credits"
+msgstr "crédits"
+
+msgid "Purchase"
+msgstr "Acheter"
+
+msgid "Payment successful!"
+msgstr "Paiement réussi!"
+
+#: Exam
+msgid "Start Exam"
+msgstr "Commencer l'Examen"
+
+msgid "Time Remaining"
+msgstr "Temps Restant"
+
+msgid "Next Question"
+msgstr "Question Suivante"
+
+msgid "Previous Question"
+msgstr "Question Précédente"
+
+msgid "Submit Exam"
+msgstr "Soumettre l'Examen"
+
+msgid "Exam completed!"
+msgstr "Examen terminé!"
+
+#: Results
+msgid "Your Score"
+msgstr "Votre Score"
+
+msgid "CEFR Level"
+msgstr "Niveau CECRL"
+
+msgid "Download Certificate"
+msgstr "Télécharger le Certificat"
+
+msgid "View Detailed Report"
+msgstr "Voir le Rapport Détaillé"
+
+#: Common
+msgid "Save"
+msgstr "Enregistrer"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "Edit"
+msgstr "Modifier"
+
+msgid "Search"
+msgstr "Rechercher"
+
+msgid "Loading..."
+msgstr "Chargement..."
+
+msgid "Error"
+msgstr "Erreur"
+
+msgid "Success"
+msgstr "Succès"
+
+msgid "Warning"
+msgstr "Avertissement"
+
+msgid "Confirm"
+msgstr "Confirmer"
+
+msgid "Yes"
+msgstr "Oui"
+
+msgid "No"
+msgstr "Non"
+
+#: Errors
+msgid "Page not found"
+msgstr "Page non trouvée"
+
+msgid "Server error"
+msgstr "Erreur du serveur"
+
+msgid "Access denied"
+msgstr "Accès refusé"
+
+msgid "Session expired"
+msgstr "Session expirée"
