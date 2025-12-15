@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Doğrulama Kodu{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <span style="font-size: 50px;">🔐</span>
+                        <h4 class="mt-2">Doğrulama Kodu</h4>
+                        <p class="text-muted">
+                            Doğrulama uygulamanızdaki 6 haneli kodu girin
+                        </p>
+                    </div>
+
+                    <form method="POST">
+                        <div class="mb-4">
+                            <input type="text" name="code" class="form-control form-control-lg text-center"
+                                placeholder="000000" maxlength="8" required autofocus
+                                style="font-size: 2rem; letter-spacing: 8px;" pattern="[A-Za-z0-9]{6,8}"
+                                inputmode="text">
+                            <small class="text-muted d-block text-center mt-2">
+                                6 haneli TOTP kodu veya yedek kod
+                            </small>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                Doğrula
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <a href="{{ url_for('auth.login') }}" class="text-muted">
+                            ← Giriş sayfasına dön
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <small class="text-muted">
+                    Kodunuzu mu kaybettiniz? Yöneticinizle iletişime geçin.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
