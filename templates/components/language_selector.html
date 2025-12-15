@@ -1,0 +1,19 @@
+<!-- Language Selector Component -->
+<!-- Include this in your navbar or footer -->
+
+<div class="dropdown">
+    <button class="btn btn-link text-decoration-none dropdown-toggle" type="button" data-bs-toggle="dropdown"
+        aria-expanded="false">
+        {{ current_language_info.flag }} {{ current_language_info.name }}
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        {% for code, lang in supported_languages.items() %}
+        <li>
+            <a class="dropdown-item {% if current_language == code %}active{% endif %}"
+                href="{{ url_for('set_language', lang=code) }}">
+                {{ lang.flag }} {{ lang.name }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
