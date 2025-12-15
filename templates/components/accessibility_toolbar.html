@@ -1,0 +1,143 @@
+<!-- ══════════════════════════════════════════════════════════════
+     ACCESSIBILITY TOOLBAR COMPONENT
+     Include in base.html: {% include 'components/accessibility_toolbar.html' %}
+     ══════════════════════════════════════════════════════════════ -->
+
+<!-- Skip Link (for screen readers) -->
+<a href="#main-content" class="skip-link">Ana içeriğe atla / Skip to main content</a>
+
+<!-- Screen Reader Announcer -->
+<div id="a11y-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Accessibility Toggle Button (FAB) -->
+<button class="accessibility-toggle" aria-label="Erişilebilirlik ayarları" title="Erişilebilirlik Ayarları (Alt + A)"
+    onclick="document.getElementById('accessibility-toolbar').classList.toggle('d-none')">
+    ♿
+</button>
+
+<!-- Accessibility Toolbar -->
+<div id="accessibility-toolbar" class="accessibility-toolbar d-none">
+
+    <!-- Dark Mode Toggle -->
+    <button data-accessibility-toggle="darkMode" onclick="toggleTheme()" aria-label="Karanlık mod"
+        title="Karanlık Mod (Alt + D)">
+        🌙
+    </button>
+
+    <!-- High Contrast -->
+    <button data-accessibility-toggle="highContrast" onclick="toggleAccessibility('highContrast')"
+        aria-label="Yüksek kontrast" title="Yüksek Kontrast (Alt + H)">
+        ◐
+    </button>
+
+    <!-- Large Text -->
+    <button data-accessibility-toggle="largeText" onclick="toggleAccessibility('largeText')" aria-label="Büyük yazı"
+        title="Büyük Yazı">
+        <span style="font-size: 1.4rem; font-weight: bold;">A</span>
+    </button>
+
+    <!-- Extra Large Text -->
+    <button data-accessibility-toggle="extraLargeText" onclick="toggleAccessibility('extraLargeText')"
+        aria-label="Çok büyük yazı" title="Çok Büyük Yazı">
+        <span style="font-size: 1.6rem; font-weight: bold;">A+</span>
+    </button>
+
+    <!-- Dyslexia Friendly Font -->
+    <button data-accessibility-toggle="dyslexiaFriendly" onclick="toggleAccessibility('dyslexiaFriendly')"
+        aria-label="Disleksi dostu yazı tipi" title="Disleksi Dostu Yazı Tipi">
+        📖
+    </button>
+
+    <!-- Reduced Motion -->
+    <button data-accessibility-toggle="reducedMotion" onclick="toggleAccessibility('reducedMotion')"
+        aria-label="Azaltılmış hareket" title="Azaltılmış Hareket">
+        ⏸️
+    </button>
+
+    <!-- Colorblind Modes Dropdown -->
+    <div class="dropdown">
+        <button class="dropdown-toggle" data-bs-toggle="dropdown" aria-label="Renk körlüğü modları"
+            title="Renk Körlüğü Modları">
+            👁️
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+                <a class="dropdown-item" href="#" onclick="setColorblindMode('protanopia'); return false;">
+                    🔴 Protanopi (Kırmızı Körlüğü)
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="#" onclick="setColorblindMode('deuteranopia'); return false;">
+                    🟢 Deuteranopi (Yeşil Körlüğü)
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="#" onclick="setColorblindMode('tritanopia'); return false;">
+                    🔵 Tritanopi (Mavi Körlüğü)
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="#" onclick="setColorblindMode('achromatopsia'); return false;">
+                    ⚫ Akromatopsi (Tam Renk Körlüğü)
+                </a>
+            </li>
+            <li>
+                <hr class="dropdown-divider">
+            </li>
+            <li>
+                <a class="dropdown-item" href="#" onclick="setColorblindMode(null); return false;">
+                    ❌ Sıfırla
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Reset All -->
+    <button onclick="resetAccessibility()" aria-label="Tüm ayarları sıfırla" title="Tüm Ayarları Sıfırla">
+        🔄
+    </button>
+
+</div>
+
+<!-- Keyboard Shortcuts Help (Hidden, for screen readers) -->
+<div class="sr-only">
+    <h2>Klavye Kısayolları</h2>
+    <ul>
+        <li>Alt + A: Erişilebilirlik araç çubuğunu aç/kapat</li>
+        <li>Alt + D: Karanlık modu aç/kapat</li>
+        <li>Alt + H: Yüksek kontrastı aç/kapat</li>
+        <li>Tab: Sonraki öğeye git</li>
+        <li>Shift + Tab: Önceki öğeye git</li>
+        <li>Enter veya Space: Seçili öğeyi etkinleştir</li>
+        <li>Escape: Açık menüleri kapat</li>
+    </ul>
+</div>
+
+<!-- SVG Filters for Colorblind Simulation (Hidden) -->
+<svg style="display: none;">
+    <defs>
+        <!-- Protanopia Filter -->
+        <filter id="protanopia-filter">
+            <feColorMatrix type="matrix" values="0.567, 0.433, 0,     0, 0
+                        0.558, 0.442, 0,     0, 0
+                        0,     0.242, 0.758, 0, 0
+                        0,     0,     0,     1, 0" />
+        </filter>
+
+        <!-- Deuteranopia Filter -->
+        <filter id="deuteranopia-filter">
+            <feColorMatrix type="matrix" values="0.625, 0.375, 0,   0, 0
+                        0.7,   0.3,   0,   0, 0
+                        0,     0.3,   0.7, 0, 0
+                        0,     0,     0,   1, 0" />
+        </filter>
+
+        <!-- Tritanopia Filter -->
+        <filter id="tritanopia-filter">
+            <feColorMatrix type="matrix" values="0.95, 0.05,  0,     0, 0
+                        0,    0.433, 0.567, 0, 0
+                        0,    0.475, 0.525, 0, 0
+                        0,    0,     0,     1, 0" />
+        </filter>
+    </defs>
+</svg>
