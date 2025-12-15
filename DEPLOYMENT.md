@@ -209,7 +209,7 @@ Group=www-data
 WorkingDirectory=/var/www/skillstestcenter
 Environment="PATH=/var/www/skillstestcenter/venv/bin"
 EnvironmentFile=/var/www/skillstestcenter/.env
-ExecStart=/var/www/skillstestcenter/venv/bin/celery -A celery_worker.celery worker --loglevel=info
+ExecStart=/var/www/skillstestcenter/venv/bin/celery -A app.celery_app:celery worker --loglevel=info
 Restart=always
 RestartSec=5
 
@@ -234,7 +234,7 @@ Group=www-data
 WorkingDirectory=/var/www/skillstestcenter
 Environment="PATH=/var/www/skillstestcenter/venv/bin"
 EnvironmentFile=/var/www/skillstestcenter/.env
-ExecStart=/var/www/skillstestcenter/venv/bin/celery -A celery_worker.celery beat --loglevel=info
+ExecStart=/var/www/skillstestcenter/venv/bin/celery -A app.celery_app:celery beat --loglevel=info
 Restart=always
 RestartSec=5
 
