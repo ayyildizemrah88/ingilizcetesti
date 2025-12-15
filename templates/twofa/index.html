@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}İki Faktörlü Doğrulama{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h2 class="mb-4">🔐 İki Faktörlü Doğrulama (2FA)</h2>
+
+            <div class="card">
+                <div class="card-body">
+                    {% if is_enabled %}
+                    <!-- 2FA is enabled -->
+                    <div class="text-center py-4">
+                        <div class="mb-3">
+                            <span style="font-size: 60px;">✅</span>
+                        </div>
+                        <h4 class="text-success">2FA Etkin</h4>
+                        <p class="text-muted">
+                            Hesabınız iki faktörlü doğrulama ile korunuyor.
+                        </p>
+
+                        <hr class="my-4">
+
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            2FA'yı devre dışı bırakmak güvenliğinizi azaltır.
+                        </div>
+
+                        <form method="POST" action="{{ url_for('twofa.disable') }}"
+                            onsubmit="return confirm('2FA\'yı devre dışı bırakmak istediğinize emin misiniz?')">
+                            <div class="mb-3">
+                                <label class="form-label">Doğrulama Kodu</label>
+                                <input type="text" name="code" class="form-control text-center"
+                                    placeholder="6 haneli kod" maxlength="6" required
+                                    style="max-width: 200px; margin: 0 auto; font-size: 1.5rem; letter-spacing: 5px;">
+                            </div>
+                            <button type="submit" class="btn btn-outline-danger">
+                                2FA'yı Devre Dışı Bırak
+                            </button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <!-- 2FA is disabled -->
+                    <div class="text-center py-4">
+                        <div class="mb-3">
+                            <span style="font-size: 60px;">🔓</span>
+                        </div>
+                        <h4>2FA Etkin Değil</h4>
+                        <p class="text-muted">
+                            Hesabınızı korumak için iki faktörlü doğrulamayı etkinleştirin.
+                        </p>
+
+                        <hr class="my-4">
+
+                        <h5 class="mb-3">2FA Nedir?</h5>
+                        <ul class="text-start list-unstyled">
+                            <li class="mb-2">✅ Şifreniz çalınsa bile hesabınız korunur</li>
+                            <li class="mb-2">✅ Her girişte telefonunuzdaki uygulama ile doğrulama</li>
+                            <li class="mb-2">✅ Google Authenticator, Authy veya benzeri uygulamalar ile çalışır</li>
+                        </ul>
+
+                        <div class="d-grid gap-2 col-6 mx-auto mt-4">
+                            <a href="{{ url_for('twofa.setup') }}" class="btn btn-primary btn-lg">
+                                🛡️ 2FA'yı Etkinleştir
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <a href="{{ url_for('admin.ayarlar') }}" class="btn btn-link">
+                    ← Ayarlara Dön
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
