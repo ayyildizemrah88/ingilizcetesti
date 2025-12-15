@@ -80,7 +80,9 @@ class IyzicoPayment(PaymentProvider):
         buyer_id: str,
         callback_url: str,
         currency: str = 'TRY',
-        credit_package: str = 'standard'
+        credit_package: str = 'standard',
+        buyer_ip: str = None,
+        buyer_identity_no: str = None
     ) -> Dict:
         """
         Create Iyzico checkout form for credit purchase.
@@ -114,11 +116,11 @@ class IyzicoPayment(PaymentProvider):
                 'name': buyer_name.split()[0] if ' ' in buyer_name else buyer_name,
                 'surname': buyer_name.split()[-1] if ' ' in buyer_name else buyer_name,
                 'email': buyer_email,
-                'identityNumber': '11111111111',  # Required by Iyzico
+                'identityNumber': buyer_identity_no or '11111111111',  # Real TC if provided, else placeholder
                 'registrationAddress': 'Turkey',
                 'city': 'Istanbul',
                 'country': 'Turkey',
-                'ip': '127.0.0.1'
+                'ip': buyer_ip or '127.0.0.1'  # Real IP from request.remote_addr
             },
             'shippingAddress': {
                 'contactName': buyer_name,
