@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}2FA Etkinleştirildi{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="card border-success">
+                <div class="card-body py-5">
+                    <div class="mb-4">
+                        <span style="font-size: 80px;">🛡️</span>
+                    </div>
+                    <h2 class="text-success mb-3">2FA Etkinleştirildi!</h2>
+                    <p class="lead text-muted">
+                        Hesabınız artık iki faktörlü doğrulama ile korunuyor.
+                    </p>
+
+                    {% if backup_codes and backup_codes[0] %}
+                    <div class="alert alert-warning text-start mt-4">
+                        <h6><i class="fas fa-key"></i> Yedek Kodlarınız</h6>
+                        <p class="mb-2 small">Bu kodları güvenli bir yere kaydedin:</p>
+                        <div class="row g-1">
+                            {% for code in backup_codes %}
+                            {% if code %}
+                            <div class="col-6">
+                                <code class="small">{{ code }}</code>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid gap-2 col-8 mx-auto mt-4">
+                        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary btn-lg">
+                            Dashboard'a Git
+                        </a>
+                        <a href="{{ url_for('twofa.index') }}" class="btn btn-outline-secondary">
+                            2FA Ayarları
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
