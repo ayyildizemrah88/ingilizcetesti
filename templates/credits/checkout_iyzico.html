@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Ödeme - Iyzico{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">💳 Ödeme</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Order Summary -->
+                    <div class="alert alert-light mb-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ package.name }}</strong>
+                                <p class="text-muted mb-0">{{ package.credits }} Kredi</p>
+                            </div>
+                            <div class="text-end">
+                                <strong class="fs-4">{{ currency }} {{ "%.2f"|format(price) }}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Iyzico Checkout Form -->
+                    <div id="iyzipay-checkout-form" class="responsive">
+                        {{ checkout_form|safe }}
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <a href="{{ url_for('credits.index') }}" class="btn btn-outline-secondary">
+                            ← Geri Dön
+                        </a>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <small class="text-muted">
+                            🔒 Ödemeniz iyzico güvencesi ile korunmaktadır.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
