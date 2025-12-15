@@ -1,163 +1,282 @@
-/**
- * ══════════════════════════════════════════════════════════════
- * ACCESSIBILITY CSS - WCAG 2.1 Compliance
- * ══════════════════════════════════════════════════════════════
- */
-
 /* ══════════════════════════════════════════════════════════════
-   FOCUS STATES - Visible focus indicators for keyboard navigation
+   SKILLS TEST CENTER - ACCESSIBILITY & DARK MODE CSS
+   WCAG 2.1 AA Compliant
    ══════════════════════════════════════════════════════════════ */
 
-:focus-visible {
-    outline: 3px solid #005fcc;
-    outline-offset: 2px;
+/* ═══════════════════════════════════════════════════════════════
+   1. CSS CUSTOM PROPERTIES (Variables)
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+    /* Light Mode Colors */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e9ecef;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --text-muted: #adb5bd;
+    --border-color: #dee2e6;
+    --link-color: #0d6efd;
+    --link-hover: #0a58ca;
+    --success-color: #198754;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #0dcaf0;
+
+    /* Accessibility */
+    --focus-ring: 0 0 0 3px rgba(13, 110, 253, 0.5);
+    --font-size-base: 16px;
+    --line-height-base: 1.6;
 }
 
-/* Extra visible focus for form elements */
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-button:focus-visible {
-    outline: 3px solid #005fcc;
-    outline-offset: 2px;
-    box-shadow: 0 0 0 4px rgba(0, 95, 204, 0.3);
+/* ═══════════════════════════════════════════════════════════════
+   2. DARK MODE
+   ═══════════════════════════════════════════════════════════════ */
+
+[data-theme="dark"],
+.dark-mode {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --bg-tertiary: #0f3460;
+    --text-primary: #e4e4e4;
+    --text-secondary: #b8b8b8;
+    --text-muted: #6c757d;
+    --border-color: #2d3748;
+    --link-color: #60a5fa;
+    --link-hover: #93c5fd;
 }
 
-/* Skip links for screen readers */
-.skip-link {
-    position: absolute;
-    top: -40px;
-    left: 0;
-    background: #000;
-    color: #fff;
-    padding: 8px 16px;
-    z-index: 10000;
-    text-decoration: none;
-    font-weight: bold;
+[data-theme="dark"] body,
+.dark-mode body {
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    color: var(--text-primary);
 }
 
-.skip-link:focus {
-    top: 0;
+[data-theme="dark"] .card,
+.dark-mode .card {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SCREEN READER ONLY - Visually hidden but available to SR
-   ══════════════════════════════════════════════════════════════ */
-
-.sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+[data-theme="dark"] .navbar,
+.dark-mode .navbar {
+    background: var(--bg-secondary) !important;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.sr-only-focusable:focus,
-.sr-only-focusable:active {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip: auto;
-    white-space: normal;
+[data-theme="dark"] .form-control,
+.dark-mode .form-control {
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   HIGH CONTRAST MODE
-   ══════════════════════════════════════════════════════════════ */
+[data-theme="dark"] .form-control:focus,
+.dark-mode .form-control:focus {
+    background: var(--bg-tertiary);
+    border-color: var(--link-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .table,
+.dark-mode .table {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .table thead th,
+.dark-mode .table thead th {
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .table tbody td,
+.dark-mode .table tbody td {
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .dropdown-menu,
+.dark-mode .dropdown-menu {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .dropdown-item,
+.dark-mode .dropdown-item {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .dropdown-item:hover,
+.dark-mode .dropdown-item:hover {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .modal-content,
+.dark-mode .modal-content {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .alert,
+.dark-mode .alert {
+    border-color: var(--border-color);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3. HIGH CONTRAST MODE
+   ═══════════════════════════════════════════════════════════════ */
 
 .high-contrast {
-    --bg-primary: #000;
+    --bg-primary: #000000;
     --bg-secondary: #1a1a1a;
-    --text-primary: #fff;
-    --text-secondary: #e0e0e0;
-    --accent: #ffff00;
-    --border: #fff;
-    --success: #00ff00;
-    --warning: #ffff00;
-    --danger: #ff0000;
+    --text-primary: #ffffff;
+    --text-secondary: #ffff00;
+    --link-color: #00ffff;
+    --border-color: #ffffff;
 }
 
 .high-contrast body {
-    background-color: var(--bg-primary) !important;
-    color: var(--text-primary) !important;
+    background: #000000 !important;
+    color: #ffffff !important;
 }
 
 .high-contrast .card,
-.high-contrast .modal-content,
-.high-contrast .dropdown-menu {
-    background-color: var(--bg-secondary) !important;
-    border: 2px solid var(--border) !important;
-    color: var(--text-primary) !important;
+.high-contrast .modal-content {
+    background: #000000 !important;
+    border: 2px solid #ffffff !important;
 }
 
 .high-contrast a {
-    color: var(--accent) !important;
+    color: #00ffff !important;
     text-decoration: underline !important;
 }
 
 .high-contrast .btn {
-    border: 2px solid var(--border) !important;
+    border: 2px solid #ffffff !important;
 }
 
 .high-contrast .btn-primary {
-    background-color: var(--accent) !important;
-    color: #000 !important;
+    background: #0000ff !important;
+    color: #ffffff !important;
 }
 
-.high-contrast input,
-.high-contrast select,
-.high-contrast textarea {
-    background-color: var(--bg-secondary) !important;
-    color: var(--text-primary) !important;
-    border: 2px solid var(--border) !important;
+.high-contrast .form-control {
+    background: #000000 !important;
+    border: 2px solid #ffffff !important;
+    color: #ffffff !important;
+}
+
+.high-contrast .form-control::placeholder {
+    color: #aaaaaa !important;
 }
 
 .high-contrast .table {
-    color: var(--text-primary) !important;
+    border: 2px solid #ffffff !important;
 }
 
-.high-contrast .table td,
-.high-contrast .table th {
-    border-color: var(--border) !important;
+.high-contrast .table th,
+.high-contrast .table td {
+    border: 1px solid #ffffff !important;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   LARGE TEXT MODE
-   ══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   4. LARGE TEXT MODE
+   ═══════════════════════════════════════════════════════════════ */
 
 .large-text {
-    font-size: 120% !important;
+    --font-size-base: 20px;
 }
 
-.large-text h1 { font-size: 2.5rem !important; }
-.large-text h2 { font-size: 2rem !important; }
-.large-text h3 { font-size: 1.75rem !important; }
-.large-text h4 { font-size: 1.5rem !important; }
-.large-text p, .large-text li, .large-text td, .large-text th { 
-    font-size: 1.25rem !important; 
-    line-height: 1.6 !important;
+.large-text body {
+    font-size: 20px !important;
 }
-.large-text .btn { 
-    font-size: 1.25rem !important; 
+
+.large-text h1 {
+    font-size: 2.5rem !important;
+}
+
+.large-text h2 {
+    font-size: 2.2rem !important;
+}
+
+.large-text h3 {
+    font-size: 1.9rem !important;
+}
+
+.large-text h4 {
+    font-size: 1.6rem !important;
+}
+
+.large-text h5 {
+    font-size: 1.4rem !important;
+}
+
+.large-text h6 {
+    font-size: 1.2rem !important;
+}
+
+.large-text .btn {
+    font-size: 1.2rem !important;
     padding: 0.75rem 1.5rem !important;
 }
-.large-text input,
-.large-text select,
-.large-text textarea {
-    font-size: 1.25rem !important;
-    padding: 0.75rem !important;
+
+.large-text .form-control {
+    font-size: 1.2rem !important;
+    padding: 0.75rem 1rem !important;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   REDUCED MOTION - Respect user preference
-   ══════════════════════════════════════════════════════════════ */
+.large-text .nav-link {
+    font-size: 1.1rem !important;
+}
+
+/* Extra Large Text */
+.extra-large-text body {
+    font-size: 24px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   5. DYSLEXIA-FRIENDLY MODE
+   ═══════════════════════════════════════════════════════════════ */
+
+@font-face {
+    font-family: 'OpenDyslexic';
+    src: url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Regular.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+.dyslexia-friendly {
+    font-family: 'OpenDyslexic', Arial, sans-serif !important;
+    letter-spacing: 0.1em;
+    word-spacing: 0.2em;
+    line-height: 1.8;
+}
+
+.dyslexia-friendly * {
+    font-family: inherit !important;
+}
+
+.dyslexia-friendly p,
+.dyslexia-friendly li,
+.dyslexia-friendly td {
+    max-width: 70ch;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   6. REDUCED MOTION
+   ═══════════════════════════════════════════════════════════════ */
+
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
 
 @media (prefers-reduced-motion: reduce) {
+
     *,
     *::before,
     *::after {
@@ -168,240 +287,241 @@ button:focus-visible {
     }
 }
 
-/* Manual reduced motion class */
-.reduced-motion *,
-.reduced-motion *::before,
-.reduced-motion *::after {
-    animation: none !important;
-    transition: none !important;
-}
+/* ═══════════════════════════════════════════════════════════════
+   7. COLORBLIND MODES
+   ═══════════════════════════════════════════════════════════════ */
 
-/* ══════════════════════════════════════════════════════════════
-   COLOR BLINDNESS ACCOMMODATIONS
-   ══════════════════════════════════════════════════════════════ */
-
-/* Deuteranopia (Green-blind) friendly */
-.colorblind-deuteranopia {
-    --success: #009e73;
-    --warning: #f0e442;
-    --danger: #d55e00;
-    --info: #0072b2;
-}
-
-/* Protanopia (Red-blind) friendly */
+/* Protanopia (Red-Blind) */
 .colorblind-protanopia {
-    --success: #009e73;
-    --warning: #f0e442;
-    --danger: #cc79a7;
-    --info: #56b4e9;
+    filter: url('#protanopia-filter');
 }
 
-/* Tritanopia (Blue-blind) friendly */
+/* Deuteranopia (Green-Blind) */
+.colorblind-deuteranopia {
+    filter: url('#deuteranopia-filter');
+}
+
+/* Tritanopia (Blue-Blind) */
 .colorblind-tritanopia {
-    --success: #009e73;
-    --warning: #e69f00;
-    --danger: #d55e00;
-    --info: #cc79a7;
+    filter: url('#tritanopia-filter');
 }
 
-/* Apply colorblind-safe colors */
-[class*="colorblind-"] .text-success,
-[class*="colorblind-"] .bg-success { 
-    color: var(--success) !important; 
-}
-[class*="colorblind-"] .text-warning,
-[class*="colorblind-"] .bg-warning { 
-    color: var(--warning) !important; 
-}
-[class*="colorblind-"] .text-danger,
-[class*="colorblind-"] .bg-danger { 
-    color: var(--danger) !important; 
-}
-[class*="colorblind-"] .text-info,
-[class*="colorblind-"] .bg-info { 
-    color: var(--info) !important; 
+/* Achromatopsia (Total Color Blindness) */
+.colorblind-achromatopsia {
+    filter: grayscale(100%);
 }
 
-/* Add patterns in addition to colors */
-[class*="colorblind-"] .status-success::before {
-    content: "✓ ";
-}
-[class*="colorblind-"] .status-warning::before {
-    content: "⚠ ";
-}
-[class*="colorblind-"] .status-danger::before {
-    content: "✗ ";
-}
+/* ═══════════════════════════════════════════════════════════════
+   8. FOCUS INDICATORS (Keyboard Navigation)
+   ═══════════════════════════════════════════════════════════════ */
 
-/* ══════════════════════════════════════════════════════════════
-   ENHANCED LINK VISIBILITY
-   ══════════════════════════════════════════════════════════════ */
-
-/* Ensure links are distinguishable */
-a:not(.btn):not(.nav-link) {
-    text-decoration: underline;
-    text-underline-offset: 2px;
+/* Enhanced focus for keyboard users */
+*:focus {
+    outline: 3px solid var(--link-color) !important;
+    outline-offset: 2px !important;
 }
 
-a:not(.btn):not(.nav-link):hover {
-    text-decoration-thickness: 2px;
+/* Remove outline for mouse users */
+*:focus:not(:focus-visible) {
+    outline: none !important;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   FORM ACCESSIBILITY
-   ══════════════════════════════════════════════════════════════ */
-
-/* Required field indicator */
-.required-field::after {
-    content: " *";
-    color: #dc3545;
-    font-weight: bold;
+/* Keep outline for keyboard users */
+*:focus-visible {
+    outline: 3px solid var(--link-color) !important;
+    outline-offset: 2px !important;
 }
 
-/* Error messages */
-.form-error {
-    color: #dc3545;
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+/* Skip link for screen readers */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--link-color);
+    color: white;
+    padding: 8px 16px;
+    z-index: 10000;
+    text-decoration: none;
 }
 
-.form-error::before {
-    content: "⚠";
+.skip-link:focus {
+    top: 0;
 }
 
-/* Invalid state */
-.is-invalid {
-    border-color: #dc3545 !important;
-    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25) !important;
+/* ═══════════════════════════════════════════════════════════════
+   9. SCREEN READER ONLY
+   ═══════════════════════════════════════════════════════════════ */
+
+.sr-only,
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
 }
 
-/* Valid state */
-.is-valid {
-    border-color: #198754 !important;
+.sr-only-focusable:focus,
+.sr-only-focusable:active {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    clip: auto !important;
+    white-space: normal !important;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   ACCESSIBILITY TOOLBAR
-   ══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   10. ACCESSIBILITY TOOLBAR
+   ═══════════════════════════════════════════════════════════════ */
 
 .accessibility-toolbar {
     position: fixed;
-    bottom: 20px;
+    bottom: 80px;
     right: 20px;
-    z-index: 9999;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
     padding: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     display: flex;
+    flex-direction: column;
     gap: 8px;
-    flex-wrap: wrap;
-    max-width: 300px;
+    z-index: 9999;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 .accessibility-toolbar button {
-    width: 40px;
-    height: 40px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: #fff;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
-    transition: background-color 0.2s;
+    font-size: 1.2rem;
+    transition: all 0.2s ease;
 }
 
 .accessibility-toolbar button:hover {
-    background: #f0f0f0;
-}
-
-.accessibility-toolbar button.active {
-    background: #0d6efd;
-    color: #fff;
-    border-color: #0d6efd;
+    background: var(--link-color);
+    color: white;
 }
 
 .accessibility-toolbar button[aria-pressed="true"] {
-    background: #0d6efd;
-    color: #fff;
+    background: var(--link-color);
+    color: white;
 }
 
-/* Hide toolbar button for minimal UI */
 .accessibility-toggle {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    z-index: 9998;
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: #0d6efd;
-    color: #fff;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
     border: none;
     cursor: pointer;
-    font-size: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    font-size: 1.5rem;
+    z-index: 9999;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    transition: transform 0.2s ease;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   READING MODE
-   ══════════════════════════════════════════════════════════════ */
-
-.reading-mode {
-    max-width: 800px;
-    margin: 0 auto;
-    font-family: Georgia, 'Times New Roman', serif;
-    line-height: 1.8;
+.accessibility-toggle:hover {
+    transform: scale(1.1);
 }
 
-.reading-mode h1, 
-.reading-mode h2, 
-.reading-mode h3 {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+/* ═══════════════════════════════════════════════════════════════
+   11. THEME TOGGLE
+   ═══════════════════════════════════════════════════════════════ */
+
+.theme-toggle {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    transition: all 0.2s ease;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   DYSLEXIA-FRIENDLY MODE
-   ══════════════════════════════════════════════════════════════ */
-
-.dyslexia-friendly {
-    font-family: 'OpenDyslexic', 'Comic Sans MS', sans-serif;
-    letter-spacing: 0.05em;
-    word-spacing: 0.1em;
-    line-height: 1.8;
+.theme-toggle:hover {
+    background: var(--bg-tertiary);
 }
 
-.dyslexia-friendly p,
-.dyslexia-friendly li {
-    text-align: left !important;
+.theme-toggle .icon-sun {
+    display: none;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   PRINT ACCESSIBILITY
-   ══════════════════════════════════════════════════════════════ */
+.theme-toggle .icon-moon {
+    display: inline;
+}
+
+[data-theme="dark"] .theme-toggle .icon-sun {
+    display: inline;
+}
+
+[data-theme="dark"] .theme-toggle .icon-moon {
+    display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   12. PRINT STYLES
+   ═══════════════════════════════════════════════════════════════ */
 
 @media print {
+
     .accessibility-toolbar,
     .accessibility-toggle,
-    .skip-link {
+    .theme-toggle,
+    .no-print {
         display: none !important;
     }
-    
-    a[href]::after {
-        content: " (" attr(href) ")";
-        font-size: 0.8em;
+
+    body {
+        background: white !important;
+        color: black !important;
     }
-    
-    abbr[title]::after {
-        content: " (" attr(title) ")";
+
+    a {
+        color: black !important;
+        text-decoration: underline !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   13. SYSTEM PREFERENCE DETECTION
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg-primary: #1a1a2e;
+        --bg-secondary: #16213e;
+        --bg-tertiary: #0f3460;
+        --text-primary: #e4e4e4;
+        --text-secondary: #b8b8b8;
+        --border-color: #2d3748;
+        --link-color: #60a5fa;
+    }
+}
+
+@media (prefers-contrast: high) {
+    :root {
+        --bg-primary: #000000;
+        --text-primary: #ffffff;
+        --border-color: #ffffff;
     }
 }
