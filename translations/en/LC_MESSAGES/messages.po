@@ -1,0 +1,171 @@
+# Skills Test Center - English Translation
+# Language: English (en)
+# Translator: Auto-generated
+
+msgid ""
+msgstr ""
+"Project-Id-Version: Skills Test Center 2.0\n"
+"POT-Creation-Date: 2024-12-15 00:00+0000\n"
+"PO-Revision-Date: 2024-12-15 00:00+0000\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: Navigation
+msgid "Dashboard"
+msgstr "Dashboard"
+
+msgid "Candidates"
+msgstr "Candidates"
+
+msgid "Reports"
+msgstr "Reports"
+
+msgid "Settings"
+msgstr "Settings"
+
+msgid "Logout"
+msgstr "Logout"
+
+#: Login Page
+msgid "Login"
+msgstr "Login"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "Password"
+msgstr "Password"
+
+msgid "Forgot Password?"
+msgstr "Forgot Password?"
+
+msgid "Login successful!"
+msgstr "Login successful!"
+
+msgid "Invalid email or password."
+msgstr "Invalid email or password."
+
+#: 2FA
+msgid "Two-Factor Authentication"
+msgstr "Two-Factor Authentication"
+
+msgid "Enter verification code"
+msgstr "Enter verification code"
+
+msgid "Enter the 6-digit code from your authenticator app"
+msgstr "Enter the 6-digit code from your authenticator app"
+
+msgid "Verify"
+msgstr "Verify"
+
+msgid "Use backup code instead"
+msgstr "Use backup code instead"
+
+msgid "2FA enabled successfully!"
+msgstr "2FA enabled successfully!"
+
+msgid "2FA disabled successfully!"
+msgstr "2FA disabled successfully!"
+
+#: Credits
+msgid "Credit Management"
+msgstr "Credit Management"
+
+msgid "Buy Credits"
+msgstr "Buy Credits"
+
+msgid "Current Balance"
+msgstr "Current Balance"
+
+msgid "credits"
+msgstr "credits"
+
+msgid "Purchase"
+msgstr "Purchase"
+
+msgid "Payment successful!"
+msgstr "Payment successful!"
+
+#: Exam
+msgid "Start Exam"
+msgstr "Start Exam"
+
+msgid "Time Remaining"
+msgstr "Time Remaining"
+
+msgid "Next Question"
+msgstr "Next Question"
+
+msgid "Previous Question"
+msgstr "Previous Question"
+
+msgid "Submit Exam"
+msgstr "Submit Exam"
+
+msgid "Exam completed!"
+msgstr "Exam completed!"
+
+#: Results
+msgid "Your Score"
+msgstr "Your Score"
+
+msgid "CEFR Level"
+msgstr "CEFR Level"
+
+msgid "Download Certificate"
+msgstr "Download Certificate"
+
+msgid "View Detailed Report"
+msgstr "View Detailed Report"
+
+#: Common
+msgid "Save"
+msgstr "Save"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "Edit"
+msgstr "Edit"
+
+msgid "Search"
+msgstr "Search"
+
+msgid "Loading..."
+msgstr "Loading..."
+
+msgid "Error"
+msgstr "Error"
+
+msgid "Success"
+msgstr "Success"
+
+msgid "Warning"
+msgstr "Warning"
+
+msgid "Confirm"
+msgstr "Confirm"
+
+msgid "Yes"
+msgstr "Yes"
+
+msgid "No"
+msgstr "No"
+
+#: Errors
+msgid "Page not found"
+msgstr "Page not found"
+
+msgid "Server error"
+msgstr "Server error"
+
+msgid "Access denied"
+msgstr "Access denied"
+
+msgid "Session expired"
+msgstr "Session expired"
