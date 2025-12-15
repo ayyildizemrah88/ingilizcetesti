@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}2FA Kurulumu{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h2 class="mb-4">🛡️ 2FA Kurulumu</h2>
+
+            <div class="card">
+                <div class="card-body">
+                    <!-- Step 1: Download App -->
+                    <div class="mb-4 pb-4 border-bottom">
+                        <h5><span class="badge bg-primary me-2">1</span> Uygulama İndirin</h5>
+                        <p class="text-muted mb-2">
+                            Aşağıdaki uygulamalardan birini telefonunuza indirin:
+                        </p>
+                        <div class="d-flex gap-3 flex-wrap">
+                            <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2"
+                                target="_blank" class="btn btn-outline-secondary btn-sm">
+                                📱 Google Authenticator
+                            </a>
+                            <a href="https://authy.com/download/" target="_blank"
+                                class="btn btn-outline-secondary btn-sm">
+                                📱 Authy
+                            </a>
+                            <a href="https://www.microsoft.com/en-us/security/mobile-authenticator-app" target="_blank"
+                                class="btn btn-outline-secondary btn-sm">
+                                📱 Microsoft Authenticator
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Scan QR Code -->
+                    <div class="mb-4 pb-4 border-bottom">
+                        <h5><span class="badge bg-primary me-2">2</span> QR Kodu Tarayın</h5>
+                        <p class="text-muted">
+                            Uygulamayı açın ve aşağıdaki QR kodu tarayın:
+                        </p>
+
+                        <div class="text-center my-4">
+                            <img src="{{ url_for('twofa.qr_code') }}" alt="QR Code"
+                                style="width: 200px; height: 200px; border: 4px solid #333; border-radius: 8px;">
+                        </div>
+
+                        <div class="alert alert-secondary">
+                            <strong>Manuel Giriş Kodu:</strong>
+                            <code class="user-select-all"
+                                style="font-size: 1.1rem; letter-spacing: 2px;">{{ secret }}</code>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Save Backup Codes -->
+                    <div class="mb-4 pb-4 border-bottom">
+                        <h5><span class="badge bg-primary me-2">3</span> Yedek Kodları Kaydedin</h5>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>ÖNEMLİ:</strong> Bu kodları güvenli bir yere kaydedin!
+                            Telefonunuzu kaybederseniz bu kodlarla giriş yapabilirsiniz.
+                        </div>
+
+                        <div class="row g-2">
+                            {% for code in backup_codes %}
+                            <div class="col-6 col-md-3">
+                                <code class="d-block text-center p-2 bg-light rounded user-select-all">{{ code }}</code>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mt-3 text-center">
+                            <button onclick="copyBackupCodes()" class="btn btn-outline-secondary btn-sm">
+                                📋 Kodları Kopyala
+                            </button>
+                            <a href="data:text/plain;charset=utf-8,{{ backup_codes|join('%0A') }}"
+                                download="2fa_backup_codes.txt" class="btn btn-outline-secondary btn-sm">
+                                💾 TXT İndir
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Verify -->
+                    <div>
+                        <h5><span class="badge bg-primary me-2">4</span> Doğrulama Kodunu Girin</h5>
+                        <p class="text-muted">
+                            Uygulamanızdaki 6 haneli kodu girin:
+                        </p>
+
+                        <form method="POST" action="{{ url_for('twofa.verify') }}">
+                            <div class="row justify-content-center">
+                                <div class="col-md-6">
+                                    <div class="input-group input-group-lg">
+                                        <input type="text" name="code" class="form-control text-center"
+                                            placeholder="000000" maxlength="6" required pattern="[0-9]{6}"
+                                            inputmode="numeric" style="font-size: 2rem; letter-spacing: 10px;">
+                                        <button type="submit" class="btn btn-success">
+                                            ✓ Doğrula
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <a href="{{ url_for('twofa.index') }}" class="btn btn-link">
+                    ← Vazgeç
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function copyBackupCodes() {
+        const codes = JSON.parse('{{ backup_codes|tojson|safe }}');
+        navigator.clipboard.writeText(codes.join('\n')).then(function () {
+            alert('Yedek kodlar kopyalandı!');
+        });
+    }
+</script>
+{% endblock %}
