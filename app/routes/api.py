@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 API Routes - REST API endpoints with Swagger documentation
+Version: 1.0 (API versioning enabled with /api/v1 prefix)
 """
 from flask import Blueprint, request, jsonify, session
 from app.extensions import db, limiter
 
-api_bp = Blueprint('api', __name__)
+api_bp = Blueprint('api', __name__, url_prefix='/api/v1')
 
 
 # ══════════════════════════════════════════════════════════════
@@ -418,11 +419,49 @@ def test_webhook():
 # ══════════════════════════════════════════════════════════════
 
 def validate_api_key(api_key):
-    """Validate API key and return company ID"""
+    """
+    Validate API key and return company ID.
+    Uses Redis caching to reduce database queries.
+    Cache TTL: 10 minutes
+    """
     if not api_key:
         return None
     
-    from app.models import Company
-    company = Company.query.filter_by(api_key=api_key, is_active=True).first()
+    import os
+    import hashlib
     
-    return company.id if company else None
+    # Try to use Redis cache
+    try:
+        import redis
+        
+        redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+        r = redis.from_url(redis_url)
+        
+        # Create cache key from hashed API key (for security)
+        cache_key = f"api_key:{hashlib.sha256(api_key.encode()).hexdigest()[:16]}"
+        
+        # Check cache first
+        cached_company_id = r.get(cache_key)
+        if cached_company_id is not None:
+            if cached_company_id == b'invalid':
+                return None
+            return int(cached_company_id)
+        
+        # Cache miss - query database
+        from app.models import Company
+        company = Company.query.filter_by(api_key=api_key, is_active=True).first()
+        
+        if company:
+            # Cache valid key for 10 minutes
+            r.setex(cache_key, 600, str(company.id))
+            return company.id
+        else:
+            # Cache invalid key for 5 minutes (prevent brute force)
+            r.setex(cache_key, 300, 'invalid')
+            return None
+            
+    except Exception:
+        # Redis unavailable - fall back to database
+        from app.models import Company
+        company = Company.query.filter_by(api_key=api_key, is_active=True).first()
+        return company.id if company else None
