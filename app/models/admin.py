@@ -196,3 +196,42 @@ def log_action(user, action, entity_type, entity_id, description=None,
     db.session.commit()
     
     return log
+
+
+class CreditTransaction(db.Model):
+    """Track credit purchases and usage"""
+    __tablename__ = 'credit_transactions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    company_id = db.Column(db.Integer, db.ForeignKey('sirketler.id'), index=True)
+    
+    amount = db.Column(db.Integer, nullable=False)  # Positive = add, negative = use
+    transaction_type = db.Column(db.String(20), index=True)  # purchase, usage, refund, bonus
+    
+    payment_id = db.Column(db.String(255))  # External payment reference
+    description = db.Column(db.Text)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    
+    # Relationships
+    company = db.relationship('Company', backref='credit_transactions')
+    
+    def __repr__(self):
+        return f'<CreditTransaction {self.id}: {self.amount}>'
+
+
+class LoginAttempt(db.Model):
+    """Track login attempts for security"""
+    __tablename__ = 'login_attempts'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), index=True)
+    ip_address = db.Column(db.String(45))
+    
+    success = db.Column(db.Boolean, default=False)
+    attempted_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    def __repr__(self):
+        return f'<LoginAttempt {self.email}: {"success" if self.success else "failed"}>'
+
