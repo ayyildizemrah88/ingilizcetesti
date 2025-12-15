@@ -21,6 +21,14 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     
+    # Two-Factor Authentication fields
+    totp_secret = db.Column(db.String(32))  # TOTP secret for authenticator apps
+    totp_verified = db.Column(db.Boolean, default=False)  # Has 2FA been verified/enabled
+    backup_codes = db.Column(db.Text)  # Comma-separated hashed backup codes
+    
+    # User preferences
+    language = db.Column(db.String(10), default='tr')  # Preferred language
+    
     # Relationships
     company = db.relationship('Company', backref='users')
     
