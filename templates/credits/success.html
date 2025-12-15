@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Ödeme Başarılı{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="card border-success">
+                <div class="card-body py-5">
+                    <div class="mb-4">
+                        <span style="font-size: 80px;">🎉</span>
+                    </div>
+                    <h2 class="text-success mb-3">Ödeme Başarılı!</h2>
+                    <p class="lead text-muted">
+                        Kredi yüklemeniz başarıyla tamamlandı.
+                    </p>
+
+                    <div class="alert alert-success my-4">
+                        <strong>Güncel Bakiyeniz:</strong>
+                        <span class="fs-3 fw-bold">{{ current_credits }} Kredi</span>
+                    </div>
+
+                    <div class="d-grid gap-2 col-8 mx-auto">
+                        <a href="{{ url_for('admin.adaylar') }}" class="btn btn-primary btn-lg">
+                            👥 Aday Ekle
+                        </a>
+                        <a href="{{ url_for('credits.index') }}" class="btn btn-outline-secondary">
+                            💳 Kredi Yönetimi
+                        </a>
+                        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-link">
+                            Dashboard'a Dön
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
