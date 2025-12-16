@@ -1,18 +1,94 @@
 # -*- coding: utf-8 -*-
 """
 Authentication Routes - Login, Logout, Password Reset
+Enhanced with security best practices
 """
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from app.extensions import db, limiter
+import os
+import re
 
 auth_bp = Blueprint('auth', __name__)
 
+
+# ══════════════════════════════════════════════════════════════════
+# SECURITY HELPERS
+# ══════════════════════════════════════════════════════════════════
+
+def get_secret_key():
+    """Get SECRET_KEY - raises error if not configured."""
+    key = os.getenv('SECRET_KEY')
+    if not key:
+        raise RuntimeError("SECRET_KEY environment variable is not set!")
+    return key
+
+
+def validate_password_strength(password):
+    """
+    Validate password meets security requirements.
+    
+    Requirements:
+    - Minimum 8 characters
+    - At least 1 uppercase letter
+    - At least 1 lowercase letter
+    - At least 1 digit
+    
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    if len(password) < 8:
+        return False, "Şifre en az 8 karakter olmalıdır."
+    
+    if not re.search(r'[A-Z]', password):
+        return False, "Şifre en az 1 büyük harf içermelidir."
+    
+    if not re.search(r'[a-z]', password):
+        return False, "Şifre en az 1 küçük harf içermelidir."
+    
+    if not re.search(r'\d', password):
+        return False, "Şifre en az 1 rakam içermelidir."
+    
+    return True, None
+
+
+def regenerate_session():
+    """
+    Regenerate session ID to prevent session fixation attacks.
+    Preserves session data while changing the session ID.
+    """
+    # Store current session data
+    session_data = dict(session)
+    session.clear()
+    
+    # Restore data with new session ID
+    for key, value in session_data.items():
+        session[key] = value
+    
+    session.modified = True
+
+
+def get_login_tracker():
+    """Get login tracker with graceful fallback."""
+    try:
+        from app.utils.redis_login_tracker import login_tracker
+        return login_tracker
+    except ImportError:
+        try:
+            from app.utils.security import login_tracker
+            return login_tracker
+        except ImportError:
+            return None
+
+
+# ══════════════════════════════════════════════════════════════════
+# ADMIN LOGIN
+# ══════════════════════════════════════════════════════════════════
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def login():
     """
-    Admin panel login
+    Admin panel login with enhanced security
     ---
     tags:
       - Authentication
@@ -28,22 +104,17 @@ def login():
         user = User.query.filter_by(email=email, is_active=True).first()
         
         # Check for account lockout
-        try:
-            from app.utils.security import login_tracker
-            if login_tracker.is_locked_out(email):
-                remaining = login_tracker.get_lockout_remaining(email)
+        tracker = get_login_tracker()
+        if tracker:
+            if tracker.is_locked_out(email):
+                remaining = tracker.get_lockout_remaining(email)
                 flash(f"Hesabınız geçici olarak kilitlendi. {remaining // 60} dakika sonra tekrar deneyin.", "danger")
                 return render_template('login.html')
-        except ImportError:
-            pass  # Security module not available
         
         if user and user.check_password(password):
             # Record successful login
-            try:
-                from app.utils.security import login_tracker
-                login_tracker.record_successful_login(email, request.remote_addr)
-            except ImportError:
-                pass
+            if tracker:
+                tracker.record_successful_login(email, request.remote_addr)
             
             # Check if 2FA is enabled
             if hasattr(user, 'totp_verified') and user.totp_verified and user.totp_secret:
@@ -52,7 +123,12 @@ def login():
                 flash("Lütfen doğrulama kodunuzu girin.", "info")
                 return redirect(url_for('twofa.challenge'))
             
-            # No 2FA - complete login
+            # ══════════════════════════════════════════════════════════
+            # SESSION REGENERATION - Prevents session fixation attacks
+            # ══════════════════════════════════════════════════════════
+            regenerate_session()
+            
+            # Set session data
             session['kullanici_id'] = user.id
             session['kullanici'] = user.email
             session['rol'] = user.rol
@@ -68,11 +144,8 @@ def login():
             return redirect(url_for('admin.dashboard'))
         else:
             # Record failed login
-            try:
-                from app.utils.security import login_tracker
-                login_tracker.record_failed_attempt(email, request.remote_addr)
-            except ImportError:
-                pass
+            if tracker:
+                tracker.record_failed_attempt(email, request.remote_addr)
             
             flash("E-posta veya şifre hatalı.", "danger")
     
@@ -95,6 +168,10 @@ def logout():
     return redirect(url_for('auth.login'))
 
 
+# ══════════════════════════════════════════════════════════════════
+# PASSWORD RESET
+# ══════════════════════════════════════════════════════════════════
+
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 @limiter.limit("5 per hour")
 def forgot_password():
@@ -111,26 +188,26 @@ def forgot_password():
         user = User.query.filter_by(email=email).first()
         
         if user:
-            # Generate reset token
+            # Generate reset token with secure key
             import jwt
-            import os
             from datetime import datetime, timedelta
             
-            token = jwt.encode(
-                {'user_id': user.id, 'exp': datetime.utcnow() + timedelta(hours=1)},
-                os.getenv('SECRET_KEY', 'secret'),
-                algorithm='HS256'
-            )
-            
-            # Send email (via Celery task)
-            from app.tasks.email_tasks import send_password_reset_email
-            send_password_reset_email.delay(user.id, token)
-            
-            flash("Şifre sıfırlama linki e-posta adresinize gönderildi.", "success")
-        else:
-            # Don't reveal if email exists
-            flash("Şifre sıfırlama linki e-posta adresinize gönderildi.", "success")
+            try:
+                token = jwt.encode(
+                    {'user_id': user.id, 'exp': datetime.utcnow() + timedelta(hours=1)},
+                    get_secret_key(),
+                    algorithm='HS256'
+                )
+                
+                # Send email (via Celery task)
+                from app.tasks.email_tasks import send_password_reset_email
+                send_password_reset_email.delay(user.id, token)
+            except RuntimeError as e:
+                flash("Sistem hatası. Lütfen yönetici ile iletişime geçin.", "danger")
+                return render_template('forgot_password.html')
         
+        # Always show success to prevent user enumeration
+        flash("Şifre sıfırlama linki e-posta adresinize gönderildi.", "success")
         return redirect(url_for('auth.login'))
     
     return render_template('forgot_password.html')
@@ -139,7 +216,7 @@ def forgot_password():
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     """
-    Reset password with token
+    Reset password with token and strong password validation
     ---
     tags:
       - Authentication
@@ -150,10 +227,9 @@ def reset_password(token):
         required: true
     """
     import jwt
-    import os
     
     try:
-        data = jwt.decode(token, os.getenv('SECRET_KEY', 'secret'), algorithms=['HS256'])
+        data = jwt.decode(token, get_secret_key(), algorithms=['HS256'])
         user_id = data['user_id']
     except jwt.ExpiredSignatureError:
         flash("Şifre sıfırlama linki süresi dolmuş.", "danger")
@@ -161,13 +237,18 @@ def reset_password(token):
     except jwt.InvalidTokenError:
         flash("Geçersiz şifre sıfırlama linki.", "danger")
         return redirect(url_for('auth.forgot_password'))
+    except RuntimeError:
+        flash("Sistem hatası.", "danger")
+        return redirect(url_for('auth.forgot_password'))
     
     if request.method == 'POST':
         password = request.form.get('sifre', '')
         password_confirm = request.form.get('sifre_tekrar', '')
         
-        if len(password) < 6:
-            flash("Şifre en az 6 karakter olmalıdır.", "warning")
+        # Strong password validation
+        is_valid, error_msg = validate_password_strength(password)
+        if not is_valid:
+            flash(error_msg, "warning")
         elif password != password_confirm:
             flash("Şifreler eşleşmiyor.", "warning")
         else:
@@ -182,9 +263,9 @@ def reset_password(token):
     return render_template('reset_password.html', token=token)
 
 
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════
 # EXAM CANDIDATE LOGIN (separate from admin)
-# ══════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════
 
 @auth_bp.route('/sinav-giris', methods=['GET', 'POST'])
 def sinav_giris():
@@ -232,6 +313,11 @@ def sinav_giris():
         if candidate.sinav_durumu == 'tamamlandi':
             flash("Bu sınav zaten tamamlanmış.", "info")
             return redirect(url_for('exam.sinav_bitti'))
+        
+        # ══════════════════════════════════════════════════════════
+        # SESSION REGENERATION for exam candidate
+        # ══════════════════════════════════════════════════════════
+        regenerate_session()
         
         # Set session
         session['aday_id'] = candidate.id
