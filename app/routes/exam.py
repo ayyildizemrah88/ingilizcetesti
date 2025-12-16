@@ -35,6 +35,7 @@ def sinav():
         description: Exam question page
     """
     from app.models import Candidate, Question, ExamAnswer
+    from datetime import datetime
     
     aday_id = session.get('aday_id')
     candidate = Candidate.query.get(aday_id)
@@ -44,7 +45,6 @@ def sinav():
         return redirect(url_for('auth.sinav_giris'))
     
     # Check time limit
-    from datetime import datetime
     elapsed = datetime.utcnow() - candidate.baslama_tarihi
     remaining = (candidate.sinav_suresi * 60) - elapsed.total_seconds()
     
@@ -63,6 +63,12 @@ def sinav():
     
     if not question:
         return redirect(url_for('exam.sinav_bitti'))
+    
+    # ══════════════════════════════════════════════════════════════════
+    # SECURITY: Store active question ID to prevent manipulation
+    # ══════════════════════════════════════════════════════════════════
+    session['active_question_id'] = question.id
+    session['question_started_at'] = datetime.utcnow().isoformat()  # For reading time verification
     
     soru_no = len(answered_ids) + 1
     toplam = candidate.soru_limiti or 25
@@ -119,6 +125,15 @@ def sinav_cevap():
     soru_id = request.form.get('soru_id', type=int)
     cevap = request.form.get('cevap', '').upper()
     
+    # ══════════════════════════════════════════════════════════════════
+    # SECURITY: Validate question ID matches session
+    # Prevents manipulation via DevTools/API
+    # ══════════════════════════════════════════════════════════════════
+    active_question_id = session.get('active_question_id')
+    if not active_question_id or soru_id != active_question_id:
+        flash("Geçersiz soru ID. Lütfen tekrar deneyin.", "warning")
+        return redirect(url_for('exam.sinav'))
+    
     # Get question
     question = Question.query.get(soru_id)
     if not question:
@@ -139,6 +154,10 @@ def sinav_cevap():
     # Update CAT difficulty
     candidate = Candidate.query.get(aday_id)
     update_cat_difficulty(candidate, question.zorluk, is_correct)
+    
+    # Clear active question from session
+    session.pop('active_question_id', None)
+    session.pop('question_started_at', None)
     
     db.session.commit()
     
