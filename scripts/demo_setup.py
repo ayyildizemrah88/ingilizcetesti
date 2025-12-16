@@ -205,10 +205,68 @@ def create_demo_candidate(company, name):
     """)
 
 
+@click.command('create-superadmin')
+@click.option('--email', default='ayyildizemrah88@gmail.com', help='Superadmin email')
+@click.option('--name', default='Emrah Ayyıldız', help='Superadmin name')
+@with_appcontext
+def create_superadmin(email, name):
+    """
+    Create superadmin user.
+    
+    Usage: flask create-superadmin --email admin@example.com --name "Admin Name"
+    """
+    from app.extensions import db
+    from app.models import User
+    import getpass
+    
+    # Check if already exists
+    existing = User.query.filter_by(email=email).first()
+    if existing:
+        click.echo(f"⚠️  {email} kullanıcısı zaten mevcut!")
+        return
+    
+    # Prompt for password securely (not shown in terminal)
+    click.echo(f"\n🔐 Superadmin şifresi oluşturuluyor: {email}")
+    password = getpass.getpass("Şifre girin: ")
+    password_confirm = getpass.getpass("Şifreyi tekrar girin: ")
+    
+    if password != password_confirm:
+        click.echo("❌ Şifreler eşleşmiyor!")
+        return
+    
+    if len(password) < 8:
+        click.echo("❌ Şifre en az 8 karakter olmalı!")
+        return
+    
+    try:
+        superadmin = User(
+            email=email,
+            sifre=generate_password_hash(password),
+            ad_soyad=name,
+            rol='superadmin',
+            is_active=True,
+            created_at=datetime.utcnow()
+        )
+        db.session.add(superadmin)
+        db.session.commit()
+        
+        click.echo(f"""
+✅ SUPERADMIN OLUŞTURULDU!
+   Email: {email}
+   Ad: {name}
+   Rol: superadmin
+        """)
+        
+    except Exception as e:
+        db.session.rollback()
+        click.echo(f"❌ Hata: {e}")
+
+
 def register_demo_commands(app):
     """Register CLI commands with Flask app."""
     app.cli.add_command(create_tgs_demo)
     app.cli.add_command(create_demo_candidate)
+    app.cli.add_command(create_superadmin)
 
 
 # ══════════════════════════════════════════════════════════════════
