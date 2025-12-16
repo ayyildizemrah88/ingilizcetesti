@@ -79,10 +79,16 @@ class SpeakingRecording(db.Model):
     __tablename__ = 'speaking_recordings'
     
     id = db.Column(db.Integer, primary_key=True)
-    aday_id = db.Column(db.Integer, db.ForeignKey('adaylar.id'), index=True)
+    aday_id = db.Column(db.Integer, db.ForeignKey('adaylar.id', ondelete='CASCADE'), index=True)
     soru_id = db.Column(db.Integer)
     
-    audio_blob = db.Column(db.Text)  # Base64 encoded audio
+    # File-based audio storage (recommended)
+    audio_file_path = db.Column(db.String(500))  # Path to audio file on disk/S3
+    audio_file_size = db.Column(db.Integer)  # File size in bytes
+    
+    # Legacy BLOB storage (deprecated - for backward compatibility only)
+    audio_blob = db.Column(db.Text)  # DEPRECATED: Use audio_file_path instead
+    
     duration_seconds = db.Column(db.Integer)
     transcript = db.Column(db.Text)
     
@@ -90,6 +96,63 @@ class SpeakingRecording(db.Model):
     ai_score_json = db.Column(db.Text)  # {fluency, pronunciation, grammar, vocabulary, overall}
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def save_audio(self, audio_data: bytes, extension: str = 'webm'):
+        """
+        Save audio to file system (recommended method).
+        
+        Args:
+            audio_data: Raw audio bytes
+            extension: File extension (webm, mp3, etc.)
+        """
+        from app.utils.audio_storage import audio_storage
+        
+        self.audio_file_path, self.audio_file_size = audio_storage.save_audio(
+            audio_data, self.aday_id, self.soru_id, extension
+        )
+        # Clear deprecated BLOB field
+        self.audio_blob = None
+    
+    def save_audio_base64(self, audio_base64: str, extension: str = 'webm'):
+        """Save base64-encoded audio to file system."""
+        import base64
+        audio_data = base64.b64decode(audio_base64)
+        self.save_audio(audio_data, extension)
+    
+    def get_audio_data(self) -> bytes:
+        """
+        Get audio data (from file or legacy BLOB).
+        
+        Returns:
+            Audio bytes
+        """
+        # Try file-based storage first
+        if self.audio_file_path:
+            from app.utils.audio_storage import audio_storage
+            return audio_storage.get_audio_data(self.audio_file_path)
+        
+        # Fallback to legacy BLOB
+        if self.audio_blob:
+            import base64
+            return base64.b64decode(self.audio_blob)
+        
+        return None
+    
+    def get_audio_base64(self) -> str:
+        """Get audio as base64 string."""
+        import base64
+        audio_data = self.get_audio_data()
+        if audio_data:
+            return base64.b64encode(audio_data).decode('utf-8')
+        return None
+    
+    def delete_audio_file(self):
+        """Delete audio file from storage."""
+        if self.audio_file_path:
+            from app.utils.audio_storage import audio_storage
+            audio_storage.delete_audio(self.audio_file_path)
+            self.audio_file_path = None
+            self.audio_file_size = None
     
     def get_scores(self):
         """Parse AI scores from JSON"""
