@@ -237,9 +237,28 @@ def sinav_giris():
         session['aday_id'] = candidate.id
         session['giris_kodu'] = giris_kodu
         
-        # Start exam
+        # Start exam - DEDUCT CREDIT ON FIRST START
         from datetime import datetime, timedelta
+        from app.models import Company
+        
         if not candidate.baslama_tarihi:
+            # ══════════════════════════════════════════════════════════
+            # CREDIT DEDUCTION - Only on first exam start
+            # ══════════════════════════════════════════════════════════
+            company = Company.query.get(candidate.sirket_id)
+            if company:
+                success = company.deduct_credit(
+                    amount=1,
+                    transaction_type='exam',
+                    description=f"Sınav başlatıldı: {candidate.ad_soyad} ({candidate.giris_kodu})",
+                    candidate_id=candidate.id
+                )
+                
+                if not success:
+                    flash("Şirketinizin yeterli sınav kredisi bulunmuyor.", "danger")
+                    session.clear()
+                    return render_template('sinav_giris.html')
+            
             candidate.baslama_tarihi = datetime.utcnow()
             candidate.sinav_durumu = 'devam_ediyor'
             db.session.commit()
