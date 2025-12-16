@@ -465,3 +465,80 @@ def validate_api_key(api_key):
         from app.models import Company
         company = Company.query.filter_by(api_key=api_key, is_active=True).first()
         return company.id if company else None
+
+
+def invalidate_api_key_cache(old_api_key):
+    """
+    Invalidate cached API key when it's changed or revoked.
+    SECURITY: Call this when API key is rotated in admin panel.
+    
+    Args:
+        old_api_key: The API key being invalidated
+    """
+    if not old_api_key:
+        return False
+    
+    import os
+    import hashlib
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        import redis
+        
+        redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+        r = redis.from_url(redis_url)
+        
+        # Delete the cache key
+        cache_key = f"api_key:{hashlib.sha256(old_api_key.encode()).hexdigest()[:16]}"
+        deleted = r.delete(cache_key)
+        
+        logger.info(f"API key cache invalidated: {deleted > 0}")
+        return deleted > 0
+        
+    except Exception as e:
+        logger.warning(f"Failed to invalidate API key cache: {e}")
+        return False
+
+
+def send_async_email_safe(task_func, *args, **kwargs):
+    """
+    Safely send async email with error handling.
+    RELIABILITY: Prevents silent failures when Celery/Redis is down.
+    
+    Args:
+        task_func: The Celery task function (e.g., send_exam_invitation)
+        *args: Positional arguments for the task
+        **kwargs: Keyword arguments for the task
+        
+    Returns:
+        tuple: (success: bool, error_message: str or None)
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        task_func.delay(*args, **kwargs)
+        return True, None
+    except Exception as e:
+        error_msg = f"Failed to queue email task: {str(e)}"
+        logger.error(error_msg)
+        
+        # Optionally save to database for retry
+        try:
+            from app.models.email_queue import EmailQueue
+            email_queue = EmailQueue(
+                task_name=task_func.name,
+                args=str(args),
+                kwargs=str(kwargs),
+                status='failed',
+                error=str(e)
+            )
+            db.session.add(email_queue)
+            db.session.commit()
+        except Exception:
+            pass  # Email queue table might not exist
+        
+        return False, error_msg
+
