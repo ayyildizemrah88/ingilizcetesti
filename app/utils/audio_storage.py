@@ -202,7 +202,13 @@ class S3AudioStorage(AudioStorage):
     
     def save_audio(self, audio_data: bytes, candidate_id: int, question_id: int,
                    extension: str = 'webm') -> Tuple[str, int]:
-        """Save audio to S3."""
+        """
+        Save audio to S3.
+        
+        WARNING: No fallback to local storage!
+        In containerized environments (ECS/K8s), local storage is ephemeral.
+        If S3 fails, the operation must fail - not silently lose data.
+        """
         filename = self._generate_filename(candidate_id, question_id, extension)
         key = f"audio/{candidate_id % 100:02d}/{filename}"
         
@@ -219,18 +225,24 @@ class S3AudioStorage(AudioStorage):
             
         except Exception as e:
             logger.error(f"S3 upload failed: {e}")
-            # Fallback to local storage
-            return super().save_audio(audio_data, candidate_id, question_id, extension)
+            # ══════════════════════════════════════════════════════════
+            # SECURITY: NO FALLBACK TO LOCAL STORAGE!
+            # Container filesystems are ephemeral - data would be lost
+            # ══════════════════════════════════════════════════════════
+            raise RuntimeError(f"S3 upload failed and cannot fallback to local storage: {e}")
     
     def get_audio_data(self, key: str) -> Optional[bytes]:
-        """Read audio from S3."""
+        """
+        Read audio from S3.
+        No fallback to local - if S3 fails, return None.
+        """
         try:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
             return response['Body'].read()
         except Exception as e:
             logger.error(f"S3 download failed: {e}")
-            # Fallback to local
-            return super().get_audio_data(key)
+            # No fallback - file should be on S3 only
+            return None
     
     def delete_audio(self, key: str) -> bool:
         """Delete audio from S3."""
