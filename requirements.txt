@@ -134,3 +134,44 @@ python-socketio>=5.10.0
 # =====================================================
 locust>=2.20.0
 
+# =====================================================
+# GOOGLE CLOUD STORAGE (alternative to S3)
+# =====================================================
+google-cloud-storage>=2.14.0
+
+# =====================================================
+# ADDITIONAL UTILITIES (optional but recommended)
+# =====================================================
+# Email validation
+dnspython>=2.4.0
+email-validator>=2.1.0
+
+# File type detection (for upload security)
+python-magic>=0.4.27
+
+# Data validation
+validators>=0.22.0
+
+# Async HTTP client (for webhooks)
+httpx>=0.25.0
+
+# Date/Time handling
+python-dateutil>=2.8.0
+
+# Password strength checking
+zxcvbn>=4.4.28
+
+# Caching with Redis
+flask-caching>=2.1.0
+
+# Session management
+flask-session>=0.5.0
+
+# CORS support (for API)
+flask-cors>=4.0.0
+
+# Health checks
+py-healthcheck>=1.10.0
+
+# Prometheus metrics (monitoring)
+prometheus-flask-exporter>=0.23.0
