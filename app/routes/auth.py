@@ -189,16 +189,26 @@ def reset_password(token):
 @auth_bp.route('/sinav-giris', methods=['GET', 'POST'])
 def sinav_giris():
     """
-    Candidate exam login with access code
+    Candidate exam login with access code and TC Kimlik
     ---
     tags:
       - Exam
     """
     if request.method == 'POST':
         giris_kodu = request.form.get('giris_kodu', '').strip().upper()
+        tc_kimlik = request.form.get('tc_kimlik', '').strip()
         
         if not giris_kodu:
             flash("Giriş kodu gereklidir.", "warning")
+            return render_template('sinav_giris.html')
+        
+        if not tc_kimlik:
+            flash("TC Kimlik numarası gereklidir.", "warning")
+            return render_template('sinav_giris.html')
+        
+        # Validate TC Kimlik format (11 digits)
+        if not tc_kimlik.isdigit() or len(tc_kimlik) != 11:
+            flash("Geçersiz TC Kimlik numarası formatı.", "danger")
             return render_template('sinav_giris.html')
         
         from app.models import Candidate
@@ -207,6 +217,16 @@ def sinav_giris():
         if not candidate:
             flash("Geçersiz giriş kodu.", "danger")
             return render_template('sinav_giris.html')
+        
+        # Verify TC Kimlik matches
+        if candidate.tc_kimlik and candidate.tc_kimlik != tc_kimlik:
+            flash("TC Kimlik numarası eşleşmiyor.", "danger")
+            return render_template('sinav_giris.html')
+        
+        # If candidate has no TC, save it (first login)
+        if not candidate.tc_kimlik:
+            candidate.tc_kimlik = tc_kimlik
+            db.session.commit()
         
         # Check if exam already completed
         if candidate.sinav_durumu == 'tamamlandi':
