@@ -1,0 +1,297 @@
+# Skills Test Center - Kubernetes Deployment
+# Production-ready configuration with auto-scaling
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: skillstestcenter
+  labels:
+    app: skillstestcenter
+    environment: production
+
+---
+# ConfigMap for environment variables
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: skillstestcenter
+data:
+  FLASK_ENV: "production"
+  DATABASE_HOST: "postgres-service"
+  REDIS_URL: "redis://redis-service:6379/0"
+  STORAGE_TYPE: "s3"
+  LOG_LEVEL: "INFO"
+
+---
+# Secret for sensitive data (use sealed-secrets or external secrets in production)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+  namespace: skillstestcenter
+type: Opaque
+stringData:
+  SECRET_KEY: "your-secret-key-here"
+  DATABASE_URL: "postgresql://user:pass@postgres-service:5432/skillstestcenter"
+  S3_ACCESS_KEY: "your-s3-key"
+  S3_SECRET_KEY: "your-s3-secret"
+  GEMINI_API_KEY: "your-gemini-key"
+  OPENAI_API_KEY: "your-openai-key"
+
+---
+# Web Application Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: skillstestcenter
+  labels:
+    app: skillstestcenter
+    component: web
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: skillstestcenter
+      component: web
+  template:
+    metadata:
+      labels:
+        app: skillstestcenter
+        component: web
+    spec:
+      containers:
+        - name: web
+          image: skillstestcenter/app:latest
+          ports:
+            - containerPort: 5000
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: storage
+              mountPath: /app/storage
+      volumes:
+        - name: storage
+          emptyDir: {}
+
+---
+# Celery Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+  namespace: skillstestcenter
+  labels:
+    app: skillstestcenter
+    component: celery
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: skillstestcenter
+      component: celery
+  template:
+    metadata:
+      labels:
+        app: skillstestcenter
+        component: celery
+    spec:
+      containers:
+        - name: celery
+          image: skillstestcenter/app:latest
+          command: ["celery", "-A", "app.celery_app", "worker", "-l", "info"]
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+
+---
+# Celery Beat (Scheduler) Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-beat
+  namespace: skillstestcenter
+  labels:
+    app: skillstestcenter
+    component: celery-beat
+spec:
+  replicas: 1  # Only 1 instance for scheduler
+  selector:
+    matchLabels:
+      app: skillstestcenter
+      component: celery-beat
+  template:
+    metadata:
+      labels:
+        app: skillstestcenter
+        component: celery-beat
+    spec:
+      containers:
+        - name: celery-beat
+          image: skillstestcenter/app:latest
+          command: ["celery", "-A", "app.celery_app", "beat", "-l", "info"]
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+
+---
+# Web Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+  namespace: skillstestcenter
+spec:
+  selector:
+    app: skillstestcenter
+    component: web
+  ports:
+    - port: 80
+      targetPort: 5000
+  type: ClusterIP
+
+---
+# Ingress with TLS
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-ingress
+  namespace: skillstestcenter
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  tls:
+    - hosts:
+        - skillstestcenter.com
+      secretName: tls-secret
+  rules:
+    - host: skillstestcenter.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: web-hpa
+  namespace: skillstestcenter
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: skillstestcenter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+      volumes:
+        - name: redis-data
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: skillstestcenter
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
