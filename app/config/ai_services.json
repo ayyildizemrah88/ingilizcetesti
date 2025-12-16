@@ -1,0 +1,140 @@
+{
+    "ai_services": {
+        "description": "AI Services Configuration for Skills Test Center",
+        "version": "2.0.0",
+        "openai": {
+            "enabled": true,
+            "models": {
+                "default": "gpt-4o-mini",
+                "fast": "gpt-4o-mini",
+                "powerful": "gpt-4o",
+                "legacy": "gpt-3.5-turbo"
+            },
+            "settings": {
+                "temperature": 0.7,
+                "max_tokens": 2000,
+                "timeout": 60
+            },
+            "env_variable": "OPENAI_API_KEY",
+            "documentation": "https://platform.openai.com/docs"
+        },
+        "gemini": {
+            "enabled": true,
+            "models": {
+                "default": "gemini-1.5-flash",
+                "fast": "gemini-1.5-flash",
+                "powerful": "gemini-1.5-pro",
+                "legacy": "gemini-1.0-pro"
+            },
+            "settings": {
+                "temperature": 0.7,
+                "max_output_tokens": 2048,
+                "timeout": 60
+            },
+            "env_variable": "GEMINI_API_KEY",
+            "documentation": "https://ai.google.dev/docs"
+        }
+    },
+    "evaluation": {
+        "writing": {
+            "criteria": [
+                {
+                    "name": "grammar_spelling",
+                    "weight": 25,
+                    "description": "Grammar & Spelling accuracy"
+                },
+                {
+                    "name": "vocabulary",
+                    "weight": 25,
+                    "description": "Vocabulary range and appropriateness"
+                },
+                {
+                    "name": "coherence",
+                    "weight": 25,
+                    "description": "Coherence & Structure"
+                },
+                {
+                    "name": "task_achievement",
+                    "weight": 25,
+                    "description": "Task completion and relevance"
+                }
+            ],
+            "total_score": 100,
+            "passing_score": 60
+        },
+        "speaking": {
+            "criteria": [
+                {
+                    "name": "pronunciation",
+                    "weight": 25,
+                    "description": "Clear pronunciation"
+                },
+                {
+                    "name": "fluency",
+                    "weight": 25,
+                    "description": "Natural speech flow"
+                },
+                {
+                    "name": "grammar",
+                    "weight": 25,
+                    "description": "Grammatical accuracy"
+                },
+                {
+                    "name": "vocabulary",
+                    "weight": 25,
+                    "description": "Vocabulary usage"
+                }
+            ],
+            "total_score": 100,
+            "passing_score": 60
+        }
+    },
+    "cefr_mapping": {
+        "A1": {
+            "min_score": 0,
+            "max_score": 20,
+            "label": "Beginner"
+        },
+        "A2": {
+            "min_score": 21,
+            "max_score": 40,
+            "label": "Elementary"
+        },
+        "B1": {
+            "min_score": 41,
+            "max_score": 60,
+            "label": "Intermediate"
+        },
+        "B2": {
+            "min_score": 61,
+            "max_score": 80,
+            "label": "Upper-Intermediate"
+        },
+        "C1": {
+            "min_score": 81,
+            "max_score": 95,
+            "label": "Advanced"
+        },
+        "C2": {
+            "min_score": 96,
+            "max_score": 100,
+            "label": "Mastery"
+        }
+    },
+    "rate_limits": {
+        "openai": {
+            "requests_per_minute": 60,
+            "tokens_per_minute": 90000
+        },
+        "gemini": {
+            "requests_per_minute": 60,
+            "tokens_per_minute": 100000
+        }
+    },
+    "fallback": {
+        "primary_provider": "gemini",
+        "fallback_provider": "openai",
+        "auto_switch_on_error": true,
+        "retry_attempts": 3
+    }
+}
