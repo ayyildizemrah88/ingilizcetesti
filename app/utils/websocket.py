@@ -8,29 +8,85 @@ Features:
 - Live timer sync
 - Connection status tracking
 - Proctor notifications
+- Token-based auth fallback for CORS
 """
 import os
 import logging
 from datetime import datetime
-from flask import session
+from flask import session, request
 from flask_socketio import SocketIO, emit, join_room, leave_room, disconnect
 
 logger = logging.getLogger(__name__)
 
-# Initialize SocketIO (will be attached to app later)
+# ══════════════════════════════════════════════════════════════════
+# SOCKETIO CONFIGURATION
+# ══════════════════════════════════════════════════════════════════
+
+# Initialize SocketIO with explicit session management
 socketio = SocketIO(
     cors_allowed_origins="*",
     async_mode='eventlet',  # or 'gevent'
     ping_timeout=60,
-    ping_interval=25
+    ping_interval=25,
+    manage_session=True,  # Explicitly enable Flask session in SocketIO
+    cookie='io_session'   # Custom cookie name for WebSocket session
 )
+
+# In-memory session store for token-based auth (fallback)
+# Use Redis in production for multi-server deployment
+_ws_sessions = {}
 
 
 def init_socketio(app):
     """Initialize SocketIO with Flask app."""
     socketio.init_app(app)
-    logger.info("Flask-SocketIO initialized")
+    logger.info("Flask-SocketIO initialized with manage_session=True")
     return socketio
+
+
+def get_ws_user_id():
+    """
+    Get user ID from WebSocket connection.
+    Checks both Flask session and token-based auth.
+    
+    Returns:
+        tuple: (aday_id, sirket_id, kullanici_id)
+    """
+    # Try Flask session first
+    aday_id = session.get('aday_id')
+    sirket_id = session.get('sirket_id')
+    kullanici_id = session.get('kullanici_id')
+    
+    # Fallback to token-based auth (for CORS scenarios)
+    if not aday_id and not kullanici_id:
+        # Check query params or auth header
+        token = request.args.get('token')
+        if token and token in _ws_sessions:
+            ws_session = _ws_sessions[token]
+            aday_id = ws_session.get('aday_id')
+            sirket_id = ws_session.get('sirket_id')
+            kullanici_id = ws_session.get('kullanici_id')
+    
+    return aday_id, sirket_id, kullanici_id
+
+
+def create_ws_token(aday_id=None, sirket_id=None, kullanici_id=None):
+    """
+    Create a WebSocket authentication token.
+    Call this after HTTP login success.
+    
+    Returns:
+        str: Token to use in WebSocket connection
+    """
+    import secrets
+    token = secrets.token_urlsafe(32)
+    _ws_sessions[token] = {
+        'aday_id': aday_id,
+        'sirket_id': sirket_id,
+        'kullanici_id': kullanici_id,
+        'created_at': datetime.utcnow()
+    }
+    return token
 
 
 # ══════════════════════════════════════════════════════════════════
