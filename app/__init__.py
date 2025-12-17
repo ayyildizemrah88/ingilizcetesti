@@ -45,6 +45,14 @@ def create_app(config_class=None):
     # Register blueprints
     register_blueprints(app)
     
+        # Register AI service blueprint
+    try:
+        from app.routes.ai_service import ai_bp
+        app.register_blueprint(ai_bp)
+        app.logger.info("✅ AI Service blueprint registered")
+    except ImportError as e:
+        app.logger.warning(f"AI Service blueprint not available: {e}")
+        
     # Register error handlers
     register_error_handlers(app)
     
