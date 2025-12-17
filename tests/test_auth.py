@@ -15,7 +15,7 @@ class TestLogin:
         """Test that login page loads correctly"""
         response = client.get('/login')
         assert response.status_code == 200
-        assert b'login' in response.data.lower() or b'giriş' in response.data.lower()
+        assert b'login' in response.data.lower() or 'giriş'.encode('utf-8') in response.data.lower()
     
     def test_login_with_valid_credentials(self, client, test_user):
         """Test successful login with valid credentials"""
@@ -72,7 +72,7 @@ class TestLogout:
         response = client.get('/logout', follow_redirects=True)
         assert response.status_code == 200
         # Should redirect to login page
-        assert b'login' in response.data.lower() or b'giriş' in response.data.lower()
+        assert b'login' in response.data.lower() or 'giriş'.encode('utf-8') in response.data.lower()
     
     def test_logout_redirects_to_login(self, client, logged_in_user):
         """Test logout redirects to login page"""
