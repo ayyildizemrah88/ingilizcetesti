@@ -40,3 +40,8 @@ Thumbs.db
 
 # Docker
 .dockerignore
+
+# Environment variables
+.env
+.env.local
+.env.production
