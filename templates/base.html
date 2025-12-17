@@ -189,7 +189,7 @@
             // OpenAI kullanımı (Backend API üzerinden)
             async askOpenAI(prompt) {
                 try {
-                    const response = await fetch('/api/openai/chat', {
+                    const response = await fetch('/api/ai/chat', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -221,6 +221,24 @@
                         console.log('OpenAI failed, falling back to Gemini...');
                         return await this.askGemini(prompt);
                     }
+                }
+            },
+
+            // Soru üretme
+            async generateQuestion(difficulty = 'A2', category = 'grammar') {
+                try {
+                    const response = await fetch('/api/ai/generate-question', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({ difficulty, category })
+                    });
+                    return await response.json();
+                } catch (error) {
+                    console.error('Question generation error:', error);
+                    throw error;
                 }
             }
         };
