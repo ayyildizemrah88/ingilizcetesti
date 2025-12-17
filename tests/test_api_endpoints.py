@@ -7,7 +7,6 @@ import pytest
 import json
 from unittest.mock import patch, MagicMock
 
-
 class TestHealthEndpoints:
     """Tests for health check endpoints"""
 
