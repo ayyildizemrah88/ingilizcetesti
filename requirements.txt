@@ -1,6 +1,6 @@
 # Skills Test Center - Dependencies
 # Updated for modular architecture with Celery, SQLAlchemy, and Swagger
-# Last updated: 2024-12-15
+# Last updated: 2024-12-18
 
 # =====================================================
 # CORE FLASK
@@ -42,10 +42,25 @@ celery>=5.3.0
 redis>=5.0.0
 
 # =====================================================
-# AI SERVICES
+# CELERY MONITORING
 # =====================================================
+flower>=2.0.0
+
+# =====================================================
+# AI SERVICES (FREE OPTIONS)
+# =====================================================
+# Google Gemini - FREE TIER: 60 requests/minute
 google-generativeai>=0.3.0
+
+# OpenAI - PAID (keep for optional use)
 openai>=1.0.0
+
+# Hugging Face - FREE TIER available
+huggingface-hub>=0.20.0
+transformers>=4.36.0
+
+# Groq - FREE TIER: Very fast inference
+groq>=0.4.0
 
 # =====================================================
 # PDF GENERATION
@@ -102,6 +117,11 @@ gunicorn>=21.0.0
 gevent>=23.0.0
 
 # =====================================================
+# PERFORMANCE
+# =====================================================
+flask-compress>=1.14
+
+# =====================================================
 # TESTING
 # =====================================================
 pytest>=7.4.0
@@ -140,38 +160,17 @@ locust>=2.20.0
 google-cloud-storage>=2.14.0
 
 # =====================================================
-# ADDITIONAL UTILITIES (optional but recommended)
+# ADDITIONAL UTILITIES
 # =====================================================
-# Email validation
 dnspython>=2.4.0
 email-validator>=2.1.0
-
-# File type detection (for upload security)
 python-magic>=0.4.27
-
-# Data validation
 validators>=0.22.0
-
-# Async HTTP client (for webhooks)
 httpx>=0.25.0
-
-# Date/Time handling
 python-dateutil>=2.8.0
-
-# Password strength checking
 zxcvbn>=4.4.28
-
-# Caching with Redis
 flask-caching>=2.1.0
-
-# Session management
 flask-session>=0.5.0
-
-# CORS support (for API)
 flask-cors>=4.0.0
-
-# Health checks
 py-healthcheck>=1.10.0
-
-# Prometheus metrics (monitoring)
 prometheus-flask-exporter>=0.23.0
