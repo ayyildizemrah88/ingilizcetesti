@@ -10,6 +10,10 @@ import re
 
 auth_bp = Blueprint('auth', __name__)
 
+@auth_bp.route('/')
+def index():
+    """Landing page with login options"""
+    return render_template('index.html')
 
 # ══════════════════════════════════════════════════════════════════
 # SECURITY HELPERS
