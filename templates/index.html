@@ -1,63 +1,169 @@
 {% extends "base.html" %}
-{% block title %}Skills Test Center - Ana Sayfa{% endblock %}
+{% block title %}Skills Test Center - İngilizce Yeterlilik Sınavı{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-lg-10">
-        <div class="text-center text-white mb-5">
-            <h1 class="display-3 fw-bold mb-3"><i class="bi bi-mortarboard-fill"></i> Skills Test Center</h1>
-            <p class="lead">Yeni nesil yetenek ve İngilizce değerlendirme platformu</p>
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+    
+    .hero-container {
+        max-width: 1200px;
+        width: 100%;
+    }
+    
+    .hero-title {
+        color: white;
+        font-size: 3rem;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 1rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .hero-subtitle {
+        color: rgba(255,255,255,0.9);
+        font-size: 1.3rem;
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+    
+    .login-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+    
+    .login-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2.5rem;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+    
+    .login-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 30px 80px rgba(0,0,0,0.2);
+    }
+    
+    .login-card-icon {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .login-card-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+    
+    .login-card-desc {
+        color: #666;
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .login-card-btn {
+        display: inline-block;
+        padding: 0.8rem 2rem;
+        border-radius: 30px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-admin {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .btn-customer {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+    }
+    
+    .btn-candidate {
+        background: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
+        color: white;
+    }
+    
+    .login-card:hover .login-card-btn {
+        transform: scale(1.05);
+    }
+    
+    .features-badge {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: 3rem;
+        flex-wrap: wrap;
+    }
+    
+    .feature-item {
+        color: rgba(255,255,255,0.9);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .feature-item i {
+        color: #38ef7d;
+    }
+    
+    @media (max-width: 768px) {
+        .hero-title { font-size: 2rem; }
+        .hero-subtitle { font-size: 1rem; }
+    }
+</style>
+
+<div class="hero-section">
+    <div class="hero-container">
+        <h1 class="hero-title">🎓 Skills Test Center</h1>
+        <p class="hero-subtitle">Uluslararası İngilizce Yeterlilik Değerlendirme Platformu</p>
+        
+        <div class="login-cards">
+            <a href="{{ url_for('auth.login') }}" class="login-card">
+                <div class="login-card-icon">👨‍💼</div>
+                <h3 class="login-card-title">Süper Admin</h3>
+                <p class="login-card-desc">Sistem yönetimi, şirket ve kullanıcı yönetimi, tüm raporlar</p>
+                <span class="login-card-btn btn-admin">Giriş Yap</span>
+            </a>
+            
+            <a href="{{ url_for('auth.login') }}" class="login-card">
+                <div class="login-card-icon">🏢</div>
+                <h3 class="login-card-title">Kurumsal Müşteri</h3>
+                <p class="login-card-desc">Şirket dashboard, aday yönetimi, sınav raporları</p>
+                <span class="login-card-btn btn-customer">Giriş Yap</span>
+            </a>
+            
+            <a href="{{ url_for('auth.sinav_giris') }}" class="login-card">
+                <div class="login-card-icon">📝</div>
+                <h3 class="login-card-title">Sınav Adayı</h3>
+                <p class="login-card-desc">Giriş kodunuzla sınava başlayın</p>
+                <span class="login-card-btn btn-candidate">Sınava Gir</span>
+            </a>
         </div>
-
-        <div class="row g-4 justify-content-center">
-            <div class="col-md-4">
-                <div class="card h-100 border-0">
-                    <div class="card-body text-center p-4">
-                        <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex p-3 mb-3">
-                            <i class="bi bi-person-check-fill text-success" style="font-size: 2.5rem;"></i>
-                        </div>
-                        <h5 class="card-title">Sınava Giriş</h5>
-                        <p class="text-muted">Giriş kodunuzla sınava başlayın</p>
-                        <a href="{{ url_for('auth.sinav_giris') }}" class="btn btn-success btn-lg w-100">
-                            <i class="bi bi-play-fill me-2"></i>Sınava Başla
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card h-100 border-0">
-                    <div class="card-body text-center p-4">
-                        <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex p-3 mb-3">
-                            <i class="bi bi-shield-lock-fill text-primary" style="font-size: 2.5rem;"></i>
-                        </div>
-                        <h5 class="card-title">Yönetici Paneli</h5>
-                        <p class="text-muted">Yönetici hesabınızla giriş yapın</p>
-                        <a href="/login" class="btn btn-primary btn-lg w-100">
-                            <i class="bi bi-box-arrow-in-right me-2"></i>Giriş Yap
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card h-100 border-0">
-                    <div class="card-body text-center p-4">
-                        <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex p-3 mb-3">
-                            <i class="bi bi-building text-info" style="font-size: 2.5rem;"></i>
-                        </div>
-                        <h5 class="card-title">Kurumsal Kayıt</h5>
-                        <p class="text-muted">Demo talep edin</p>
-                        <a href="/company/onboard" class="btn btn-info btn-lg w-100 text-white">
-                            <i class="bi bi-telephone me-2"></i>İletişim
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="text-center text-white-50 mt-5">
-            <small>© 2024 Skills Test Center. Tüm hakları saklıdır.</small>
+        
+        <div class="features-badge">
+            <div class="feature-item"><i>✓</i> CEFR Uyumlu</div>
+            <div class="feature-item"><i>✓</i> AI Değerlendirme</div>
+            <div class="feature-item"><i>✓</i> 4 Beceri Testi</div>
+            <div class="feature-item"><i>✓</i> Anlık Sonuç</div>
         </div>
     </div>
 </div>
