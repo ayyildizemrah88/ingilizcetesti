@@ -85,7 +85,6 @@ class FraudCase(db.Model):
     def __repr__(self):
         return f'<FraudCase {self.id} - {self.status}>'
 
-
 class ExamSchedule(db.Model):
     """Scheduled exams for candidates"""
     __tablename__ = 'exam_schedules'
@@ -113,7 +112,6 @@ class ExamSchedule(db.Model):
     def __repr__(self):
         return f'<ExamSchedule {self.id} - {self.scheduled_at}>'
 
-
 class LearningResource(db.Model):
     """Learning resources for study plan recommendations"""
     __tablename__ = 'learning_resources'
@@ -139,7 +137,6 @@ class LearningResource(db.Model):
     
     def __repr__(self):
         return f'<LearningResource {self.title}>'
-
 
 class BulkImport(db.Model):
     """Track bulk CSV imports"""
@@ -172,7 +169,6 @@ class BulkImport(db.Model):
     def __repr__(self):
         return f'<BulkImport {self.id} - {self.status}>'
 
-
 def log_action(user, action, entity_type, entity_id, description=None, 
                old_value=None, new_value=None, request=None):
     """Helper function to log an admin action"""
@@ -197,7 +193,6 @@ def log_action(user, action, entity_type, entity_id, description=None,
     
     return log
 
-
 class CreditTransaction(db.Model):
     """Track credit purchases and usage"""
     __tablename__ = 'credit_transactions'
@@ -220,7 +215,6 @@ class CreditTransaction(db.Model):
     
     def __repr__(self):
         return f'<CreditTransaction {self.id}: {self.amount}>'
-
 
 class LoginAttempt(db.Model):
     """Track login attempts for security"""
