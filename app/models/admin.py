@@ -12,7 +12,7 @@ class AuditLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     
     # Who
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('kullanicilar.id'), index=True, nullable=True)
     user_email = db.Column(db.String(255))
     user_role = db.Column(db.String(50))
     
@@ -51,6 +51,7 @@ class AuditLog(db.Model):
     def __repr__(self):
         return f'<AuditLog {self.action} {self.entity_type}/{self.entity_id}>'
 
+
 class FraudCase(db.Model):
     """Track flagged fraud/cheating cases"""
     __tablename__ = 'fraud_cases'
@@ -71,7 +72,7 @@ class FraudCase(db.Model):
     
     # Status
     status = db.Column(db.String(20), default='pending')  # pending, cleared, confirmed
-    reviewed_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    reviewed_by = db.Column(db.Integer, db.ForeignKey('kullanicilar.id'))
     reviewed_at = db.Column(db.DateTime)
     notes = db.Column(db.Text)
     
@@ -79,10 +80,11 @@ class FraudCase(db.Model):
     
     # Relationships
     candidate = db.relationship('Candidate', backref='fraud_cases')
-    reviewer = db.relationship('User', backref='reviewed_cases')
+    reviewer = db.relationship('User', backref='reviewed_cases', foreign_keys=[reviewed_by])
     
     def __repr__(self):
         return f'<FraudCase {self.id} - {self.status}>'
+
 
 class ExamSchedule(db.Model):
     """Scheduled exams for candidates"""
@@ -101,14 +103,16 @@ class ExamSchedule(db.Model):
     status = db.Column(db.String(20), default='scheduled')  # scheduled, started, completed, missed
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey('kullanicilar.id'))
     
     # Relationships
     candidate = db.relationship('Candidate', backref='schedules')
     template = db.relationship('ExamTemplate', backref='schedules')
+    creator = db.relationship('User', backref='created_schedules', foreign_keys=[created_by])
     
     def __repr__(self):
         return f'<ExamSchedule {self.id} - {self.scheduled_at}>'
+
 
 class LearningResource(db.Model):
     """Learning resources for study plan recommendations"""
@@ -136,6 +140,7 @@ class LearningResource(db.Model):
     def __repr__(self):
         return f'<LearningResource {self.title}>'
 
+
 class BulkImport(db.Model):
     """Track bulk CSV imports"""
     __tablename__ = 'bulk_imports'
@@ -143,7 +148,7 @@ class BulkImport(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     
     company_id = db.Column(db.Integer, db.ForeignKey('sirketler.id'), index=True)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey('kullanicilar.id'))
     
     # File info
     filename = db.Column(db.String(255))
@@ -162,10 +167,11 @@ class BulkImport(db.Model):
     
     # Relationships
     company = db.relationship('Company', backref='imports')
-    creator = db.relationship('User', backref='imports')
+    creator = db.relationship('User', backref='imports', foreign_keys=[created_by])
     
     def __repr__(self):
         return f'<BulkImport {self.id} - {self.status}>'
+
 
 def log_action(user, action, entity_type, entity_id, description=None, 
                old_value=None, new_value=None, request=None):
@@ -191,6 +197,7 @@ def log_action(user, action, entity_type, entity_id, description=None,
     
     return log
 
+
 class CreditTransaction(db.Model):
     """Track credit purchases and usage"""
     __tablename__ = 'credit_transactions'
@@ -205,13 +212,15 @@ class CreditTransaction(db.Model):
     description = db.Column(db.Text)
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey('kullanicilar.id'))
     
     # Relationships
     company = db.relationship('Company', backref='credit_transactions')
+    creator = db.relationship('User', backref='credit_transactions', foreign_keys=[created_by])
     
     def __repr__(self):
         return f'<CreditTransaction {self.id}: {self.amount}>'
+
 
 class LoginAttempt(db.Model):
     """Track login attempts for security"""
@@ -226,4 +235,3 @@ class LoginAttempt(db.Model):
     
     def __repr__(self):
         return f'<LoginAttempt {self.email}: {"success" if self.success else "failed"}>'
-
