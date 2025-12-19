@@ -1,351 +1,543 @@
 # -*- coding: utf-8 -*-
 """
-Authentication Routes - Login, Logout, Password Reset
-Enhanced with security best practices
+Admin Routes - Dashboard and management
 """
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from app.extensions import db, limiter
-import os
-import re
+from functools import wraps
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, send_file
+from app.extensions import db
+import io
 
-auth_bp = Blueprint('auth', __name__)
-
-
-@auth_bp.route('/')
-def index():
-    """Landing page with login options"""
-    return render_template('index.html')
+admin_bp = Blueprint('admin', __name__)
 
 
-# ══════════════════════════════════════════════════════════════════
-def get_secret_key():
-    """Get SECRET_KEY - raises error if not configured."""
-    key = os.getenv('SECRET_KEY')
-    if not key:
-        raise RuntimeError("SECRET_KEY environment variable is not set!")
-    return key
+# ══════════════════════════════════════════════════════════════
+def login_required(f):
+    """Require admin login"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'kullanici_id' not in session:
+            flash("Lütfen giriş yapın.", "warning")
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return decorated
 
 
-def validate_password_strength(password):
-    """
-    Validate password meets security requirements.
-
-    Requirements:
-    - Minimum 8 characters
-    - At least 1 uppercase letter
-    - At least 1 lowercase letter
-    - At least 1 digit
-
-    Returns:
-        tuple: (is_valid, error_message)
-    """
-    if len(password) < 8:
-        return False, "Şifre en az 8 karakter olmalıdır."
-
-    if not re.search(r'[A-Z]', password):
-        return False, "Şifre en az 1 büyük harf içermelidir."
-
-    if not re.search(r'[a-z]', password):
-        return False, "Şifre en az 1 küçük harf içermelidir."
-
-    if not re.search(r'\d', password):
-        return False, "Şifre en az 1 rakam içermelidir."
-
-    return True, None
-
-
-def regenerate_session():
-    """
-    Regenerate session ID to prevent session fixation attacks.
-    Preserves session data while changing the session ID.
-    """
-    session_data = dict(session)
-    session.clear()
-
-    for key, value in session_data.items():
-        session[key] = value
-
-    session.modified = True
-
-
-def get_login_tracker():
-    """Get login tracker with graceful fallback."""
-    try:
-        from app.utils.redis_login_tracker import get_login_tracker as get_redis_tracker
-        return get_redis_tracker()
-    except ImportError:
-        try:
-            from app.utils.security import login_tracker
-            return login_tracker
-        except ImportError:
-            return None
-
-
-# ══════════════════════════════════════════════════════════════════
-@auth_bp.route('/login', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")
-def login():
-    """
-    Admin panel login with enhanced security
-    ---
-    tags:
-      - Authentication
-    responses:
-      200:
-        description: Login page or redirect to dashboard
-    """
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
-        password = request.form.get('sifre', '')
-
-        from app.models import User
-        user = User.query.filter_by(email=email, is_active=True).first()
-
-        # Check for account lockout
-        tracker = get_login_tracker()
-        if tracker:
-            try:
-                if tracker.is_locked_out(email):
-                    remaining = tracker.get_lockout_remaining(email)
-                    flash(f"Hesabınız geçici olarak kilitlendi. {remaining // 60} dakika sonra tekrar deneyin.", "danger")
-                    return render_template('login.html')
-            except Exception:
-                db.session.rollback()
-
-        if user and user.check_password(password):
-            # Record successful login (with error handling)
-            try:
-                if tracker:
-                    tracker.record_successful_login(email, request.remote_addr)
-            except Exception:
-                db.session.rollback()
-
-            # Check if 2FA is enabled
-            try:
-                if hasattr(user, 'totp_verified') and user.totp_verified and user.totp_secret:
-                    session['pending_2fa_user_id'] = user.id
-                    flash("Lütfen doğrulama kodunuzu girin.", "info")
-                    return redirect(url_for('twofa.challenge'))
-            except Exception:
-                pass
-
-            # ══════════════════════════════════════════════════════════
-            # SESSION REGENERATION - Prevents session fixation attacks
-            # ══════════════════════════════════════════════════════════
-            regenerate_session()
-
-            # Set session data
-            session['kullanici_id'] = user.id
-            session['kullanici'] = user.email
-            session['rol'] = user.rol
-            session['sirket_id'] = user.sirket_id
-            session['2fa_verified'] = True
-
-            # Update last login
-            try:
-                from datetime import datetime
-                user.last_login = datetime.utcnow()
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-
-            flash("Giriş başarılı!", "success")
+def superadmin_required(f):
+    """Only superadmin can access - for questions, users, settings"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get('rol') != 'superadmin':
+            flash("Bu işlem sadece süper admin tarafından yapılabilir.", "danger")
             return redirect(url_for('admin.dashboard'))
-        else:
-            # Record failed login
-            try:
-                if tracker:
-                    tracker.record_failed_attempt(email, request.remote_addr)
-            except Exception:
-                db.session.rollback()
-
-            flash("E-posta veya şifre hatalı.", "danger")
-
-    return render_template('login.html')
+        return f(*args, **kwargs)
+    return decorated
 
 
-@auth_bp.route('/logout')
-def logout():
-    """
-    Logout and clear session
-    ---
-    tags:
-      - Authentication
-    responses:
-      302:
-        description: Redirect to login page
-    """
-    session.clear()
-    flash("Çıkış yapıldı.", "info")
-    return redirect(url_for('auth.login'))
+def customer_or_superadmin(f):
+    """Superadmin and customer can access - for candidates, reports"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get('rol') not in ['superadmin', 'customer']:
+            flash("Bu işlem için yetkiniz yok.", "danger")
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return decorated
 
 
-# ══════════════════════════════════════════════════════════════════
-@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
-@limiter.limit("5 per hour")
-def forgot_password():
-    """
-    Request password reset email
-    ---
-    tags:
-      - Authentication
-    """
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
+@admin_bp.route('/')
+@admin_bp.route('/dashboard')
+@login_required
+def dashboard():
+    """Admin dashboard with statistics"""
+    from app.models import Candidate, Question, Company, User
+    from datetime import datetime, timedelta
 
-        from app.models import User
-        user = User.query.filter_by(email=email).first()
+    sirket_id = session.get('sirket_id')
 
-        if user:
-            import jwt
-            from datetime import datetime, timedelta
+    today = datetime.utcnow().date()
+    week_ago = datetime.utcnow() - timedelta(days=7)
 
-            try:
-                token = jwt.encode(
-                    {'user_id': user.id, 'exp': datetime.utcnow() + timedelta(hours=1)},
-                    get_secret_key(),
-                    algorithm='HS256'
-                )
-
-                from app.tasks.email_tasks import send_password_reset_email
-                send_password_reset_email.delay(user.id, token)
-            except Exception:
-                pass
-
-        flash("Şifre sıfırlama linki e-posta adresinize gönderildi.", "success")
-        return redirect(url_for('auth.login'))
-
-    return render_template('forgot_password.html')
-
-
-@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
-def reset_password(token):
-    """
-    Reset password with token and strong password validation
-    ---
-    tags:
-      - Authentication
-    parameters:
-      - name: token
-        in: path
-        type: string
-        required: true
-    """
-    import jwt
+    stats = {
+        'total_candidates': Candidate.query.filter_by(sirket_id=sirket_id, is_deleted=False).count() if sirket_id else 0,
+        'completed_exams': Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='tamamlandi').count() if sirket_id else 0,
+        'pending_exams': Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='beklemede').count() if sirket_id else 0,
+        'total_questions': Question.query.filter_by(is_active=True).count(),
+        'exams_this_week': 0
+    }
 
     try:
-        data = jwt.decode(token, get_secret_key(), algorithms=['HS256'])
-        user_id = data['user_id']
-    except jwt.ExpiredSignatureError:
-        flash("Şifre sıfırlama linki süresi dolmuş.", "danger")
-        return redirect(url_for('auth.forgot_password'))
-    except jwt.InvalidTokenError:
-        flash("Geçersiz şifre sıfırlama linki.", "danger")
-        return redirect(url_for('auth.forgot_password'))
-    except RuntimeError:
-        flash("Sistem hatası.", "danger")
-        return redirect(url_for('auth.forgot_password'))
+        if sirket_id:
+            stats['exams_this_week'] = Candidate.query.filter(
+                Candidate.sirket_id == sirket_id,
+                Candidate.bitis_tarihi >= week_ago
+            ).count()
+    except:
+        pass
 
+    recent_candidates = []
+    try:
+        if sirket_id:
+            recent_candidates = Candidate.query.filter_by(
+                sirket_id=sirket_id, is_deleted=False
+            ).order_by(Candidate.created_at.desc()).limit(10).all()
+    except:
+        pass
+
+    company = None
+    try:
+        if sirket_id:
+            company = Company.query.get(sirket_id)
+    except:
+        pass
+
+    return render_template('dashboard.html', 
+                          stats=stats, 
+                          recent_candidates=recent_candidates,
+                          company=company)
+
+
+# ══════════════════════════════════════════════════════════════
+# ADAYLAR (Candidates)
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/adaylar')
+@login_required
+def adaylar():
+    """List all candidates"""
+    from app.models import Candidate
+
+    sirket_id = session.get('sirket_id')
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+
+    if sirket_id:
+        candidates = Candidate.query.filter_by(
+            sirket_id=sirket_id, is_deleted=False
+        ).order_by(Candidate.created_at.desc()).paginate(page=page, per_page=per_page)
+    else:
+        candidates = Candidate.query.filter_by(is_deleted=False).order_by(
+            Candidate.created_at.desc()
+        ).paginate(page=page, per_page=per_page)
+
+    return render_template('adaylar.html', adaylar=candidates)
+
+
+@admin_bp.route('/aday/ekle', methods=['GET', 'POST'])
+@login_required
+def aday_ekle():
+    """Add new candidate"""
     if request.method == 'POST':
-        password = request.form.get('sifre', '')
-        password_confirm = request.form.get('sifre_tekrar', '')
-
-        is_valid, error_msg = validate_password_strength(password)
-        if not is_valid:
-            flash(error_msg, "warning")
-        elif password != password_confirm:
-            flash("Şifreler eşleşmiyor.", "warning")
-        else:
-            from app.models import User
-            user = User.query.get(user_id)
-            if user:
-                user.set_password(password)
-                db.session.commit()
-                flash("Şifreniz başarıyla değiştirildi.", "success")
-                return redirect(url_for('auth.login'))
-
-    return render_template('reset_password.html', token=token)
-
-
-# ══════════════════════════════════════════════════════════════════
-@auth_bp.route('/sinav-giris', methods=['GET', 'POST'])
-def sinav_giris():
-    """
-    Candidate exam login with access code and TC Kimlik
-    ---
-    tags:
-      - Exam
-    """
-    if request.method == 'POST':
-        giris_kodu = request.form.get('giris_kodu', '').strip().upper()
-        tc_kimlik = request.form.get('tc_kimlik', '').strip()
-
-        if not giris_kodu:
-            flash("Giriş kodu gereklidir.", "warning")
-            return render_template('sinav_giris.html')
-
-        if not tc_kimlik:
-            flash("TC Kimlik numarası gereklidir.", "warning")
-            return render_template('sinav_giris.html')
-
-        if not tc_kimlik.isdigit() or len(tc_kimlik) != 11:
-            flash("Geçersiz TC Kimlik numarası formatı.", "danger")
-            return render_template('sinav_giris.html')
-
         from app.models import Candidate
-        candidate = Candidate.query.filter_by(giris_kodu=giris_kodu, is_deleted=False).first()
+        import string
+        import random
 
-        if not candidate:
-            flash("Geçersiz giriş kodu.", "danger")
-            return render_template('sinav_giris.html')
+        ad_soyad = request.form.get('ad_soyad', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        tc_kimlik = request.form.get('tc_kimlik', '').strip()
+        cep_no = request.form.get('cep_no', '').strip()
+        sinav_suresi = int(request.form.get('sinav_suresi', 30))
+        soru_limiti = int(request.form.get('soru_limiti', 25))
 
-        if candidate.tc_kimlik and candidate.tc_kimlik != tc_kimlik:
-            flash("TC Kimlik numarası eşleşmiyor.", "danger")
-            return render_template('sinav_giris.html')
+        giris_kodu = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
-        if not candidate.tc_kimlik:
-            candidate.tc_kimlik = tc_kimlik
-            db.session.commit()
+        candidate = Candidate(
+            ad_soyad=ad_soyad,
+            email=email,
+            tc_kimlik=tc_kimlik,
+            cep_no=cep_no,
+            giris_kodu=giris_kodu,
+            sinav_suresi=sinav_suresi,
+            soru_limiti=soru_limiti,
+            sirket_id=session.get('sirket_id')
+        )
 
-        if candidate.sinav_durumu == 'tamamlandi':
-            flash("Bu sınav zaten tamamlanmış.", "info")
-            return redirect(url_for('exam.sinav_bitti'))
+        db.session.add(candidate)
+        db.session.commit()
 
-        regenerate_session()
+        try:
+            if email:
+                from app.tasks.email_tasks import send_exam_invitation
+                send_exam_invitation.delay(candidate.id)
+        except:
+            pass
 
-        session['aday_id'] = candidate.id
-        session['giris_kodu'] = giris_kodu
+        flash(f"Aday eklendi. Giriş Kodu: {giris_kodu}", "success")
+        return redirect(url_for('admin.adaylar'))
 
-        from datetime import datetime, timedelta
+    return render_template('aday_form.html')
+
+
+@admin_bp.route('/aday/<int:id>/detay')
+@login_required
+def aday_detay(id):
+    """Candidate detail view"""
+    from app.models import Candidate
+
+    candidate = Candidate.query.get_or_404(id)
+
+    if candidate.sirket_id != session.get('sirket_id') and session.get('rol') != 'superadmin':
+        flash("Bu adaya erişim yetkiniz yok.", "danger")
+        return redirect(url_for('admin.adaylar'))
+
+    return render_template('aday_detay.html', aday=candidate)
+
+
+@admin_bp.route('/aday/<int:id>/sil', methods=['POST'])
+@login_required
+def aday_sil(id):
+    """Delete candidate (soft delete)"""
+    from app.models import Candidate
+
+    candidate = Candidate.query.get_or_404(id)
+    
+    if candidate.sirket_id != session.get('sirket_id') and session.get('rol') != 'superadmin':
+        flash("Bu adayı silme yetkiniz yok.", "danger")
+        return redirect(url_for('admin.adaylar'))
+
+    candidate.is_deleted = True
+    db.session.commit()
+    flash("Aday silindi.", "success")
+    return redirect(url_for('admin.adaylar'))
+
+
+# ══════════════════════════════════════════════════════════════
+# SORULAR (Questions)
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/sorular')
+@login_required
+@superadmin_required
+def sorular():
+    """Question bank management"""
+    from app.models import Question
+
+    kategori = request.args.get('kategori')
+    zorluk = request.args.get('zorluk')
+    page = request.args.get('page', 1, type=int)
+
+    query = Question.query.filter_by(is_active=True)
+
+    if kategori:
+        query = query.filter_by(kategori=kategori)
+    if zorluk:
+        query = query.filter_by(zorluk=zorluk)
+
+    questions = query.order_by(Question.id.desc()).paginate(page=page, per_page=20)
+
+    return render_template('sorular.html', sorular=questions)
+
+
+@admin_bp.route('/soru/ekle', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def soru_ekle():
+    """Add new question"""
+    if request.method == 'POST':
+        from app.models import Question
+
+        question = Question(
+            soru_metni=request.form.get('soru_metni'),
+            secenek_a=request.form.get('secenek_a'),
+            secenek_b=request.form.get('secenek_b'),
+            secenek_c=request.form.get('secenek_c'),
+            secenek_d=request.form.get('secenek_d'),
+            dogru_cevap=request.form.get('dogru_cevap'),
+            kategori=request.form.get('kategori'),
+            zorluk=request.form.get('zorluk', 'B1'),
+            soru_tipi=request.form.get('soru_tipi', 'SECMELI'),
+            sirket_id=session.get('sirket_id')
+        )
+
+        db.session.add(question)
+        db.session.commit()
+
+        flash("Soru eklendi.", "success")
+        return redirect(url_for('admin.sorular'))
+
+    return render_template('soru_form.html')
+
+
+@admin_bp.route('/soru/<int:id>/sil', methods=['POST'])
+@login_required
+@superadmin_required
+def soru_sil(id):
+    """Delete question (soft delete)"""
+    from app.models import Question
+
+    question = Question.query.get_or_404(id)
+    question.is_active = False
+    db.session.commit()
+    flash("Soru silindi.", "success")
+    return redirect(url_for('admin.sorular'))
+
+
+# ══════════════════════════════════════════════════════════════
+# ŞABLONLAR (Templates)
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/sablonlar')
+@login_required
+def sablonlar():
+    """Exam templates"""
+    from app.models import ExamTemplate
+
+    sirket_id = session.get('sirket_id')
+    
+    try:
+        if sirket_id:
+            templates = ExamTemplate.query.filter_by(sirket_id=sirket_id).all()
+        else:
+            templates = ExamTemplate.query.all()
+    except:
+        templates = []
+
+    return render_template('sablonlar.html', sablonlar=templates)
+
+
+@admin_bp.route('/sablon/ekle', methods=['GET', 'POST'])
+@login_required
+def sablon_ekle():
+    """Add exam template"""
+    if request.method == 'POST':
+        from app.models import ExamTemplate
+
+        template = ExamTemplate(
+            isim=request.form.get('isim'),
+            sinav_suresi=int(request.form.get('sinav_suresi', 30)),
+            soru_sayisi=int(request.form.get('soru_sayisi', 25)),
+            sirket_id=session.get('sirket_id')
+        )
+        db.session.add(template)
+        db.session.commit()
+        flash("Şablon eklendi.", "success")
+        return redirect(url_for('admin.sablonlar'))
+
+    return render_template('sablon_form.html')
+
+
+# ══════════════════════════════════════════════════════════════
+# RAPORLAR (Reports)
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/raporlar')
+@login_required
+def raporlar():
+    """Reports page"""
+    from app.models import Candidate
+    from datetime import datetime, timedelta
+
+    sirket_id = session.get('sirket_id')
+    
+    stats = {
+        'total': 0,
+        'completed': 0,
+        'pending': 0,
+        'average_score': 0
+    }
+
+    try:
+        if sirket_id:
+            stats['total'] = Candidate.query.filter_by(sirket_id=sirket_id, is_deleted=False).count()
+            stats['completed'] = Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='tamamlandi').count()
+            stats['pending'] = Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='beklemede').count()
+            
+            completed_candidates = Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='tamamlandi').all()
+            if completed_candidates:
+                scores = [c.toplam_puan or 0 for c in completed_candidates]
+                stats['average_score'] = sum(scores) / len(scores) if scores else 0
+    except:
+        pass
+
+    return render_template('raporlar.html', stats=stats)
+
+
+# ══════════════════════════════════════════════════════════════
+# KULLANICILAR (Users)
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/kullanicilar')
+@login_required
+@superadmin_required
+def kullanicilar():
+    """User management"""
+    from app.models import User
+
+    sirket_id = session.get('sirket_id')
+
+    if session.get('rol') == 'superadmin':
+        users = User.query.all()
+    else:
+        users = User.query.filter_by(sirket_id=sirket_id).all()
+
+    return render_template('kullanicilar.html', kullanicilar=users)
+
+
+@admin_bp.route('/kullanici/ekle', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def kullanici_ekle():
+    """Add new user"""
+    if request.method == 'POST':
+        from app.models import User
+
+        user = User(
+            email=request.form.get('email', '').strip().lower(),
+            ad_soyad=request.form.get('ad_soyad', '').strip(),
+            rol=request.form.get('rol', 'customer'),
+            sirket_id=session.get('sirket_id')
+        )
+        user.set_password(request.form.get('sifre', 'Temp123!'))
+        
+        db.session.add(user)
+        db.session.commit()
+
+        flash("Kullanıcı eklendi.", "success")
+        return redirect(url_for('admin.kullanicilar'))
+
+    return render_template('kullanici_form.html')
+
+
+# ══════════════════════════════════════════════════════════════
+# ŞİRKETLER (Companies) - Superadmin only
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/sirketler')
+@login_required
+@superadmin_required
+def sirketler():
+    """Company management (superadmin only)"""
+    from app.models import Company
+
+    companies = Company.query.all()
+    return render_template('sirketler.html', sirketler=companies)
+
+
+@admin_bp.route('/sirket/ekle', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def sirket_ekle():
+    """Add new company"""
+    if request.method == 'POST':
         from app.models import Company
 
-        if not candidate.baslama_tarihi:
-            company = Company.query.get(candidate.sirket_id)
-            if company:
-                success = company.deduct_credit(
-                    amount=1,
-                    transaction_type='exam',
-                    description=f"Sınav başlatıldı: {candidate.ad_soyad} ({candidate.giris_kodu})",
-                    candidate_id=candidate.id
-                )
+        company = Company(
+            isim=request.form.get('isim'),
+            email=request.form.get('email'),
+            telefon=request.form.get('telefon'),
+            kredi=int(request.form.get('kredi', 0))
+        )
+        db.session.add(company)
+        db.session.commit()
 
-                if not success:
-                    flash("Şirketinizin yeterli sınav kredisi bulunmuyor.", "danger")
-                    session.clear()
-                    return render_template('sinav_giris.html')
+        flash("Şirket eklendi.", "success")
+        return redirect(url_for('admin.sirketler'))
 
-            candidate.baslama_tarihi = datetime.utcnow()
-            candidate.sinav_durumu = 'devam_ediyor'
-            db.session.commit()
+    return render_template('sirket_form.html')
 
-        elapsed = datetime.utcnow() - candidate.baslama_tarihi
-        remaining = (candidate.sinav_suresi * 60) - elapsed.total_seconds()
 
-        if remaining <= 0:
-            return redirect(url_for('exam.sinav_bitti'))
+# ══════════════════════════════════════════════════════════════
+# AYARLAR (Settings)
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/ayarlar', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def ayarlar():
+    """Company settings"""
+    from app.models import Company
 
-        session['kalan_sure'] = int(remaining)
+    company = Company.query.get(session.get('sirket_id'))
 
-        return redirect(url_for('exam.sinav'))
+    if request.method == 'POST' and company:
+        company.isim = request.form.get('isim')
+        company.email = request.form.get('email')
+        company.telefon = request.form.get('telefon')
+        company.logo_url = request.form.get('logo_url')
+        company.primary_color = request.form.get('primary_color')
+        company.webhook_url = request.form.get('webhook_url')
 
-    return render_template('sinav_giris.html')
+        company.smtp_host = request.form.get('smtp_host')
+        company.smtp_port = int(request.form.get('smtp_port', 587))
+        company.smtp_user = request.form.get('smtp_user')
+        if request.form.get('smtp_pass'):
+            company.smtp_pass = request.form.get('smtp_pass')
+        company.smtp_from = request.form.get('smtp_from')
+
+        db.session.commit()
+        flash("Ayarlar kaydedildi.", "success")
+
+    return render_template('ayarlar.html', company=company)
+
+
+# ══════════════════════════════════════════════════════════════
+# EXPORT (Data Export)
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/export')
+@login_required
+def export_data():
+    """Export candidates data as CSV"""
+    from app.models import Candidate
+
+    sirket_id = session.get('sirket_id')
+    
+    if sirket_id:
+        candidates = Candidate.query.filter_by(sirket_id=sirket_id, is_deleted=False).all()
+    else:
+        candidates = Candidate.query.filter_by(is_deleted=False).all()
+
+    output = io.StringIO()
+    output.write("Ad Soyad,Email,TC Kimlik,Giriş Kodu,Durum,Puan,CEFR,Başlangıç,Bitiş\n")
+    
+    for c in candidates:
+        baslama = c.baslama_tarihi.strftime('%Y-%m-%d %H:%M') if c.baslama_tarihi else ''
+        bitis = c.bitis_tarihi.strftime('%Y-%m-%d %H:%M') if c.bitis_tarihi else ''
+        output.write(f"{c.ad_soyad},{c.email},{c.tc_kimlik},{c.giris_kodu},{c.sinav_durumu},{c.toplam_puan or 0},{c.cefr_seviye or ''},{baslama},{bitis}\n")
+
+    output.seek(0)
+    
+    return send_file(
+        io.BytesIO(output.getvalue().encode('utf-8-sig')),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name='adaylar.csv'
+    )
+
+
+# ══════════════════════════════════════════════════════════════
+# SUPER ADMIN RAPOR
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/super-rapor')
+@login_required
+@superadmin_required
+def super_rapor():
+    """Platform-wide report for superadmin"""
+    from app.models import Company, Candidate, User
+
+    stats = {
+        'total_companies': Company.query.count(),
+        'total_users': User.query.count(),
+        'total_candidates': Candidate.query.count(),
+        'completed_exams': Candidate.query.filter_by(sinav_durumu='tamamlandi').count()
+    }
+
+    companies = Company.query.all()
+
+    return render_template('super_rapor.html', stats=stats, companies=companies)
+
+
+@admin_bp.route('/fraud-heatmap')
+@login_required
+@superadmin_required
+def fraud_heatmap():
+    """Fraud detection heatmap"""
+    return render_template('fraud_heatmap.html')
+
+
+@admin_bp.route('/logs')
+@login_required
+@superadmin_required
+def admin_logs():
+    """Admin activity logs"""
+    from app.models.audit_log import AuditLog
+
+    page = request.args.get('page', 1, type=int)
+    
+    try:
+        logs = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(page=page, per_page=50)
+    except:
+        logs = []
+
+    return render_template('admin_logs.html', logs=logs)
