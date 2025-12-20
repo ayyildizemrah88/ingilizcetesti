@@ -1,39 +1,150 @@
-{% extends "dashboard.html" %}
-{% block title %}Şablonlar - Skills Test Center{% endblock %}
-
+{% extends "base.html" %}
+{% block title %}Sınav Şablonları - Skills Test Center{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3><i class="bi bi-file-earmark-text me-2"></i>Sınav Şablonları</h3>
-    <a href="/admin/sablon-ekle" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Yeni Şablon</a>
-</div>
-
-<div class="card border-0">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>ID</th>
-                        <th>İsim</th>
-                        <th>Süre (dk)</th>
-                        <th>Soru Limiti</th>
-                        <th>Başlangıç Seviyesi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in sablonlar %}
-                    <tr>
-                        <td>{{ s[0] if s is not mapping else s.id }}</td>
-                        <td><strong>{{ s[1] if s is not mapping else s.isim }}</strong></td>
-                        <td>{{ s[2] if s is not mapping else s.sinav_suresi }} dk</td>
-                        <td>{{ s[3] if s is not mapping else s.soru_limiti }}</td>
-                        <td><span class="badge bg-info">{{ s[4] if s is not mapping else s.baslangic_seviyesi }}</span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="page-container">
+    <div class="page-header">
+        <h4><span class="material-symbols-outlined">description</span> Sınav Şablonları</h4>
+        <a href="{{ url_for('admin.sablon_ekle') }}" class="btn btn-primary">
+            <span class="material-symbols-outlined">add</span> Yeni Şablon
+        </a>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+    <div class="templates-grid">
+        {% for sablon in sablonlar %}
+        <div class="template-card">
+            <div class="template-header">
+                <span class="material-symbols-outlined">quiz</span>
+                <h5>{{ sablon.isim }}</h5>
+            </div>
+            <div class="template-body">
+                <p>{{ sablon.aciklama or 'Açıklama yok' }}</p>
+                <div class="template-stats">
+                    <div class="stat">
+                        <span class="material-symbols-outlined">timer</span>
+                        <span>{{ sablon.sinav_suresi }} dk</span>
+                    </div>
+                    <div class="stat">
+                        <span class="material-symbols-outlined">help</span>
+                        <span>{{ sablon.soru_sayisi }} soru</span>
+                    </div>
+                </div>
+            </div>
+            <div class="template-actions">
+                <a href="{{ url_for('admin.sablon_duzenle', id=sablon.id) }}" class="btn btn-sm btn-outline-primary">
+                    <span class="material-symbols-outlined">edit</span> Düzenle
+                </a>
+                <form action="{{ url_for('admin.sablon_sil', id=sablon.id) }}" method="POST" style="display:inline;"
+                    onsubmit="return confirm('Bu şablonu silmek istediğinize emin misiniz?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <span class="material-symbols-outlined">delete</span> Sil
+                    </button>
+                </form>
+            </div>
         </div>
+        {% else %}
+        <div class="empty-state">
+            <span class="material-symbols-outlined">description</span>
+            <h5>Henüz şablon yok</h5>
+            <p>İlk sınav şablonunuzu oluşturun</p>
+            <a href="{{ url_for('admin.sablon_ekle') }}" class="btn btn-primary">Şablon Oluştur</a>
+        </div>
+        {% endfor %}
     </div>
 </div>
+<style>
+    .page-container {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .page-header h4 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+    }
+    .templates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+    }
+    .template-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+    .template-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    .template-header h5 {
+        margin: 0;
+    }
+    .template-body {
+        padding: 20px;
+    }
+    .template-body p {
+        color: #666;
+        margin-bottom: 15px;
+    }
+    .template-stats {
+        display: flex;
+        gap: 20px;
+    }
+    .template-stats .stat {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: #333;
+    }
+    .template-stats .material-symbols-outlined {
+        font-size: 20px;
+        color: #667eea;
+    }
+    .template-actions {
+        padding: 15px 20px;
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 10px;
+    }
+    .empty-state {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 16px;
+    }
+    .empty-state .material-symbols-outlined {
+        font-size: 64px;
+        color: #ccc;
+    }
+    .empty-state h5 {
+        margin: 15px 0 5px;
+        color: #333;
+    }
+    .empty-state p {
+        color: #666;
+        margin-bottom: 20px;
+    }
+</style>
 {% endblock %}
