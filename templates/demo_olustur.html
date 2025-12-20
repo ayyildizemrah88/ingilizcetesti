@@ -1,46 +1,127 @@
-{% extends "dashboard.html" %}
-{% block title %}Demo Şirket Oluştur - Skills Test Center{% endblock %}
-
+{% extends "base.html" %}
+{% block title %}Demo Hesap Oluştur - Skills Test Center{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-6">
-        <div class="card border-0 shadow">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0"><i class="bi bi-rocket-takeoff me-2"></i>Hızlı Demo Şirket Oluştur</h5>
+<div class="form-container">
+    <div class="form-card">
+        <h5>
+            <span class="material-symbols-outlined">science</span>
+            Hızlı Demo Hesap Oluştur
+        </h5>
+        <p class="text-muted mb-4">Bu form ile hızlıca bir demo şirket ve admin kullanıcısı oluşturabilirsiniz.</p>
+        <form method="POST" action="{{ url_for('admin.demo_olustur') }}">
+            <div class="form-group">
+                <label for="firma_adi">Firma Adı *</label>
+                <input type="text" class="form-control" id="firma_adi" name="firma_adi" value="Demo Şirket" required>
             </div>
-            <div class="card-body p-4">
-                <form method="POST">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                    <div class="mb-3">
-                        <label class="form-label">Şirket Adı *</label>
-                        <input type="text" name="company_name" class="form-control" placeholder="Demo Corp" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Admin E-posta *</label>
-                        <input type="email" name="admin_email" class="form-control" placeholder="admin@demo.com"
-                            required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Admin Şifresi *</label>
-                        <input type="password" name="admin_password" class="form-control" minlength="8" required>
-                        <small class="text-muted">En az 8 karakter</small>
-                    </div>
-
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Demo şirket <strong>100 kredi</strong> ile oluşturulur ve otomatik olarak varsayılan sınav
-                        şablonu eklenir.
-                    </div>
-
-                    <div class="d-flex justify-content-end gap-2">
-                        <a href="/admin/sirketler" class="btn btn-secondary">İptal</a>
-                        <button type="submit" class="btn btn-success"><i
-                                class="bi bi-check-lg me-1"></i>Oluştur</button>
-                    </div>
-                </form>
+            <div class="form-group">
+                <label for="admin_email">Admin Email *</label>
+                <input type="email" class="form-control" id="admin_email" name="admin_email"
+                    placeholder="demo@sirket.com" required>
             </div>
-        </div>
+            <div class="form-group">
+                <label for="admin_sifre">Admin Şifre *</label>
+                <input type="text" class="form-control" id="admin_sifre" name="admin_sifre" value="Demo123!" required>
+                <small class="text-muted">Kullanıcıya bu şifreyi iletmeyi unutmayın!</small>
+            </div>
+            <div class="form-group">
+                <label for="kredi">Başlangıç Kredisi</label>
+                <input type="number" class="form-control" id="kredi" name="kredi" value="10" min="0">
+            </div>
+            <div class="alert alert-info">
+                <span class="material-symbols-outlined">info</span>
+                <div>
+                    <strong>Oluşturulacaklar:</strong>
+                    <ul class="mb-0 mt-1">
+                        <li>1 Şirket (belirtilen isimle)</li>
+                        <li>1 Admin Kullanıcı (customer rolü)</li>
+                        <li>Belirtilen kredi miktarı</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="form-actions">
+                <a href="{{ url_for('admin.sirketler') }}" class="btn btn-secondary">İptal</a>
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-symbols-outlined">add</span>
+                    Demo Oluştur
+                </button>
+            </div>
+        </form>
     </div>
 </div>
+<style>
+    .form-container {
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .form-card {
+        background: white;
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+    .form-card h5 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+        color: #333;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        color: #555;
+    }
+    .form-control {
+        width: 100%;
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    .form-control:focus {
+        border-color: #667eea;
+        outline: none;
+    }
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 30px;
+    }
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        border: none;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    .btn-secondary {
+        background: #f0f0f0;
+        color: #333;
+    }
+    .alert-info {
+        display: flex;
+        gap: 10px;
+        padding: 15px;
+        background: #e8f4fd;
+        border-radius: 8px;
+        color: #0c5460;
+    }
+    .alert-info ul {
+        padding-left: 20px;
+    }
+</style>
 {% endblock %}
