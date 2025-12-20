@@ -1,51 +1,123 @@
-{% extends "dashboard.html" %}
-{% block title %}Kullanıcılar - Skills Test Center{% endblock %}
-
+{% extends "base.html" %}
+{% block title %}{{ 'Kullanıcı Düzenle' if kullanici else 'Yeni Kullanıcı' }} - Skills Test Center{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3><i class="bi bi-people me-2"></i>Kullanıcılar</h3>
-    <a href="/admin/kullanici-ekle" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Yeni Kullanıcı</a>
-</div>
-
-<div class="card border-0">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>ID</th>
-                        <th>Ad Soyad</th>
-                        <th>Email</th>
-                        <th>Rol</th>{% if session.rol == 'super_admin' %}<th>Şirket</th>{% endif %}<th>İşlemler</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for k in kullanicilar %}
-                    <tr>
-                        <td>{{ k[0] if k is not mapping else k.id }}</td>
-                        <td><strong>{{ k[5] if k is not mapping else k.ad_soyad }}</strong></td>
-                        <td>{{ k[1] if k is not mapping else k.kadi }}</td>
-                        <td>
-                            {% set rol = k[3] if k is not mapping else k.rol %}
-                            <span
-                                class="badge bg-{{ 'danger' if rol == 'super_admin' else 'primary' if rol == 'sirket_admin' else 'info' }}">{{
-                                rol }}</span>
-                        </td>
-                        {% if session.rol == 'super_admin' %}
-                        <td>{{ k.sirket_isim if k is mapping else '-' }}</td>
-                        {% endif %}
-                        <td>
-                            <a href="/admin/kullanici-sil/{{ k[0] if k is not mapping else k.id }}"
-                                class="btn btn-sm btn-outline-danger"
-                                onclick="return confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?')">
-                                <i class="bi bi-trash"></i>
-                            </a>
-                        </td>
-                    </tr>
+<div class="form-container">
+    <div class="form-card">
+        <h5>
+            <span class="material-symbols-outlined">{{ 'edit' if kullanici else 'person_add' }}</span>
+            {{ 'Kullanıcı Düzenle' if kullanici else 'Yeni Kullanıcı Ekle' }}
+        </h5>
+        <form method="POST"
+            action="{{ url_for('admin.kullanici_duzenle', id=kullanici.id) if kullanici else url_for('admin.kullanici_ekle') }}">
+            <div class="form-group">
+                <label for="ad_soyad">Ad Soyad *</label>
+                <input type="text" class="form-control" id="ad_soyad" name="ad_soyad"
+                    value="{{ kullanici.ad_soyad if kullanici else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" class="form-control" id="email" name="email"
+                    value="{{ kullanici.email if kullanici else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="sifre">{{ 'Yeni Şifre (boş bırakılabilir)' if kullanici else 'Şifre *' }}</label>
+                <input type="password" class="form-control" id="sifre" name="sifre" {{ '' if kullanici else 'required'
+                    }}>
+            </div>
+            <div class="form-group">
+                <label for="rol">Rol *</label>
+                <select class="form-control" id="rol" name="rol" required>
+                    <option value="customer" {{ 'selected' if kullanici and kullanici.rol=='customer' else '' }}>Müşteri
+                        (customer)</option>
+                    <option value="superadmin" {{ 'selected' if kullanici and kullanici.rol=='superadmin' else '' }}>
+                        Süper Admin</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="sirket_id">Şirket</label>
+                <select class="form-control" id="sirket_id" name="sirket_id">
+                    <option value="">-- Şirket Seçin --</option>
+                    {% for sirket in sirketler %}
+                    <option value="{{ sirket.id }}" {{ 'selected' if kullanici and kullanici.sirket_id==sirket.id
+                        else '' }}>
+                        {{ sirket.isim }}
+                    </option>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                </select>
+            </div>
+            <div class="form-actions">
+                <a href="{{ url_for('admin.kullanicilar') }}" class="btn btn-secondary">İptal</a>
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-symbols-outlined">save</span>
+                    {{ 'Güncelle' if kullanici else 'Kaydet' }}
+                </button>
+            </div>
+        </form>
     </div>
 </div>
+<style>
+    .form-container {
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .form-card {
+        background: white;
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+    .form-card h5 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 25px;
+        color: #333;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        color: #555;
+    }
+    .form-control {
+        width: 100%;
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    .form-control:focus {
+        border-color: #667eea;
+        outline: none;
+    }
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 30px;
+    }
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        border: none;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    .btn-secondary {
+        background: #f0f0f0;
+        color: #333;
+    }
+</style>
 {% endblock %}
