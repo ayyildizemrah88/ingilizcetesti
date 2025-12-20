@@ -1,123 +1,31 @@
-{% extends "base.html" %}
-{% block title %}{{ 'Kullanıcı Düzenle' if kullanici else 'Yeni Kullanıcı' }} - Skills Test Center{% endblock %}
+{% extends 'base.html' %}
 {% block content %}
-<div class="form-container">
-    <div class="form-card">
-        <h5>
-            <span class="material-symbols-outlined">{{ 'edit' if kullanici else 'person_add' }}</span>
-            {{ 'Kullanıcı Düzenle' if kullanici else 'Yeni Kullanıcı Ekle' }}
-        </h5>
-        <form method="POST"
-            action="{{ url_for('admin.kullanici_duzenle', id=kullanici.id) if kullanici else url_for('admin.kullanici_ekle') }}">
-            <div class="form-group">
-                <label for="ad_soyad">Ad Soyad *</label>
-                <input type="text" class="form-control" id="ad_soyad" name="ad_soyad"
-                    value="{{ kullanici.ad_soyad if kullanici else '' }}" required>
-            </div>
-            <div class="form-group">
-                <label for="email">Email *</label>
-                <input type="email" class="form-control" id="email" name="email"
-                    value="{{ kullanici.email if kullanici else '' }}" required>
-            </div>
-            <div class="form-group">
-                <label for="sifre">{{ 'Yeni Şifre (boş bırakılabilir)' if kullanici else 'Şifre *' }}</label>
-                <input type="password" class="form-control" id="sifre" name="sifre" {{ '' if kullanici else 'required'
-                    }}>
-            </div>
-            <div class="form-group">
-                <label for="rol">Rol *</label>
-                <select class="form-control" id="rol" name="rol" required>
-                    <option value="customer" {{ 'selected' if kullanici and kullanici.rol=='customer' else '' }}>Müşteri
-                        (customer)</option>
-                    <option value="superadmin" {{ 'selected' if kullanici and kullanici.rol=='superadmin' else '' }}>
-                        Süper Admin</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="sirket_id">Şirket</label>
-                <select class="form-control" id="sirket_id" name="sirket_id">
-                    <option value="">-- Şirket Seçin --</option>
-                    {% for sirket in sirketler %}
-                    <option value="{{ sirket.id }}" {{ 'selected' if kullanici and kullanici.sirket_id==sirket.id
-                        else '' }}>
-                        {{ sirket.isim }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-actions">
-                <a href="{{ url_for('admin.kullanicilar') }}" class="btn btn-secondary">İptal</a>
-                <button type="submit" class="btn btn-primary">
-                    <span class="material-symbols-outlined">save</span>
-                    {{ 'Güncelle' if kullanici else 'Kaydet' }}
-                </button>
-            </div>
-        </form>
-    </div>
+<div class="container">
+    <h4>👥 Kullanıcılar</h4>
+    <a href="{{ url_for('admin.kullanici_ekle') }}" class="btn btn-primary">
+        <span class="material-icons">person_add</span> Yeni Kullanıcı
+    </a>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>E-posta</th>
+                <th>Rol</th>
+                <th>Şirket</th>
+                <th>İşlemler</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for kullanici in kullanicilar %}
+            <tr>
+                <td>{{ kullanici.email }}</td>
+                <td>{{ kullanici.rol }}</td>
+                <td>{{ kullanici.sirket.isim if kullanici.sirket else '-' }}</td>
+                <td>
+                    <a href="{{ url_for('admin.kullanici_duzenle', id=kullanici.id) }}">Düzenle</a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
 </div>
-<style>
-    .form-container {
-        padding: 20px;
-        max-width: 600px;
-        margin: 0 auto;
-    }
-    .form-card {
-        background: white;
-        border-radius: 16px;
-        padding: 30px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    }
-    .form-card h5 {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 25px;
-        color: #333;
-    }
-    .form-group {
-        margin-bottom: 20px;
-    }
-    .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: 500;
-        color: #555;
-    }
-    .form-control {
-        width: 100%;
-        padding: 10px 15px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 1rem;
-    }
-    .form-control:focus {
-        border-color: #667eea;
-        outline: none;
-    }
-    .form-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        margin-top: 30px;
-    }
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        cursor: pointer;
-        text-decoration: none;
-        border: none;
-    }
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-    }
-    .btn-secondary {
-        background: #f0f0f0;
-        color: #333;
-    }
-</style>
 {% endblock %}
