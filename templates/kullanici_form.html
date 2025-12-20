@@ -1,58 +1,123 @@
-{% extends "dashboard.html" %}
-{% block title %}Kullanıcı Ekle - Skills Test Center{% endblock %}
-
+{% extends "base.html" %}
+{% block title %}{{ 'Kullanıcı Düzenle' if kullanici else 'Yeni Kullanıcı' }} - Skills Test Center{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-6">
-        <div class="card border-0">
-            <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-person-plus me-2"></i>Yeni Kullanıcı</h5>
+<div class="form-container">
+    <div class="form-card">
+        <h5>
+            <span class="material-symbols-outlined">{{ 'edit' if kullanici else 'person_add' }}</span>
+            {{ 'Kullanıcı Düzenle' if kullanici else 'Yeni Kullanıcı Ekle' }}
+        </h5>
+        <form method="POST"
+            action="{{ url_for('admin.kullanici_duzenle', id=kullanici.id) if kullanici else url_for('admin.kullanici_ekle') }}">
+            <div class="form-group">
+                <label for="ad_soyad">Ad Soyad *</label>
+                <input type="text" class="form-control" id="ad_soyad" name="ad_soyad"
+                    value="{{ kullanici.ad_soyad if kullanici else '' }}" required>
             </div>
-            <div class="card-body p-4">
-                <form method="POST">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                    <div class="mb-3">
-                        <label class="form-label">Ad Soyad *</label>
-                        <input type="text" name="ad_soyad" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">E-posta (Kullanıcı Adı) *</label>
-                        <input type="email" name="kadi" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Şifre *</label>
-                        <input type="password" name="sifre" class="form-control" minlength="8" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Rol</label>
-                        <select name="rol" class="form-select">
-                            <option value="recruiter">Recruiter</option>
-                            <option value="sirket_admin">Şirket Admin</option>
-                            {% if session.rol == 'super_admin' %}
-                            <option value="super_admin">Super Admin</option>
-                            {% endif %}
-                        </select>
-                    </div>
-                    {% if session.rol == 'super_admin' and sirketler %}
-                    <div class="mb-3">
-                        <label class="form-label">Şirket</label>
-                        <select name="sirket_id" class="form-select">
-                            {% for s in sirketler %}
-                            <option value="{{ s[0] if s is not mapping else s.id }}">{{ s[1] if s is not mapping else
-                                s.isim }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    {% endif %}
-
-                    <div class="d-flex justify-content-end gap-2 mt-4">
-                        <a href="/admin/kullanicilar" class="btn btn-secondary">İptal</a>
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Kaydet</button>
-                    </div>
-                </form>
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" class="form-control" id="email" name="email"
+                    value="{{ kullanici.email if kullanici else '' }}" required>
             </div>
-        </div>
+            <div class="form-group">
+                <label for="sifre">{{ 'Yeni Şifre (boş bırakılabilir)' if kullanici else 'Şifre *' }}</label>
+                <input type="password" class="form-control" id="sifre" name="sifre" {{ '' if kullanici else 'required'
+                    }}>
+            </div>
+            <div class="form-group">
+                <label for="rol">Rol *</label>
+                <select class="form-control" id="rol" name="rol" required>
+                    <option value="customer" {{ 'selected' if kullanici and kullanici.rol=='customer' else '' }}>Müşteri
+                        (customer)</option>
+                    <option value="superadmin" {{ 'selected' if kullanici and kullanici.rol=='superadmin' else '' }}>
+                        Süper Admin</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="sirket_id">Şirket</label>
+                <select class="form-control" id="sirket_id" name="sirket_id">
+                    <option value="">-- Şirket Seçin --</option>
+                    {% for sirket in sirketler %}
+                    <option value="{{ sirket.id }}" {{ 'selected' if kullanici and kullanici.sirket_id==sirket.id
+                        else '' }}>
+                        {{ sirket.isim }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-actions">
+                <a href="{{ url_for('admin.kullanicilar') }}" class="btn btn-secondary">İptal</a>
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-symbols-outlined">save</span>
+                    {{ 'Güncelle' if kullanici else 'Kaydet' }}
+                </button>
+            </div>
+        </form>
     </div>
 </div>
+<style>
+    .form-container {
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .form-card {
+        background: white;
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+    .form-card h5 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 25px;
+        color: #333;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        color: #555;
+    }
+    .form-control {
+        width: 100%;
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    .form-control:focus {
+        border-color: #667eea;
+        outline: none;
+    }
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 30px;
+    }
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        border: none;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    .btn-secondary {
+        background: #f0f0f0;
+        color: #333;
+    }
+</style>
 {% endblock %}
