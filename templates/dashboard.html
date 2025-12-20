@@ -1,7 +1,5 @@
 {% extends "base.html" %}
-
 {% block title %}Dashboard - Skills Test Center{% endblock %}
-
 {% block content %}
 <div class="dashboard-container">
     <!-- Flash Messages -->
@@ -15,7 +13,6 @@
             {% endfor %}
         {% endif %}
     {% endwith %}
-
     <!-- Stats Cards -->
     <div class="stats-row">
         <div class="stat-card blue">
@@ -30,7 +27,6 @@
                 Adayları Görüntüle →
             </a>
         </div>
-
         <div class="stat-card green">
             <div class="stat-icon">
                 <span class="material-symbols-outlined">help</span>
@@ -43,7 +39,32 @@
                 Soruları Görüntüle →
             </a>
         </div>
-
+        {% if session.rol == 'superadmin' %}
+        <div class="stat-card purple">
+            <div class="stat-icon">
+                <span class="material-symbols-outlined">apartment</span>
+            </div>
+            <div class="stat-content">
+                <h2>{{ stats.total_companies or 0 }}</h2>
+                <p>Toplam Şirket</p>
+            </div>
+            <a href="{{ url_for('admin.sirketler') }}" class="stat-link">
+                Şirketleri Görüntüle →
+            </a>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-icon">
+                <span class="material-symbols-outlined">people</span>
+            </div>
+            <div class="stat-content">
+                <h2>{{ stats.total_users or 0 }}</h2>
+                <p>Toplam Kullanıcı</p>
+            </div>
+            <a href="{{ url_for('admin.kullanicilar') }}" class="stat-link">
+                Kullanıcıları Görüntüle →
+            </a>
+        </div>
+        {% else %}
         <div class="stat-card cyan">
             <div class="stat-icon">
                 <span class="material-symbols-outlined">apartment</span>
@@ -53,9 +74,9 @@
                 <p>Şirket</p>
             </div>
         </div>
+        {% endif %}
     </div>
-
-    <!-- Quick Actions - SADECE MEVCUT ROUTE'LAR -->
+    <!-- Quick Actions -->
     <div class="quick-actions-section">
         <h5><span class="material-symbols-outlined">bolt</span> Hızlı İşlemler</h5>
         <div class="actions-grid">
@@ -67,17 +88,84 @@
                 <span class="material-symbols-outlined">add_circle</span>
                 <span>Yeni Soru Ekle</span>
             </a>
-            <a href="{{ url_for('admin.kullanicilar') }}" class="action-card">
-                <span class="material-symbols-outlined">manage_accounts</span>
-                <span>Kullanıcılar</span>
+            <a href="{{ url_for('admin.sablon_ekle') }}" class="action-card">
+                <span class="material-symbols-outlined">post_add</span>
+                <span>Yeni Şablon</span>
             </a>
-            <a href="{{ url_for('admin.ayarlar') }}" class="action-card">
-                <span class="material-symbols-outlined">settings</span>
-                <span>Ayarlar</span>
+            <a href="{{ url_for('admin.raporlar') }}" class="action-card">
+                <span class="material-symbols-outlined">assessment</span>
+                <span>Raporlar</span>
+            </a>
+            <a href="{{ url_for('admin.export_data') }}" class="action-card">
+                <span class="material-symbols-outlined">download</span>
+                <span>Verileri İndir</span>
+            </a>
+            {% if session.rol == 'superadmin' %}
+            <a href="{{ url_for('admin.sirket_ekle') }}" class="action-card superadmin">
+                <span class="material-symbols-outlined">domain_add</span>
+                <span>Yeni Şirket</span>
+            </a>
+            <a href="{{ url_for('admin.demo_olustur') }}" class="action-card superadmin">
+                <span class="material-symbols-outlined">science</span>
+                <span>Demo Hesap</span>
+            </a>
+            <a href="{{ url_for('admin.kullanici_ekle') }}" class="action-card superadmin">
+                <span class="material-symbols-outlined">person_add</span>
+                <span>Yeni Kullanıcı</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% if session.rol == 'superadmin' %}
+    <!-- Superadmin Quick Links -->
+    <div class="superadmin-section">
+        <h5><span class="material-symbols-outlined">admin_panel_settings</span> Süper Admin İşlemleri</h5>
+        <div class="admin-links-grid">
+            <a href="{{ url_for('admin.sirketler') }}" class="admin-link">
+                <span class="material-symbols-outlined">apartment</span>
+                <div>
+                    <strong>Şirket Yönetimi</strong>
+                    <small>Oluştur, düzenle, sil, pasife al</small>
+                </div>
+            </a>
+            <a href="{{ url_for('admin.kullanicilar') }}" class="admin-link">
+                <span class="material-symbols-outlined">manage_accounts</span>
+                <div>
+                    <strong>Kullanıcı Yönetimi</strong>
+                    <small>Kullanıcı ekle, düzenle</small>
+                </div>
+            </a>
+            <a href="{{ url_for('admin.sorular') }}" class="admin-link">
+                <span class="material-symbols-outlined">quiz</span>
+                <div>
+                    <strong>Soru Bankası</strong>
+                    <small>Soru ekle, düzenle, sil</small>
+                </div>
+            </a>
+            <a href="{{ url_for('admin.sablonlar') }}" class="admin-link">
+                <span class="material-symbols-outlined">description</span>
+                <div>
+                    <strong>Sınav Şablonları</strong>
+                    <small>Şablon oluştur, düzenle</small>
+                </div>
+            </a>
+            <a href="{{ url_for('admin.super_rapor') }}" class="admin-link">
+                <span class="material-symbols-outlined">analytics</span>
+                <div>
+                    <strong>Platform Raporu</strong>
+                    <small>Genel istatistikler</small>
+                </div>
+            </a>
+            <a href="{{ url_for('admin.admin_logs') }}" class="admin-link">
+                <span class="material-symbols-outlined">history</span>
+                <div>
+                    <strong>Aktivite Logları</strong>
+                    <small>Sistem aktiviteleri</small>
+                </div>
             </a>
         </div>
     </div>
-
+    {% endif %}
     <!-- Recent Candidates -->
     <div class="recent-section">
         <h5><span class="material-symbols-outlined">history</span> Son Adaylar</h5>
@@ -124,7 +212,6 @@
             </table>
         </div>
     </div>
-
     <!-- Stats Summary -->
     <div class="summary-row">
         <div class="summary-card">
@@ -148,16 +235,26 @@
                 <p>Bu Hafta</p>
             </div>
         </div>
+        {% if company %}
+        <div class="summary-card">
+            <span class="material-symbols-outlined text-primary">toll</span>
+            <div>
+                <h4>{{ company.kredi or 0 }}</h4>
+                <p>Kalan Kredi</p>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
-
 <style>
 .dashboard-container { padding: 20px; max-width: 1400px; margin: 0 auto; }
-.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
 .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 24px; color: white; position: relative; }
 .stat-card.blue { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 .stat-card.green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
 .stat-card.cyan { background: linear-gradient(135deg, #00c6fb 0%, #005bea 100%); }
+.stat-card.purple { background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%); }
+.stat-card.orange { background: linear-gradient(135deg, #f12711 0%, #f5af19 100%); }
 .stat-icon { position: absolute; top: 20px; left: 20px; }
 .stat-icon .material-symbols-outlined { font-size: 48px; opacity: 0.3; }
 .stat-content { text-align: right; }
@@ -165,16 +262,29 @@
 .stat-content p { margin: 5px 0 0; opacity: 0.9; }
 .stat-link { display: flex; align-items: center; justify-content: flex-end; gap: 5px; color: white; text-decoration: none; margin-top: 15px; opacity: 0.9; }
 .stat-link:hover { opacity: 1; color: white; }
-.quick-actions-section, .recent-section { background: white; border-radius: 16px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-.quick-actions-section h5, .recent-section h5 { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; color: #333; }
-.actions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+.quick-actions-section, .recent-section, .superadmin-section { background: white; border-radius: 16px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.quick-actions-section h5, .recent-section h5, .superadmin-section h5 { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; color: #333; }
+.actions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
 .action-card { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; border: 2px solid #e0e0e0; border-radius: 12px; text-decoration: none; color: #333; transition: all 0.2s; gap: 10px; }
 .action-card:hover { border-color: #667eea; color: #667eea; transform: translateY(-2px); }
+.action-card.superadmin { border-color: #8E2DE2; background: #f8f4ff; }
+.action-card.superadmin:hover { background: #8E2DE2; color: white; }
 .action-card .material-symbols-outlined { font-size: 32px; }
-.summary-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+.admin-links-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
+.admin-link { display: flex; align-items: center; gap: 15px; padding: 16px; border: 1px solid #e0e0e0; border-radius: 12px; text-decoration: none; color: #333; transition: all 0.2s; background: #fafafa; }
+.admin-link:hover { border-color: #8E2DE2; background: #f8f4ff; }
+.admin-link .material-symbols-outlined { font-size: 32px; color: #8E2DE2; }
+.admin-link strong { display: block; margin-bottom: 2px; }
+.admin-link small { color: #666; }
+.summary-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
 .summary-card { background: white; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 .summary-card .material-symbols-outlined { font-size: 40px; }
 .summary-card h4 { margin: 0; font-size: 1.5rem; font-weight: 700; }
 .summary-card p { margin: 0; color: #666; font-size: 0.9rem; }
+.table { margin: 0; }
+@media (max-width: 768px) {
+    .stats-row { grid-template-columns: 1fr; }
+    .actions-grid { grid-template-columns: repeat(2, 1fr); }
+}
 </style>
 {% endblock %}
