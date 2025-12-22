@@ -1,31 +1,85 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
+{% block title %}Kullanıcılar{% endblock %}
+
 {% block content %}
-<div class="container">
-    <h4>👥 Kullanıcılar</h4>
-    <a href="{{ url_for('admin.kullanici_ekle') }}" class="btn btn-primary">
-        <span class="material-icons">person_add</span> Yeni Kullanıcı
-    </a>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>E-posta</th>
-                <th>Rol</th>
-                <th>Şirket</th>
-                <th>İşlemler</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for kullanici in kullanicilar %}
-            <tr>
-                <td>{{ kullanici.email }}</td>
-                <td>{{ kullanici.rol }}</td>
-                <td>{{ kullanici.sirket.isim if kullanici.sirket else '-' }}</td>
-                <td>
-                    <a href="{{ url_for('admin.kullanici_duzenle', id=kullanici.id) }}">Düzenle</a>
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0">
+            <span class="material-icons align-middle me-2">people</span>
+            Kullanıcı Yönetimi
+        </h4>
+        <a href="{{ url_for('admin.kullanici_ekle') }}" class="btn btn-primary">
+            <span class="material-icons align-middle">person_add</span> Yeni Kullanıcı
+        </a>
+    </div>
+
+    {% if kullanicilar %}
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ad Soyad</th>
+                            <th>E-posta</th>
+                            <th>Rol</th>
+                            <th>Şirket</th>
+                            <th class="text-center">Durum</th>
+                            <th class="text-center">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for kullanici in kullanicilar %}
+                        <tr>
+                            <td><strong>{{ kullanici.ad_soyad }}</strong></td>
+                            <td>{{ kullanici.email }}</td>
+                            <td>
+                                {% if kullanici.rol == 'superadmin' %}
+                                <span class="badge bg-danger">Süper Admin</span>
+                                {% else %}
+                                <span class="badge bg-info">Müşteri</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ kullanici.company.isim if kullanici.company else '-' }}</td>
+                            <td class="text-center">
+                                {% if kullanici.is_active %}
+                                <span class="badge bg-success">Aktif</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Pasif</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('admin.kullanici_duzenle', id=kullanici.id) }}"
+                                        class="btn btn-outline-primary" title="Düzenle">
+                                        <span class="material-icons" style="font-size: 18px;">edit</span>
+                                    </a>
+
+                                    <!-- Sil -->
+                                    <form action="{{ url_for('admin.kullanici_sil', id=kullanici.id) }}" method="POST"
+                                        style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-outline-danger" title="Sil"
+                                            onclick="return confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?')">
+                                            <span class="material-icons" style="font-size: 18px;">delete</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <span class="material-icons align-middle me-2">info</span>
+        Henüz kayıtlı kullanıcı bulunmuyor.
+        <a href="{{ url_for('admin.kullanici_ekle') }}">Yeni kullanıcı ekleyin</a>.
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
