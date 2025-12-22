@@ -18,11 +18,10 @@ import random
 # ══════════════════════════════════════════════════════════════
 # MODEL IMPORTS - All imports at module level (best practice)
 # ══════════════════════════════════════════════════════════════
-from app.models import Candidate, Question, Company, User
-from app.models import ExamTemplate
+from app.models import Candidate, Question, Company, User, ExamTemplate, ExamAnswer
 from app.models.admin import CreditTransaction
-from app.models.exam_answer import ExamAnswer
 from app.models.audit_log import AuditLog
+
 
 admin_bp = Blueprint('admin', __name__)
 
