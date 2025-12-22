@@ -1,52 +1,97 @@
-{% extends "dashboard.html" %}
-{% block title %}Aday Ekle - Skills Test Center{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}{{ 'Aday Düzenle' if aday else 'Yeni Aday Ekle' }}{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card border-0">
-            <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-person-plus me-2"></i>Yeni Aday Ekle</h5>
-            </div>
-            <div class="card-body p-4">
-                <form method="POST" action="/admin/aday-ekle">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
 
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Ad Soyad *</label>
-                            <input type="text" name="ad_soyad" class="form-control" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">E-posta</label>
-                            <input type="email" name="email" class="form-control">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">T.C. Kimlik No</label>
-                            <input type="text" name="tc_kimlik" class="form-control" maxlength="11">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Cep Telefonu</label>
-                            <input type="text" name="cep_no" class="form-control">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Sınav Süresi (dakika)</label>
-                            <input type="number" name="sinav_suresi" class="form-control" value="30" min="5" max="180">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Soru Limiti</label>
-                            <input type="number" name="soru_limiti" class="form-control" value="10" min="5" max="100">
-                        </div>
-                    </div>
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="material-icons align-middle me-2">{{ 'edit' if aday else 'person_add' }}</i>
+                        {{ 'Aday Düzenle' if aday else 'Yeni Aday Ekle' }}
+                    </h5>
+                </div>
+                <div class="card-body">
 
-                    <div class="d-flex justify-content-end gap-2 mt-4">
-                        <a href="/admin/adaylar" class="btn btn-secondary">İptal</a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-lg me-1"></i>Kaydet
-                        </button>
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
-                </form>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="POST">
+                        <!-- CSRF Token for Security -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Ad Soyad -->
+                        <div class="mb-3">
+                            <label for="ad_soyad" class="form-label">Ad Soyad *</label>
+                            <input type="text" class="form-control" id="ad_soyad" name="ad_soyad"
+                                value="{{ aday.ad_soyad if aday else '' }}" required placeholder="Adayın adı ve soyadı">
+                        </div>
+
+                        <!-- Email -->
+                        <div class="mb-3">
+                            <label for="email" class="form-label">E-posta *</label>
+                            <input type="email" class="form-control" id="email" name="email"
+                                value="{{ aday.email if aday else '' }}" required placeholder="aday@email.com">
+                        </div>
+
+                        <!-- TC Kimlik -->
+                        <div class="mb-3">
+                            <label for="tc_kimlik" class="form-label">TC Kimlik No</label>
+                            <input type="text" class="form-control" id="tc_kimlik" name="tc_kimlik"
+                                value="{{ aday.tc_kimlik if aday else '' }}" maxlength="11" pattern="[0-9]{11}"
+                                placeholder="11 haneli TC Kimlik numarası">
+                        </div>
+
+                        <!-- Cep Telefonu -->
+                        <div class="mb-3">
+                            <label for="cep_no" class="form-label">Cep Telefonu</label>
+                            <input type="tel" class="form-control" id="cep_no" name="cep_no"
+                                value="{{ aday.cep_no if aday else '' }}" placeholder="05XX XXX XX XX">
+                        </div>
+
+                        <div class="row">
+                            <!-- Sınav Süresi -->
+                            <div class="col-md-6 mb-3">
+                                <label for="sinav_suresi" class="form-label">Sınav Süresi (dakika)</label>
+                                <input type="number" class="form-control" id="sinav_suresi" name="sinav_suresi"
+                                    value="{{ aday.sinav_suresi if aday else 30 }}" min="10" max="180">
+                            </div>
+
+                            <!-- Soru Limiti -->
+                            <div class="col-md-6 mb-3">
+                                <label for="soru_limiti" class="form-label">Soru Sayısı</label>
+                                <input type="number" class="form-control" id="soru_limiti" name="soru_limiti"
+                                    value="{{ aday.soru_limiti if aday else 25 }}" min="5" max="100">
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="material-icons align-middle me-1">save</i>
+                                {{ 'Güncelle' if aday else 'Kaydet' }}
+                            </button>
+                            <a href="{{ url_for('admin.adaylar') }}" class="btn btn-outline-secondary">
+                                <i class="material-icons align-middle me-1">cancel</i>
+                                İptal
+                            </a>
+                        </div>
+                    </form>
+                </div>
             </div>
+
         </div>
     </div>
 </div>
