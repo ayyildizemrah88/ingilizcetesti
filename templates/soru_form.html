@@ -1,80 +1,133 @@
-{% extends "dashboard.html" %}
-{% block title %}Soru Ekle - Skills Test Center{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}{{ 'Soru Düzenle' if soru else 'Yeni Soru Ekle' }}{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card border-0">
-            <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Yeni Soru Ekle</h5>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="material-icons align-middle me-2">{{ 'edit' if soru else 'quiz' }}</i>
+                        {{ 'Soru Düzenle' if soru else 'Yeni Soru Ekle' }}
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="POST">
+                        <!-- CSRF Token for Security -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Soru Metni -->
+                        <div class="mb-3">
+                            <label for="soru_metni" class="form-label">Soru Metni *</label>
+                            <textarea class="form-control" id="soru_metni" name="soru_metni" rows="3" required
+                                placeholder="Soruyu buraya yazın...">{{ soru.soru_metni if soru else '' }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <!-- Kategori -->
+                            <div class="col-md-6 mb-3">
+                                <label for="kategori" class="form-label">Kategori *</label>
+                                <select class="form-select" id="kategori" name="kategori" required>
+                                    <option value="">Seçiniz</option>
+                                    <option value="grammar" {{ 'selected' if soru and soru.kategori=='grammar' else ''
+                                        }}>Grammar</option>
+                                    <option value="vocabulary" {{ 'selected' if soru and soru.kategori=='vocabulary'
+                                        else '' }}>Vocabulary</option>
+                                    <option value="reading" {{ 'selected' if soru and soru.kategori=='reading' else ''
+                                        }}>Reading</option>
+                                    <option value="listening" {{ 'selected' if soru and soru.kategori=='listening'
+                                        else '' }}>Listening</option>
+                                </select>
+                            </div>
+
+                            <!-- Zorluk -->
+                            <div class="col-md-6 mb-3">
+                                <label for="zorluk" class="form-label">Zorluk (CEFR) *</label>
+                                <select class="form-select" id="zorluk" name="zorluk" required>
+                                    <option value="A1" {{ 'selected' if soru and soru.zorluk=='A1' else '' }}>A1 -
+                                        Başlangıç</option>
+                                    <option value="A2" {{ 'selected' if soru and soru.zorluk=='A2' else '' }}>A2 - Temel
+                                    </option>
+                                    <option value="B1" {{ 'selected' if soru and soru.zorluk=='B1' else '' }}>B1 - Orta
+                                    </option>
+                                    <option value="B2" {{ 'selected' if soru and soru.zorluk=='B2' else '' }}>B2 - Orta
+                                        Üstü</option>
+                                    <option value="C1" {{ 'selected' if soru and soru.zorluk=='C1' else '' }}>C1 - İleri
+                                    </option>
+                                    <option value="C2" {{ 'selected' if soru and soru.zorluk=='C2' else '' }}>C2 - Üst
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Şıklar -->
+                        <div class="mb-3">
+                            <label class="form-label">Şıklar *</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">A</span>
+                                <input type="text" class="form-control" name="secenek_a"
+                                    value="{{ soru.secenek_a if soru else '' }}" required placeholder="A şıkkı">
+                            </div>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">B</span>
+                                <input type="text" class="form-control" name="secenek_b"
+                                    value="{{ soru.secenek_b if soru else '' }}" required placeholder="B şıkkı">
+                            </div>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">C</span>
+                                <input type="text" class="form-control" name="secenek_c"
+                                    value="{{ soru.secenek_c if soru else '' }}" required placeholder="C şıkkı">
+                            </div>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">D</span>
+                                <input type="text" class="form-control" name="secenek_d"
+                                    value="{{ soru.secenek_d if soru else '' }}" required placeholder="D şıkkı">
+                            </div>
+                        </div>
+
+                        <!-- Doğru Cevap -->
+                        <div class="mb-4">
+                            <label for="dogru_cevap" class="form-label">Doğru Cevap *</label>
+                            <select class="form-select" id="dogru_cevap" name="dogru_cevap" required>
+                                <option value="">Seçiniz</option>
+                                <option value="A" {{ 'selected' if soru and soru.dogru_cevap=='A' else '' }}>A</option>
+                                <option value="B" {{ 'selected' if soru and soru.dogru_cevap=='B' else '' }}>B</option>
+                                <option value="C" {{ 'selected' if soru and soru.dogru_cevap=='C' else '' }}>C</option>
+                                <option value="D" {{ 'selected' if soru and soru.dogru_cevap=='D' else '' }}>D</option>
+                            </select>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="material-icons align-middle me-1">save</i>
+                                {{ 'Güncelle' if soru else 'Kaydet' }}
+                            </button>
+                            <a href="{{ url_for('admin.sorular') }}" class="btn btn-outline-secondary">
+                                <i class="material-icons align-middle me-1">cancel</i>
+                                İptal
+                            </a>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="card-body p-4">
-                <form method="POST" action="/admin/soru-ekle">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-                    <div class="mb-3">
-                        <label class="form-label">Soru Metni *</label>
-                        <textarea name="soru_metni" class="form-control" rows="3" required
-                            placeholder="I ___ happy."></textarea>
-                    </div>
-
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">A Şıkkı</label>
-                            <input type="text" name="secenek_a" class="form-control" placeholder="is">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">B Şıkkı</label>
-                            <input type="text" name="secenek_b" class="form-control" placeholder="am">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">C Şıkkı</label>
-                            <input type="text" name="secenek_c" class="form-control" placeholder="are">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">D Şıkkı</label>
-                            <input type="text" name="secenek_d" class="form-control" placeholder="be">
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mt-2">
-                        <div class="col-md-4">
-                            <label class="form-label">Doğru Cevap *</label>
-                            <select name="dogru_cevap" class="form-select" required>
-                                <option value="A">A</option>
-                                <option value="B">B</option>
-                                <option value="C">C</option>
-                                <option value="D">D</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Kategori</label>
-                            <select name="kategori" class="form-select">
-                                <option value="Grammar">Grammar</option>
-                                <option value="Vocabulary">Vocabulary</option>
-                                <option value="Reading">Reading</option>
-                                <option value="Listening">Listening</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Zorluk</label>
-                            <select name="zorluk" class="form-select">
-                                <option value="A1">A1</option>
-                                <option value="A2">A2</option>
-                                <option value="B1" selected>B1</option>
-                                <option value="B2">B2</option>
-                                <option value="C1">C1</option>
-                                <option value="C2">C2</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="d-flex justify-content-end gap-2 mt-4">
-                        <a href="/admin/sorular" class="btn btn-secondary">İptal</a>
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Kaydet</button>
-                    </div>
-                </form>
-            </div>
         </div>
     </div>
 </div>
