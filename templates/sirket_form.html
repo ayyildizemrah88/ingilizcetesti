@@ -67,6 +67,26 @@
                             <input type="number" class="form-control" id="kredi" name="kredi" value="0" min="0">
                             <div class="form-text">Her sınav 1 kredi tüketir.</div>
                         </div>
+
+                        <!-- Admin Kullanıcı Bilgileri -->
+                        <hr>
+                        <h6 class="mb-3 text-muted">
+                            <i class="material-icons align-middle me-1"
+                                style="font-size: 18px;">admin_panel_settings</i>
+                            Müşteri Admin Kullanıcı
+                        </h6>
+
+                        <div class="mb-3">
+                            <label for="admin_ad_soyad" class="form-label">Admin Ad Soyad *</label>
+                            <input type="text" class="form-control" id="admin_ad_soyad" name="admin_ad_soyad" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="admin_sifre" class="form-label">Admin Şifre *</label>
+                            <input type="password" class="form-control" id="admin_sifre" name="admin_sifre" required
+                                minlength="8" placeholder="En az 8 karakter">
+                            <div class="form-text">Bu şifre ile müşteri admin panele giriş yapabilecek.</div>
+                        </div>
                         {% endif %}
 
                         <!-- Submit -->
