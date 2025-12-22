@@ -1,123 +1,102 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Kullanıcı Düzenle' if kullanici else 'Yeni Kullanıcı' }} - Skills Test Center{% endblock %}
+
+{% block title %}{{ 'Kullanıcı Düzenle' if kullanici else 'Yeni Kullanıcı Ekle' }}{% endblock %}
+
 {% block content %}
-<div class="form-container">
-    <div class="form-card">
-        <h5>
-            <span class="material-symbols-outlined">{{ 'edit' if kullanici else 'person_add' }}</span>
-            {{ 'Kullanıcı Düzenle' if kullanici else 'Yeni Kullanıcı Ekle' }}
-        </h5>
-        <form method="POST"
-            action="{{ url_for('admin.kullanici_duzenle', id=kullanici.id) if kullanici else url_for('admin.kullanici_ekle') }}">
-            <div class="form-group">
-                <label for="ad_soyad">Ad Soyad *</label>
-                <input type="text" class="form-control" id="ad_soyad" name="ad_soyad"
-                    value="{{ kullanici.ad_soyad if kullanici else '' }}" required>
-            </div>
-            <div class="form-group">
-                <label for="email">Email *</label>
-                <input type="email" class="form-control" id="email" name="email"
-                    value="{{ kullanici.email if kullanici else '' }}" required>
-            </div>
-            <div class="form-group">
-                <label for="sifre">{{ 'Yeni Şifre (boş bırakılabilir)' if kullanici else 'Şifre *' }}</label>
-                <input type="password" class="form-control" id="sifre" name="sifre" {{ '' if kullanici else 'required'
-                    }}>
-            </div>
-            <div class="form-group">
-                <label for="rol">Rol *</label>
-                <select class="form-control" id="rol" name="rol" required>
-                    <option value="customer" {{ 'selected' if kullanici and kullanici.rol=='customer' else '' }}>Müşteri
-                        (customer)</option>
-                    <option value="superadmin" {{ 'selected' if kullanici and kullanici.rol=='superadmin' else '' }}>
-                        Süper Admin</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="sirket_id">Şirket</label>
-                <select class="form-control" id="sirket_id" name="sirket_id">
-                    <option value="">-- Şirket Seçin --</option>
-                    {% for sirket in sirketler %}
-                    <option value="{{ sirket.id }}" {{ 'selected' if kullanici and kullanici.sirket_id==sirket.id
-                        else '' }}>
-                        {{ sirket.isim }}
-                    </option>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="material-icons align-middle me-2">{{ 'edit' if kullanici else 'person_add' }}</i>
+                        {{ 'Kullanıcı Düzenle' if kullanici else 'Yeni Kullanıcı Ekle' }}
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                     {% endfor %}
-                </select>
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="POST">
+                        <!-- CSRF Token for Security -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Ad Soyad -->
+                        <div class="mb-3">
+                            <label for="ad_soyad" class="form-label">Ad Soyad *</label>
+                            <input type="text" class="form-control" id="ad_soyad" name="ad_soyad"
+                                value="{{ kullanici.ad_soyad if kullanici else '' }}" required>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="mb-3">
+                            <label for="email" class="form-label">E-posta *</label>
+                            <input type="email" class="form-control" id="email" name="email"
+                                value="{{ kullanici.email if kullanici else '' }}" required>
+                        </div>
+
+                        <!-- Şifre -->
+                        <div class="mb-3">
+                            <label for="sifre" class="form-label">Şifre {{ '(değiştirmek için doldurun)' if kullanici
+                                else '*' }}</label>
+                            <input type="password" class="form-control" id="sifre" name="sifre" {{ '' if kullanici
+                                else 'required' }}
+                                placeholder="{{ 'Yeni şifre girin' if kullanici else 'En az 8 karakter' }}">
+                            <div class="form-text">En az 8 karakter, 1 büyük harf, 1 rakam içermelidir.</div>
+                        </div>
+
+                        <!-- Rol -->
+                        <div class="mb-3">
+                            <label for="rol" class="form-label">Rol *</label>
+                            <select class="form-select" id="rol" name="rol" required>
+                                <option value="customer" {{ 'selected' if kullanici and kullanici.rol=='customer'
+                                    else '' }}>Müşteri (Customer)</option>
+                                <option value="superadmin" {{ 'selected' if kullanici and kullanici.rol=='superadmin'
+                                    else '' }}>Süper Admin</option>
+                            </select>
+                        </div>
+
+                        <!-- Şirket -->
+                        <div class="mb-4">
+                            <label for="sirket_id" class="form-label">Bağlı Şirket</label>
+                            <select class="form-select" id="sirket_id" name="sirket_id">
+                                <option value="">Şirket yok (Superadmin için)</option>
+                                {% for sirket in sirketler %}
+                                <option value="{{ sirket.id }}" {{ 'selected' if kullanici and
+                                    kullanici.sirket_id==sirket.id else '' }}>
+                                    {{ sirket.isim }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="material-icons align-middle me-1">save</i>
+                                {{ 'Güncelle' if kullanici else 'Kaydet' }}
+                            </button>
+                            <a href="{{ url_for('admin.kullanicilar') }}" class="btn btn-outline-secondary">
+                                <i class="material-icons align-middle me-1">cancel</i>
+                                İptal
+                            </a>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="form-actions">
-                <a href="{{ url_for('admin.kullanicilar') }}" class="btn btn-secondary">İptal</a>
-                <button type="submit" class="btn btn-primary">
-                    <span class="material-symbols-outlined">save</span>
-                    {{ 'Güncelle' if kullanici else 'Kaydet' }}
-                </button>
-            </div>
-        </form>
+
+        </div>
     </div>
 </div>
-<style>
-    .form-container {
-        padding: 20px;
-        max-width: 600px;
-        margin: 0 auto;
-    }
-    .form-card {
-        background: white;
-        border-radius: 16px;
-        padding: 30px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    }
-    .form-card h5 {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 25px;
-        color: #333;
-    }
-    .form-group {
-        margin-bottom: 20px;
-    }
-    .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: 500;
-        color: #555;
-    }
-    .form-control {
-        width: 100%;
-        padding: 10px 15px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 1rem;
-    }
-    .form-control:focus {
-        border-color: #667eea;
-        outline: none;
-    }
-    .form-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        margin-top: 30px;
-    }
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        cursor: pointer;
-        text-decoration: none;
-        border: none;
-    }
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-    }
-    .btn-secondary {
-        background: #f0f0f0;
-        color: #333;
-    }
-</style>
 {% endblock %}
