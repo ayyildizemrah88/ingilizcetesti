@@ -474,50 +474,52 @@ def sirket_aktif(id):
 @login_required
 @superadmin_required
 def sirket_sil(id):
-    """Delete company and all related records safely"""
+    """Delete company and all related records safely using raw SQL"""
     company = Company.query.get_or_404(id)
+    company_name = company.isim
     
     try:
-        # Delete related records first to avoid foreign key constraints
-        # Use synchronize_session=False for bulk deletes
+        # Use raw SQL to delete related records - avoids ORM cascade issues
+        # This approach handles missing tables gracefully
         
-        # Delete users belonging to this company
-        try:
-            User.query.filter_by(sirket_id=id).delete(synchronize_session=False)
-        except Exception:
-            pass
+        tables_to_clean = [
+            ('kullanicilar', 'sirket_id'),
+            ('adaylar', 'sirket_id'),
+            ('sorular', 'sirket_id'),
+            ('sinav_sablonlari', 'sirket_id'),
+        ]
         
-        # Delete candidates belonging to this company
-        try:
-            Candidate.query.filter_by(sirket_id=id).delete(synchronize_session=False)
-        except Exception:
-            pass
+        for table, column in tables_to_clean:
+            try:
+                db.session.execute(
+                    db.text(f"DELETE FROM {table} WHERE {column} = :company_id"),
+                    {'company_id': id}
+                )
+            except Exception:
+                # Table might not exist or have different structure, skip
+                db.session.rollback()
+                company = Company.query.get(id)  # Re-fetch after rollback
+                if not company:
+                    flash("Şirket bulunamadı.", "warning")
+                    return redirect(url_for('admin.sirketler'))
         
-        # Delete questions belonging to this company
-        try:
-            Question.query.filter_by(sirket_id=id).delete(synchronize_session=False)
-        except Exception:
-            pass
-        
-        # Delete exam templates belonging to this company
-        try:
-            ExamTemplate.query.filter_by(sirket_id=id).delete(synchronize_session=False)
-        except Exception:
-            pass
-        
-        # Try to delete credit transactions if table exists
-        try:
-            CreditTransaction.query.filter_by(company_id=id).delete(synchronize_session=False)
-        except Exception:
-            pass
-        
-        # Now delete the company
+        # Now delete the company itself
         db.session.delete(company)
         db.session.commit()
-        flash("Şirket ve tüm ilgili kayıtlar silindi.", "success")
+        flash(f"'{company_name}' şirketi ve tüm ilgili kayıtlar silindi.", "success")
+        
     except Exception as e:
         db.session.rollback()
-        flash(f"Silme hatası: {str(e)}", "danger")
+        # Try simple delete without cascade
+        try:
+            company = Company.query.get(id)
+            if company:
+                db.session.delete(company)
+                db.session.commit()
+                flash(f"'{company_name}' şirketi silindi.", "success")
+        except Exception as e2:
+            db.session.rollback()
+            flash(f"Silme hatası: Bu şirkete bağlı kayıtlar olabilir. Önce bunları silmeyi deneyin.", "danger")
     
     return redirect(url_for('admin.sirketler'))
 
