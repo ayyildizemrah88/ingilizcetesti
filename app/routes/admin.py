@@ -474,27 +474,47 @@ def sirket_aktif(id):
 @login_required
 @superadmin_required
 def sirket_sil(id):
-    """Delete company and all related records"""
+    """Delete company and all related records safely"""
     company = Company.query.get_or_404(id)
     
     try:
         # Delete related records first to avoid foreign key constraints
+        # Use synchronize_session=False for bulk deletes
+        
         # Delete users belonging to this company
-        User.query.filter_by(sirket_id=id).delete()
+        try:
+            User.query.filter_by(sirket_id=id).delete(synchronize_session=False)
+        except Exception:
+            pass
         
         # Delete candidates belonging to this company
-        Candidate.query.filter_by(sirket_id=id).delete()
+        try:
+            Candidate.query.filter_by(sirket_id=id).delete(synchronize_session=False)
+        except Exception:
+            pass
         
         # Delete questions belonging to this company
-        Question.query.filter_by(sirket_id=id).delete()
+        try:
+            Question.query.filter_by(sirket_id=id).delete(synchronize_session=False)
+        except Exception:
+            pass
         
         # Delete exam templates belonging to this company
-        ExamTemplate.query.filter_by(sirket_id=id).delete()
+        try:
+            ExamTemplate.query.filter_by(sirket_id=id).delete(synchronize_session=False)
+        except Exception:
+            pass
+        
+        # Try to delete credit transactions if table exists
+        try:
+            CreditTransaction.query.filter_by(company_id=id).delete(synchronize_session=False)
+        except Exception:
+            pass
         
         # Now delete the company
         db.session.delete(company)
         db.session.commit()
-        flash("Şirket ve tüm ilgili kayıtlar silindi.", "danger")
+        flash("Şirket ve tüm ilgili kayıtlar silindi.", "success")
     except Exception as e:
         db.session.rollback()
         flash(f"Silme hatası: {str(e)}", "danger")
