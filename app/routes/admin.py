@@ -404,7 +404,7 @@ def sirket_ekle():
             telefon=request.form.get('telefon'),
             adres=request.form.get('adres', ''),
             kredi=int(request.form.get('kredi', 0)),
-            aktif=True
+            is_active=True
         )
         db.session.add(company)
         db.session.commit()
@@ -438,7 +438,7 @@ def sirket_duzenle(id):
 def sirket_pasif(id):
     """Deactivate company"""
     company = Company.query.get_or_404(id)
-    company.aktif = False
+    company.is_active = False
     db.session.commit()
     flash("Şirket pasife alındı.", "warning")
     return redirect(url_for('admin.sirketler'))
@@ -449,7 +449,7 @@ def sirket_pasif(id):
 def sirket_aktif(id):
     """Activate company"""
     company = Company.query.get_or_404(id)
-    company.aktif = True
+    company.is_active = True
     db.session.commit()
     flash("Şirket aktif edildi.", "success")
     return redirect(url_for('admin.sirketler'))
@@ -519,7 +519,7 @@ def demo_olustur():
             isim=firma_adi,
             email=admin_email,
             kredi=kredi,
-            aktif=True
+            is_active=True
         )
         db.session.add(company)
         db.session.flush()
@@ -572,7 +572,7 @@ def kullanici_ekle():
         flash("Kullanıcı eklendi.", "success")
         return redirect(url_for('admin.kullanicilar'))
     
-    companies = Company.query.filter_by(aktif=True).all()
+    companies = Company.query.filter_by(is_active=True).all()
     return render_template('kullanici_form.html', sirketler=companies)
 
 @admin_bp.route('/kullanici/<int:id>/duzenle', methods=['GET', 'POST'])
@@ -596,7 +596,7 @@ def kullanici_duzenle(id):
         flash("Kullanıcı güncellendi.", "success")
         return redirect(url_for('admin.kullanicilar'))
     
-    companies = Company.query.filter_by(aktif=True).all()
+    companies = Company.query.filter_by(is_active=True).all()
     return render_template('kullanici_form.html', kullanici=user, sirketler=companies)
 
 @admin_bp.route('/kullanici/<int:id>/sil', methods=['POST'])
