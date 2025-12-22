@@ -21,9 +21,42 @@ import random
 from app.models import Candidate, Question, Company, User, ExamTemplate, ExamAnswer
 from app.models.admin import CreditTransaction
 from app.models.audit_log import AuditLog
-
+import secrets
 
 admin_bp = Blueprint('admin', __name__)
+
+
+# ══════════════════════════════════════════════════════════════
+# PASSWORD GENERATOR
+# ══════════════════════════════════════════════════════════════
+def generate_secure_password(length=12):
+    """
+    Generate a secure random password.
+    Includes: uppercase, lowercase, digits, special chars
+    Meets security requirements: min 8 chars, 1 upper, 1 lower, 1 digit
+    """
+    uppercase = string.ascii_uppercase
+    lowercase = string.ascii_lowercase
+    digits = string.digits
+    special = "!@#$%^&*"
+    
+    # Ensure at least one of each type
+    password = [
+        secrets.choice(uppercase),
+        secrets.choice(lowercase),
+        secrets.choice(digits),
+        secrets.choice(special),
+    ]
+    
+    # Fill remaining with random chars
+    all_chars = uppercase + lowercase + digits + special
+    password += [secrets.choice(all_chars) for _ in range(length - 4)]
+    
+    # Shuffle to randomize position
+    random.shuffle(password)
+    
+    return ''.join(password)
+
 
 # ══════════════════════════════════════════════════════════════
 # DECORATORS
@@ -409,22 +442,25 @@ def sirket_ekle():
         
         # Create admin user for this company
         admin_email = request.form.get('email')
-        admin_sifre = request.form.get('admin_sifre')
+        admin_sifre = request.form.get('admin_sifre', '').strip()
         admin_ad_soyad = request.form.get('admin_ad_soyad', f"{company.isim} Admin")
         
-        if admin_sifre:
-            admin_user = User(
-                email=admin_email,
-                ad_soyad=admin_ad_soyad,
-                rol='customer',
-                sirket_id=company.id,
-                is_active=True
-            )
-            admin_user.set_password(admin_sifre)
-            db.session.add(admin_user)
+        # Auto-generate password if not provided
+        if not admin_sifre:
+            admin_sifre = generate_secure_password()
+        
+        admin_user = User(
+            email=admin_email,
+            ad_soyad=admin_ad_soyad,
+            rol='customer',
+            sirket_id=company.id,
+            is_active=True
+        )
+        admin_user.set_password(admin_sifre)
+        db.session.add(admin_user)
         
         db.session.commit()
-        flash(f"Şirket ve admin kullanıcı oluşturuldu. Giriş: {admin_email}", "success")
+        flash(f"Şirket ve admin oluşturuldu. Email: {admin_email} | Şifre: {admin_sifre}", "success")
         return redirect(url_for('admin.sirketler'))
     
     return render_template('sirket_form.html')
@@ -563,8 +599,12 @@ def demo_olustur():
     if request.method == 'POST':
         firma_adi = request.form.get('firma_adi', 'Demo Şirket')
         admin_email = request.form.get('admin_email', '').strip().lower()
-        admin_sifre = request.form.get('admin_sifre', 'Demo123!')
+        admin_sifre = request.form.get('admin_sifre', '').strip()
         kredi = int(request.form.get('kredi', 10))
+        
+        # Auto-generate password if not provided
+        if not admin_sifre:
+            admin_sifre = generate_secure_password()
         
         # Create company
         company = Company(
@@ -588,7 +628,7 @@ def demo_olustur():
         db.session.add(user)
         db.session.commit()
         
-        flash(f"Demo hesap oluşturuldu! Email: {admin_email}, Şifre: {admin_sifre}", "success")
+        flash(f"Demo hesap oluşturuldu! Email: {admin_email} | Şifre: {admin_sifre}", "success")
         return redirect(url_for('admin.sirketler'))
     
     return render_template('demo_olustur.html')
