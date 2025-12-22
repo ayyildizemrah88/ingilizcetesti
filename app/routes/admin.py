@@ -340,11 +340,9 @@ def sablon_ekle():
     if request.method == 'POST':
         template = ExamTemplate(
             isim=request.form.get('isim'),
-            aciklama=request.form.get('aciklama', ''),
             sinav_suresi=int(request.form.get('sinav_suresi', 30)),
-            soru_sayisi=int(request.form.get('soru_sayisi', 25)),
-            sirket_id=session.get('sirket_id'),
-            aktif=True
+            soru_limiti=int(request.form.get('soru_sayisi', 25)),
+            sirket_id=session.get('sirket_id')
         )
         db.session.add(template)
         db.session.commit()
@@ -361,9 +359,8 @@ def sablon_duzenle(id):
     
     if request.method == 'POST':
         template.isim = request.form.get('isim')
-        template.aciklama = request.form.get('aciklama', '')
         template.sinav_suresi = int(request.form.get('sinav_suresi', 30))
-        template.soru_sayisi = int(request.form.get('soru_sayisi', 25))
+        template.soru_limiti = int(request.form.get('soru_sayisi', 25))
 
         db.session.commit()
         flash("Şablon güncellendi.", "success")
@@ -660,7 +657,7 @@ def super_rapor():
     """Platform-wide report for superadmin"""
     stats = {
         'total_companies': Company.query.count(),
-        'active_companies': Company.query.filter_by(aktif=True).count(),
+        'active_companies': Company.query.filter_by(is_active=True).count(),
         'total_users': User.query.count(),
         'total_candidates': Candidate.query.count(),
         'completed_exams': Candidate.query.filter_by(sinav_durumu='tamamlandi').count(),
