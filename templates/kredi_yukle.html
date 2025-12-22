@@ -1,141 +1,76 @@
 {% extends "base.html" %}
-{% block title %}Kredi Yükle - Skills Test Center{% endblock %}
+
+{% block title %}Kredi Yükle{% endblock %}
+
 {% block content %}
-<div class="form-container">
-    <div class="form-card">
-        <h5>
-            <span class="material-symbols-outlined">toll</span>
-            Kredi Yükle
-        </h5>
-        <div class="company-info">
-            <h6>{{ sirket.isim }}</h6>
-            <p class="text-muted mb-0">{{ sirket.email }}</p>
-            <div class="current-credit">
-                <span class="material-symbols-outlined">account_balance_wallet</span>
-                <span>Mevcut Kredi: <strong>{{ sirket.kredi or 0 }}</strong></span>
-            </div>
-        </div>
-        <form method="POST" action="{{ url_for('admin.sirket_kredi', id=sirket.id) }}">
-            <div class="form-group">
-                <label for="miktar">Yüklenecek Kredi Miktarı *</label>
-                <input type="number" class="form-control" id="miktar" name="miktar" min="1" value="10" required>
-            </div>
-            <div class="form-group">
-                <label for="aciklama">Açıklama</label>
-                <input type="text" class="form-control" id="aciklama" name="aciklama" value="Manuel kredi yükleme"
-                    placeholder="Örn: Yıllık paket, Kampanya vb.">
-            </div>
-            <div class="preview-box">
-                <span class="material-symbols-outlined">preview</span>
-                <div>
-                    <strong>Yükleme sonrası:</strong>
-                    <span id="new-balance">{{ (sirket.kredi or 0) + 10 }} Kredi</span>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="material-icons align-middle me-2">toll</i>
+                        Kredi Yükle
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <!-- Şirket Bilgisi -->
+                    <div class="alert alert-info">
+                        <h6 class="mb-1"><i class="material-icons align-middle me-1">business</i> {{ sirket.isim }}</h6>
+                        <small>{{ sirket.email }}</small>
+                        <hr class="my-2">
+                        <strong>Mevcut Kredi: {{ sirket.kredi or 0 }}</strong>
+                    </div>
+
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="POST">
+                        <!-- CSRF Token for Security -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Kredi Miktarı -->
+                        <div class="mb-3">
+                            <label for="miktar" class="form-label">Yüklenecek Kredi Miktarı *</label>
+                            <input type="number" class="form-control form-control-lg" id="miktar" name="miktar"
+                                value="10" min="1" max="10000" required>
+                            <div class="form-text">Her sınav 1 kredi tüketir.</div>
+                        </div>
+
+                        <!-- Açıklama -->
+                        <div class="mb-4">
+                            <label for="aciklama" class="form-label">Açıklama</label>
+                            <input type="text" class="form-control" id="aciklama" name="aciklama"
+                                value="Manuel kredi yükleme" placeholder="Kredi yükleme nedeni">
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="material-icons align-middle me-1">add_circle</i>
+                                Kredi Yükle
+                            </button>
+                            <a href="{{ url_for('admin.sirketler') }}" class="btn btn-outline-secondary">
+                                <i class="material-icons align-middle me-1">cancel</i>
+                                İptal
+                            </a>
+                        </div>
+                    </form>
                 </div>
             </div>
-            <div class="form-actions">
-                <a href="{{ url_for('admin.sirketler') }}" class="btn btn-secondary">İptal</a>
-                <button type="submit" class="btn btn-success">
-                    <span class="material-symbols-outlined">add_circle</span>
-                    Kredi Yükle
-                </button>
-            </div>
-        </form>
+
+        </div>
     </div>
 </div>
-<script>
-    document.getElementById('miktar').addEventListener('input', function () {
-        const current = {{ sirket.kredi or 0 }
-    };
-    const add = parseInt(this.value) || 0;
-    document.getElementById('new-balance').textContent = (current + add) + ' Kredi';
-});
-</script>
-<style>
-    .form-container {
-        padding: 20px;
-        max-width: 500px;
-        margin: 0 auto;
-    }
-    .form-card {
-        background: white;
-        border-radius: 16px;
-        padding: 30px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    }
-    .form-card h5 {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 20px;
-        color: #333;
-    }
-    .company-info {
-        background: #f8f9fa;
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 25px;
-    }
-    .company-info h6 {
-        margin: 0 0 5px;
-    }
-    .current-credit {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-top: 10px;
-        padding-top: 10px;
-        border-top: 1px solid #e0e0e0;
-        color: #28a745;
-    }
-    .form-group {
-        margin-bottom: 20px;
-    }
-    .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: 500;
-        color: #555;
-    }
-    .form-control {
-        width: 100%;
-        padding: 10px 15px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 1rem;
-    }
-    .preview-box {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 15px;
-        background: #e8f5e9;
-        border-radius: 8px;
-        color: #2e7d32;
-        margin-bottom: 20px;
-    }
-    .form-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        cursor: pointer;
-        text-decoration: none;
-        border: none;
-    }
-    .btn-success {
-        background: #28a745;
-        color: white;
-    }
-    .btn-secondary {
-        background: #f0f0f0;
-        color: #333;
-    }
-</style>
 {% endblock %}
