@@ -1,62 +1,145 @@
-{% extends "dashboard.html" %}
-{% block title %}Ayarlar - Skills Test Center{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Şirket Ayarları{% endblock %}
 
 {% block content %}
-<h3 class="mb-4"><i class="bi bi-gear me-2"></i>Ayarlar</h3>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
 
-<div class="row">
-    <div class="col-md-6">
-        <div class="card border-0">
-            <div class="card-header bg-white">
-                <h6 class="mb-0">E-posta Bildirimleri</h6>
-            </div>
-            <div class="card-body">
-                <form method="POST">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        <i class="material-icons align-middle me-2">settings</i>
+                        Şirket Ayarları
+                    </h5>
+                </div>
+                <div class="card-body">
 
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" name="email_bildirim" id="email_bildirim">
-                        <label class="form-check-label" for="email_bildirim">
-                            Sınav tamamlandığında e-posta gönder
-                        </label>
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
 
-                    <div class="mb-3">
-                        <label class="form-label">Bildirim E-posta Adresi</label>
-                        <input type="email" name="bildirim_email" class="form-control" placeholder="admin@sirket.com">
+                    {% if company %}
+                    <form method="POST">
+                        <!-- CSRF Token for Security -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Temel Bilgiler -->
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="material-icons align-middle me-1">business</i>
+                            Temel Bilgiler
+                        </h6>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label for="isim" class="form-label">Şirket Adı</label>
+                                <input type="text" class="form-control" id="isim" name="isim"
+                                    value="{{ company.isim or '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">E-posta</label>
+                                <input type="email" class="form-control" id="email" name="email"
+                                    value="{{ company.email or '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="telefon" class="form-label">Telefon</label>
+                                <input type="tel" class="form-control" id="telefon" name="telefon"
+                                    value="{{ company.telefon or '' }}">
+                            </div>
+                        </div>
+
+                        <!-- Görünüm Ayarları -->
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="material-icons align-middle me-1">palette</i>
+                            Görünüm Ayarları
+                        </h6>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label for="logo_url" class="form-label">Logo URL</label>
+                                <input type="url" class="form-control" id="logo_url" name="logo_url"
+                                    value="{{ company.logo_url or '' }}" placeholder="https://example.com/logo.png">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="primary_color" class="form-label">Ana Renk</label>
+                                <input type="color" class="form-control form-control-color" id="primary_color"
+                                    name="primary_color" value="{{ company.primary_color or '#0d6efd' }}">
+                            </div>
+                        </div>
+
+                        <!-- Webhook Ayarları -->
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="material-icons align-middle me-1">webhook</i>
+                            Webhook Ayarları
+                        </h6>
+
+                        <div class="mb-4">
+                            <label for="webhook_url" class="form-label">Webhook URL</label>
+                            <input type="url" class="form-control" id="webhook_url" name="webhook_url"
+                                value="{{ company.webhook_url or '' }}" placeholder="https://yourserver.com/webhook">
+                            <div class="form-text">Sınav tamamlandığında bu URL'e POST isteği gönderilir.</div>
+                        </div>
+
+                        <!-- SMTP Ayarları -->
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="material-icons align-middle me-1">email</i>
+                            E-posta (SMTP) Ayarları
+                        </h6>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label for="smtp_host" class="form-label">SMTP Sunucu</label>
+                                <input type="text" class="form-control" id="smtp_host" name="smtp_host"
+                                    value="{{ company.smtp_host or '' }}" placeholder="smtp.gmail.com">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="smtp_port" class="form-label">SMTP Port</label>
+                                <input type="number" class="form-control" id="smtp_port" name="smtp_port"
+                                    value="{{ company.smtp_port or 587 }}" placeholder="587">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="smtp_user" class="form-label">SMTP Kullanıcı</label>
+                                <input type="text" class="form-control" id="smtp_user" name="smtp_user"
+                                    value="{{ company.smtp_user or '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="smtp_pass" class="form-label">SMTP Şifre</label>
+                                <input type="password" class="form-control" id="smtp_pass" name="smtp_pass"
+                                    placeholder="Değiştirmek için doldurun">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="smtp_from" class="form-label">Gönderen E-posta</label>
+                                <input type="email" class="form-control" id="smtp_from" name="smtp_from"
+                                    value="{{ company.smtp_from or '' }}" placeholder="noreply@sirket.com">
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="material-icons align-middle me-1">save</i>
+                                Ayarları Kaydet
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="material-icons align-middle me-2">warning</i>
+                        Şirket bilgisi bulunamadı.
                     </div>
-
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-lg me-1"></i>Kaydet
-                    </button>
-                </form>
+                    {% endif %}
+                </div>
             </div>
-        </div>
-    </div>
 
-    <div class="col-md-6">
-        <div class="card border-0">
-            <div class="card-header bg-white">
-                <h6 class="mb-0">API Erişimi</h6>
-            </div>
-            <div class="card-body">
-                <p class="text-muted">REST API kullanarak sisteme entegre olabilirsiniz.</p>
-
-                <h6>Token Almak İçin:</h6>
-                <pre class="bg-light p-2"><code>POST /api/v1/token
-{
-  "email": "kullanici@email.com",
-  "password": "sifre"
-}</code></pre>
-
-                <h6>Aday Listesi:</h6>
-                <pre class="bg-light p-2"><code>GET /api/v1/candidates
-Authorization: Bearer {token}</code></pre>
-
-                <a href="https://documenter.getpostman.com" target="_blank" class="btn btn-outline-primary btn-sm">
-                    <i class="bi bi-book me-1"></i>API Dokümantasyonu
-                </a>
-            </div>
         </div>
     </div>
 </div>
