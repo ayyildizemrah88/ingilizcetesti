@@ -8,7 +8,7 @@
         <button class="btn btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#bulkModal">
             <i class="bi bi-upload me-1"></i>Toplu Yükle
         </button>
-        <a href="/admin/aday-ekle" class="btn btn-primary">
+        <a href="{{ url_for('admin.aday_ekle') }}" class="btn btn-primary">
             <i class="bi bi-person-plus me-1"></i>Yeni Aday
         </a>
     </div>
@@ -50,7 +50,11 @@
                         <td>{{ aday[7] if aday is not mapping else aday.puan }}%</td>
                         <td>{{ aday[24] if aday is not mapping else aday.seviye_sonuc or '-' }}</td>
                         <td>
-                            <a href="/admin/aday-sil/{{ aday[0] if aday is not mapping else aday.id }}"
+                            <a href="{{ url_for('admin.aday_detay', id=aday[0] if aday is not mapping else aday.id) }}"
+                                class="btn btn-sm btn-outline-primary me-1">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('admin.aday_sil', id=aday[0] if aday is not mapping else aday.id) }}"
                                 class="btn btn-sm btn-outline-danger"
                                 onclick="return confirm('Bu adayı silmek istediğinize emin misiniz?')">
                                 <i class="bi bi-trash"></i>
@@ -68,7 +72,7 @@
 <div class="modal fade" id="bulkModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" action="/admin/bulk-upload" enctype="multipart/form-data">
+            <form method="POST" action="{{ url_for('admin.bulk_upload') }}" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title">Toplu Aday Yükleme</h5>
