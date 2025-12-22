@@ -474,52 +474,46 @@ def sirket_aktif(id):
 @login_required
 @superadmin_required
 def sirket_sil(id):
-    """Delete company and all related records safely using raw SQL"""
+    """Delete company - simple and robust approach"""
     company = Company.query.get_or_404(id)
     company_name = company.isim
     
     try:
-        # Use raw SQL to delete related records - avoids ORM cascade issues
-        # This approach handles missing tables gracefully
+        # First, update users to remove company reference (soft delete approach)
+        users = User.query.filter_by(sirket_id=id).all()
+        for user in users:
+            user.sirket_id = None
+            user.is_active = False
         
-        tables_to_clean = [
-            ('kullanicilar', 'sirket_id'),
-            ('adaylar', 'sirket_id'),
-            ('sorular', 'sirket_id'),
-            ('sinav_sablonlari', 'sirket_id'),
-        ]
+        # Update candidates to remove company reference
+        candidates = Candidate.query.filter_by(sirket_id=id).all()
+        for candidate in candidates:
+            candidate.sirket_id = None
         
-        for table, column in tables_to_clean:
-            try:
-                db.session.execute(
-                    db.text(f"DELETE FROM {table} WHERE {column} = :company_id"),
-                    {'company_id': id}
-                )
-            except Exception:
-                # Table might not exist or have different structure, skip
-                db.session.rollback()
-                company = Company.query.get(id)  # Re-fetch after rollback
-                if not company:
-                    flash("Şirket bulunamadı.", "warning")
-                    return redirect(url_for('admin.sirketler'))
+        # Commit the reference removals first
+        db.session.commit()
         
-        # Now delete the company itself
+        # Now safely delete the company
         db.session.delete(company)
         db.session.commit()
-        flash(f"'{company_name}' şirketi ve tüm ilgili kayıtlar silindi.", "success")
+        
+        flash(f"'{company_name}' şirketi başarıyla silindi.", "success")
         
     except Exception as e:
         db.session.rollback()
-        # Try simple delete without cascade
+        
+        # Alternative: Just deactivate the company instead of deleting
         try:
             company = Company.query.get(id)
             if company:
-                db.session.delete(company)
+                company.is_active = False
                 db.session.commit()
-                flash(f"'{company_name}' şirketi silindi.", "success")
-        except Exception as e2:
+                flash(f"'{company_name}' şirketi silinemedi, bunun yerine pasife alındı.", "warning")
+            else:
+                flash("Şirket bulunamadı.", "danger")
+        except Exception:
             db.session.rollback()
-            flash(f"Silme hatası: Bu şirkete bağlı kayıtlar olabilir. Önce bunları silmeyi deneyin.", "danger")
+            flash(f"Silme hatası. Lütfen önce bu şirkete bağlı kullanıcıları ve adayları silin.", "danger")
     
     return redirect(url_for('admin.sirketler'))
 
