@@ -510,46 +510,67 @@ def sirket_aktif(id):
 @login_required
 @superadmin_required
 def sirket_sil(id):
-    """Delete company - simple and robust approach"""
+    """
+    Delete company and ALL related data.
+    This function handles foreign key constraints by deleting related records first.
+    """
     company = Company.query.get_or_404(id)
     company_name = company.isim
     
     try:
-        # First, update users to remove company reference (soft delete approach)
-        users = User.query.filter_by(sirket_id=id).all()
-        for user in users:
-            user.sirket_id = None
-            user.is_active = False
+        # Step 1: Delete credit transactions for this company
+        try:
+            CreditTransaction.query.filter_by(company_id=id).delete(synchronize_session=False)
+        except Exception:
+            pass  # Table might not exist
         
-        # Update candidates to remove company reference
-        candidates = Candidate.query.filter_by(sirket_id=id).all()
-        for candidate in candidates:
-            candidate.sirket_id = None
+        # Step 2: Delete exam answers for candidates of this company
+        try:
+            candidate_ids = [c.id for c in Candidate.query.filter_by(sirket_id=id).all()]
+            if candidate_ids:
+                ExamAnswer.query.filter(ExamAnswer.aday_id.in_(candidate_ids)).delete(synchronize_session=False)
+        except Exception:
+            pass
         
-        # Commit the reference removals first
-        db.session.commit()
+        # Step 3: Delete candidates for this company
+        Candidate.query.filter_by(sirket_id=id).delete(synchronize_session=False)
         
-        # Now safely delete the company
+        # Step 4: Delete users for this company
+        User.query.filter_by(sirket_id=id).delete(synchronize_session=False)
+        
+        # Step 5: Delete exam templates for this company
+        try:
+            ExamTemplate.query.filter_by(sirket_id=id).delete(synchronize_session=False)
+        except Exception:
+            pass
+        
+        # Step 6: Delete questions for this company
+        try:
+            Question.query.filter_by(sirket_id=id).delete(synchronize_session=False)
+        except Exception:
+            pass
+        
+        # Step 7: Now delete the company itself
         db.session.delete(company)
         db.session.commit()
         
-        flash(f"'{company_name}' şirketi başarıyla silindi.", "success")
+        flash(f"'{company_name}' şirketi ve tüm verileri başarıyla silindi.", "success")
         
     except Exception as e:
         db.session.rollback()
         
-        # Alternative: Just deactivate the company instead of deleting
+        # If deletion still fails, try to deactivate
         try:
             company = Company.query.get(id)
             if company:
                 company.is_active = False
                 db.session.commit()
-                flash(f"'{company_name}' şirketi silinemedi, bunun yerine pasife alındı.", "warning")
+                flash(f"'{company_name}' şirketi silinemedi (hata: {str(e)[:50]}), bunun yerine pasife alındı.", "warning")
             else:
                 flash("Şirket bulunamadı.", "danger")
         except Exception:
             db.session.rollback()
-            flash(f"Silme hatası. Lütfen önce bu şirkete bağlı kullanıcıları ve adayları silin.", "danger")
+            flash("Silme hatası. Lütfen veritabanını kontrol edin.", "danger")
     
     return redirect(url_for('admin.sirketler'))
 
