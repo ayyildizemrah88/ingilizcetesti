@@ -54,11 +54,15 @@
                                 class="btn btn-sm btn-outline-primary me-1">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            <a href="{{ url_for('admin.aday_sil', id=aday[0] if aday is not mapping else aday.id) }}"
-                                class="btn btn-sm btn-outline-danger"
-                                onclick="return confirm('Bu adayı silmek istediğinize emin misiniz?')">
-                                <i class="bi bi-trash"></i>
-                            </a>
+                            <form
+                                action="{{ url_for('admin.aday_sil', id=aday[0] if aday is not mapping else aday.id) }}"
+                                method="POST" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Bu adayı silmek istediğinize emin misiniz?')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     {% endfor %}
