@@ -1,142 +1,84 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Şablon Düzenle' if sablon else 'Yeni Şablon' }} - Skills Test Center{% endblock %}
+
+{% block title %}{{ 'Şablon Düzenle' if sablon else 'Yeni Sınav Şablonu' }}{% endblock %}
+
 {% block content %}
-<div class="form-container">
-    <div class="form-card">
-        <h5>
-            <span class="material-symbols-outlined">{{ 'edit' if sablon else 'post_add' }}</span>
-            {{ 'Şablon Düzenle' if sablon else 'Yeni Sınav Şablonu' }}
-        </h5>
-        <form method="POST"
-            action="{{ url_for('admin.sablon_duzenle', id=sablon.id) if sablon else url_for('admin.sablon_ekle') }}">
-            <div class="form-group">
-                <label for="isim">Şablon Adı *</label>
-                <input type="text" class="form-control" id="isim" name="isim"
-                    value="{{ sablon.isim if sablon else '' }}" placeholder="Örn: Standart B2 Sınavı" required>
-            </div>
-            <div class="form-group">
-                <label for="aciklama">Açıklama</label>
-                <textarea class="form-control" id="aciklama" name="aciklama" rows="2"
-                    placeholder="Şablon hakkında kısa açıklama">{{ sablon.aciklama if sablon else '' }}</textarea>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="sinav_suresi">Sınav Süresi (dakika) *</label>
-                    <input type="number" class="form-control" id="sinav_suresi" name="sinav_suresi"
-                        value="{{ sablon.sinav_suresi if sablon else 30 }}" min="5" max="180" required>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="material-icons align-middle me-2">{{ 'edit' if sablon else 'post_add' }}</i>
+                        {{ 'Şablon Düzenle' if sablon else 'Yeni Sınav Şablonu' }}
+                    </h5>
                 </div>
-                <div class="form-group">
-                    <label for="soru_sayisi">Soru Sayısı *</label>
-                    <input type="number" class="form-control" id="soru_sayisi" name="soru_sayisi"
-                        value="{{ sablon.soru_sayisi if sablon else 25 }}" min="5" max="100" required>
+                <div class="card-body">
+
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="POST">
+                        <!-- CSRF Token for Security -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Şablon Adı -->
+                        <div class="mb-3">
+                            <label for="isim" class="form-label">Şablon Adı *</label>
+                            <input type="text" class="form-control" id="isim" name="isim"
+                                value="{{ sablon.isim if sablon else '' }}" required
+                                placeholder="Örn: Genel İngilizce Testi">
+                        </div>
+
+                        <!-- Açıklama -->
+                        <div class="mb-3">
+                            <label for="aciklama" class="form-label">Açıklama</label>
+                            <textarea class="form-control" id="aciklama" name="aciklama" rows="2"
+                                placeholder="Şablon hakkında kısa açıklama">{{ sablon.aciklama if sablon else '' }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <!-- Sınav Süresi -->
+                            <div class="col-md-6 mb-3">
+                                <label for="sinav_suresi" class="form-label">Sınav Süresi (dakika) *</label>
+                                <input type="number" class="form-control" id="sinav_suresi" name="sinav_suresi"
+                                    value="{{ sablon.sinav_suresi if sablon else 30 }}" min="5" max="180" required>
+                            </div>
+
+                            <!-- Soru Sayısı -->
+                            <div class="col-md-6 mb-3">
+                                <label for="soru_sayisi" class="form-label">Soru Sayısı *</label>
+                                <input type="number" class="form-control" id="soru_sayisi" name="soru_sayisi"
+                                    value="{{ sablon.soru_sayisi if sablon else 25 }}" min="5" max="100" required>
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="material-icons align-middle me-1">save</i>
+                                {{ 'Güncelle' if sablon else 'Kaydet' }}
+                            </button>
+                            <a href="{{ url_for('admin.sablonlar') }}" class="btn btn-outline-secondary">
+                                <i class="material-icons align-middle me-1">cancel</i>
+                                İptal
+                            </a>
+                        </div>
+                    </form>
                 </div>
             </div>
-            <div class="info-box">
-                <span class="material-symbols-outlined">info</span>
-                <div>
-                    <strong>Tahmini Süre:</strong> <span id="time-per-question">1.2</span> dakika/soru
-                </div>
-            </div>
-            <div class="form-actions">
-                <a href="{{ url_for('admin.sablonlar') }}" class="btn btn-secondary">İptal</a>
-                <button type="submit" class="btn btn-primary">
-                    <span class="material-symbols-outlined">save</span>
-                    {{ 'Güncelle' if sablon else 'Kaydet' }}
-                </button>
-            </div>
-        </form>
+
+        </div>
     </div>
 </div>
-<script>
-    function updateTimePerQuestion() {
-        const duration = parseInt(document.getElementById('sinav_suresi').value) || 30;
-        const questions = parseInt(document.getElementById('soru_sayisi').value) || 25;
-        const timePerQuestion = (duration / questions).toFixed(1);
-        document.getElementById('time-per-question').textContent = timePerQuestion;
-    }
-    document.getElementById('sinav_suresi').addEventListener('input', updateTimePerQuestion);
-    document.getElementById('soru_sayisi').addEventListener('input', updateTimePerQuestion);
-</script>
-<style>
-    .form-container {
-        padding: 20px;
-        max-width: 600px;
-        margin: 0 auto;
-    }
-    .form-card {
-        background: white;
-        border-radius: 16px;
-        padding: 30px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    }
-    .form-card h5 {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 25px;
-        color: #333;
-    }
-    .form-group {
-        margin-bottom: 20px;
-    }
-    .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: 500;
-        color: #555;
-    }
-    .form-control {
-        width: 100%;
-        padding: 10px 15px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 1rem;
-    }
-    .form-control:focus {
-        border-color: #667eea;
-        outline: none;
-    }
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
-    .info-box {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 15px;
-        background: #f8f9fa;
-        border-radius: 8px;
-        margin-bottom: 20px;
-    }
-    .info-box .material-symbols-outlined {
-        color: #667eea;
-    }
-    .form-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        margin-top: 30px;
-    }
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        cursor: pointer;
-        text-decoration: none;
-        border: none;
-    }
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-    }
-    .btn-secondary {
-        background: #f0f0f0;
-        color: #333;
-    }
-</style>
 {% endblock %}
