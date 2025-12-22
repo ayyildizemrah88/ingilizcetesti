@@ -393,8 +393,9 @@ def sirketler():
 @login_required
 @superadmin_required
 def sirket_ekle():
-    """Add new company"""
+    """Add new company with admin user"""
     if request.method == 'POST':
+        # Create company
         company = Company(
             isim=request.form.get('isim'),
             email=request.form.get('email'),
@@ -404,8 +405,26 @@ def sirket_ekle():
             is_active=True
         )
         db.session.add(company)
+        db.session.flush()  # Get company ID
+        
+        # Create admin user for this company
+        admin_email = request.form.get('email')
+        admin_sifre = request.form.get('admin_sifre')
+        admin_ad_soyad = request.form.get('admin_ad_soyad', f"{company.isim} Admin")
+        
+        if admin_sifre:
+            admin_user = User(
+                email=admin_email,
+                ad_soyad=admin_ad_soyad,
+                rol='customer',
+                sirket_id=company.id,
+                is_active=True
+            )
+            admin_user.set_password(admin_sifre)
+            db.session.add(admin_user)
+        
         db.session.commit()
-        flash("Şirket eklendi.", "success")
+        flash(f"Şirket ve admin kullanıcı oluşturuldu. Giriş: {admin_email}", "success")
         return redirect(url_for('admin.sirketler'))
     
     return render_template('sirket_form.html')
@@ -455,11 +474,31 @@ def sirket_aktif(id):
 @login_required
 @superadmin_required
 def sirket_sil(id):
-    """Delete company"""
+    """Delete company and all related records"""
     company = Company.query.get_or_404(id)
-    db.session.delete(company)
-    db.session.commit()
-    flash("Şirket silindi.", "danger")
+    
+    try:
+        # Delete related records first to avoid foreign key constraints
+        # Delete users belonging to this company
+        User.query.filter_by(sirket_id=id).delete()
+        
+        # Delete candidates belonging to this company
+        Candidate.query.filter_by(sirket_id=id).delete()
+        
+        # Delete questions belonging to this company
+        Question.query.filter_by(sirket_id=id).delete()
+        
+        # Delete exam templates belonging to this company
+        ExamTemplate.query.filter_by(sirket_id=id).delete()
+        
+        # Now delete the company
+        db.session.delete(company)
+        db.session.commit()
+        flash("Şirket ve tüm ilgili kayıtlar silindi.", "danger")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Silme hatası: {str(e)}", "danger")
+    
     return redirect(url_for('admin.sirketler'))
 
 @admin_bp.route('/sirket/<int:id>/kredi', methods=['GET', 'POST'])
