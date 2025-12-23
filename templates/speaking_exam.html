@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+a{% extends "base.html" %}
 {% block title %}Speaking Test - Skills Test Center{% endblock %}
 
 {% block extra_css %}
@@ -226,6 +226,7 @@
     }
 </style>
 
+<script src="{{ url_for('static', filename='js/puter_ai_service.js') }}"></script>
 <script src="{{ url_for('static', filename='js/speaking_recorder.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
