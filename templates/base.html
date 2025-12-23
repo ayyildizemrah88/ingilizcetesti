@@ -10,22 +10,10 @@
 
     <!-- Preconnect for performance -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <!-- Puter.js - Free Gemini AI Integration -->
-    <script src="https://js.puter.com/v2/"></script>
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-
-    <!-- ✅ Material Icons - klasik ikonlar için -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-
-    <!-- ✅ Material Symbols Outlined - dashboard ve modern ikonlar için -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
-        rel="stylesheet">
 
     <!-- Accessibility CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
@@ -71,18 +59,6 @@
 
         .badge {
             border-radius: 20px;
-        }
-
-        /* Material Icons ve Symbols düzgün görünsün */
-        .material-icons {
-            font-size: 24px;
-            vertical-align: middle;
-        }
-
-        .material-symbols-outlined {
-            font-size: 24px;
-            vertical-align: middle;
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
 
         /* Dark mode */
@@ -190,83 +166,11 @@
         <i class="bi bi-universal-access" aria-hidden="true"></i>
     </button>
 
+    <!-- Puter.js for Free AI (Gemini) -->
+    <script src="https://js.puter.com/v2/"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // ==========================================
-        // AI SERVICE - Puter.js (Free Gemini) + OpenAI
-        // ==========================================
-        const AIService = {
-            // Puter.js ile Gemini AI kullanımı (ÜCRETSİZ)
-            async askGemini(prompt) {
-                try {
-                    const response = await puter.ai.chat(prompt);
-                    return response;
-                } catch (error) {
-                    console.error('Gemini AI error:', error);
-                    throw error;
-                }
-            },
-
-            // OpenAI kullanımı (Backend API üzerinden)
-            async askOpenAI(prompt) {
-                try {
-                    const response = await fetch('/api/ai/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({ prompt: prompt })
-                    });
-                    const data = await response.json();
-                    return data.response;
-                } catch (error) {
-                    console.error('OpenAI error:', error);
-                    throw error;
-                }
-            },
-
-            // Akıllı AI seçimi - önce Gemini dene, başarısız olursa OpenAI
-            async ask(prompt, preferredModel = 'gemini') {
-                if (preferredModel === 'gemini') {
-                    try {
-                        return await this.askGemini(prompt);
-                    } catch {
-                        console.log('Gemini failed, falling back to OpenAI...');
-                        return await this.askOpenAI(prompt);
-                    }
-                } else {
-                    try {
-                        return await this.askOpenAI(prompt);
-                    } catch {
-                        console.log('OpenAI failed, falling back to Gemini...');
-                        return await this.askGemini(prompt);
-                    }
-                }
-            },
-
-            // Soru üretme
-            async generateQuestion(difficulty = 'A2', category = 'grammar') {
-                try {
-                    const response = await fetch('/api/ai/generate-question', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({ difficulty, category })
-                    });
-                    return await response.json();
-                } catch (error) {
-                    console.error('Question generation error:', error);
-                    throw error;
-                }
-            }
-        };
-
-        // Global olarak erişilebilir yap
-        window.AIService = AIService;
-
         // Accessibility toggle function
         function toggleAccessibility(feature) {
             fetch('/international/accessibility/toggle', {
@@ -279,6 +183,7 @@
             })
                 .then(response => response.json())
                 .then(data => {
+                    // Reload to apply changes
                     location.reload();
                 })
                 .catch(error => {
@@ -288,6 +193,7 @@
 
         // Keyboard navigation enhancement
         document.addEventListener('keydown', function (e) {
+            // Alt + A to open accessibility toolbar
             if (e.altKey && e.key === 'a') {
                 document.getElementById('accessibility-toggle').click();
             }
