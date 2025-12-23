@@ -1,219 +1,146 @@
-{% extends "base.html" %}
-
-{% block title %}Aday Detayı - {{ aday.ad_soyad }}{% endblock %}
+{% extends "dashboard.html" %}
+{% block title %}Aday Detay - Skills Test Center{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="mb-0">
-                    <a href="{{ url_for('admin.adaylar') }}" class="text-decoration-none text-muted">
-                        ← Geri
-                    </a>
-                </h4>
-                <div>
-                    <a href="{{ url_for('admin.aday_duzenle', id=aday.id) }}" class="btn btn-outline-primary">
-                        Düzenle
-                    </a>
-                </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-person-lines-fill me-2"></i>Aday Detayı</h3>
+    <div class="btn-group">
+        {% if session.rol in ['super_admin', 'superadmin'] %}
+        <!-- Certificate Download -->
+        {% set durum = aday.durum if aday is mapping else aday[8] %}
+        {% if durum == 'Tamamlandi' or durum == 'tamamlandi' %}
+        <a href="/certificate/download/{{ aday.id if aday is mapping else aday[0] }}" class="btn btn-success">
+            <i class="bi bi-file-earmark-pdf me-1"></i>Sertifika İndir
+        </a>
+        {% endif %}
+
+        <!-- Exam Reset -->
+        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#resetExamModal">
+            <i class="bi bi-arrow-clockwise me-1"></i>Sınavı Sıfırla
+        </button>
+        {% endif %}
+
+        <a href="/admin/adaylar" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Geri</a>
+    </div>
+</div>
+
+<!-- Reset Exam Modal -->
+<div class="modal fade" id="resetExamModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Sınavı Sıfırla</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            
-            <!-- Kişi Bilgileri -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Kişi Bilgileri</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Ad Soyad:</strong> {{ aday.ad_soyad }}</p>
-                            <p><strong>Email:</strong> {{ aday.email }}</p>
-                            <p><strong>TC Kimlik:</strong> {{ aday.tc_kimlik or '-' }}</p>
-                            <p><strong>Telefon:</strong> {{ aday.cep_no or '-' }}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Giriş Kodu:</strong> <code>{{ aday.giris_kodu }}</code></p>
-                            <p><strong>Sınav Kodu:</strong> <code>{{ aday.exam_code or '-' }}</code></p>
-                            <p>
-                                <strong>Durum:</strong> 
-                                {% set durum = aday.durum or aday.sinav_durumu or 'beklemede' %}
-                                {% if durum == 'tamamlandi' %}
-                                <span class="badge bg-success">Tamamlandı</span>
-                                {% elif durum == 'sinavda' %}
-                                <span class="badge bg-warning">Sınavda</span>
-                                {% else %}
-                                <span class="badge bg-secondary">Beklemede</span>
-                                {% endif %}
-                            </p>
-                            <p><strong>Şirket:</strong> {{ aday.company.ad if aday.company else '-' }}</p>
-                        </div>
+            <form action="/admin/candidate/{{ aday.id if aday is mapping else aday[0] }}/reset-exam" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <p>Bu adayın sınavını sıfırlamak istediğinize emin misiniz?</p>
+                    <p class="text-muted small">Adayın tüm cevapları silinecek ve sınava yeniden girebilecektir.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Sıfırlama Nedeni</label>
+                        <select name="reason" class="form-select">
+                            <option value="Teknik sorun">Teknik sorun</option>
+                            <option value="İnternet kesintisi">İnternet kesintisi</option>
+                            <option value="Yanlış aday kaydı">Yanlış aday kaydı</option>
+                            <option value="Admin kararı">Admin kararı</option>
+                        </select>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Sınav Sonuçları -->
-            {% if aday.durum == 'tamamlandi' or aday.toplam_puan %}
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Sınav Sonuçları</h5>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Sıfırla
+                    </button>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4 text-center">
-                            <h2 class="display-4 text-primary">{{ aday.toplam_puan or aday.puan or 0 }}%</h2>
-                            <p class="text-muted">Toplam Puan</p>
-                        </div>
-                        <div class="col-md-4 text-center">
-                            <h2 class="display-4 text-success">{{ aday.cefr_seviye or aday.seviye_sonuc or '-' }}</h2>
-                            <p class="text-muted">CEFR Seviye</p>
-                        </div>
-                        <div class="col-md-4 text-center">
-                            <h2 class="display-4 text-info">{{ aday.trust_score or 100 }}%</h2>
-                            <p class="text-muted">Güven Skoru</p>
-                        </div>
-                    </div>
-                    
-                    <hr>
-                    
-                    <h6>Kategori Bazlı Performans</h6>
-                    <div class="row mt-3">
-                        <div class="col-md-4 mb-3">
-                            <label>Grammar</label>
-                            <div class="progress">
-                                <div class="progress-bar bg-primary" style="width: {{ aday.grammar_puan or aday.p_grammar or 0 }}%">
-                                    {{ aday.grammar_puan or aday.p_grammar or 0 }}%
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label>Vocabulary</label>
-                            <div class="progress">
-                                <div class="progress-bar bg-success" style="width: {{ aday.vocabulary_puan or aday.p_vocabulary or 0 }}%">
-                                    {{ aday.vocabulary_puan or aday.p_vocabulary or 0 }}%
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label>Reading</label>
-                            <div class="progress">
-                                <div class="progress-bar bg-info" style="width: {{ aday.reading_puan or aday.p_reading or 0 }}%">
-                                    {{ aday.reading_puan or aday.p_reading or 0 }}%
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label>Listening</label>
-                            <div class="progress">
-                                <div class="progress-bar bg-warning" style="width: {{ aday.listening_puan or aday.p_listening or 0 }}%">
-                                    {{ aday.listening_puan or aday.p_listening or 0 }}%
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label>Writing</label>
-                            <div class="progress">
-                                <div class="progress-bar bg-danger" style="width: {{ aday.writing_puan or aday.p_writing or 0 }}%">
-                                    {{ aday.writing_puan or aday.p_writing or 0 }}%
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label>Speaking</label>
-                            <div class="progress">
-                                <div class="progress-bar bg-secondary" style="width: {{ aday.speaking_puan or aday.p_speaking or 0 }}%">
-                                    {{ aday.speaking_puan or aday.p_speaking or 0 }}%
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-            
-            <!-- Sınav Zaman Bilgileri -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Zaman Bilgileri</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <p><strong>Kayıt Tarihi:</strong> {{ aday.created_at.strftime('%d.%m.%Y %H:%M') if aday.created_at else '-' }}</p>
-                        </div>
-                        <div class="col-md-4">
-                            <p><strong>Sınav Başlangıç:</strong> {{ aday.sinav_baslama.strftime('%d.%m.%Y %H:%M') if aday.sinav_baslama else '-' }}</p>
-                        </div>
-                        <div class="col-md-4">
-                            <p><strong>Sınav Bitiş:</strong> {{ aday.sinav_bitis.strftime('%d.%m.%Y %H:%M') if aday.sinav_bitis else '-' }}</p>
-                        </div>
-                    </div>
-                    {% if aday.is_paused %}
-                    <div class="alert alert-warning mt-3">
-                        <strong>Sınav Duraklatılmış!</strong> Aday sınavını duraklattı. Toplam duraklama sayısı: {{ aday.pause_count or 0 }}
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <!-- Cevaplar -->
-            {% if aday.answers and aday.answers.count() > 0 %}
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Cevaplar ({{ aday.answers.count() }})</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Soru</th>
-                                    <th>Cevap</th>
-                                    <th>Doğru</th>
-                                    <th>Süre</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for answer in aday.answers.limit(20) %}
-                                <tr>
-                                    <td>{{ loop.index }}</td>
-                                    <td>{{ answer.question.soru_metni[:50] if answer.question else '-' }}...</td>
-                                    <td>{{ answer.cevap }}</td>
-                                    <td>
-                                        {% if answer.dogru_mu %}
-                                        <span class="text-success">✓</span>
-                                        {% else %}
-                                        <span class="text-danger">✗</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ answer.sure or '-' }}s</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-            
-            <!-- Admin Notları -->
-            {% if aday.admin_notes %}
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Admin Notları</h5>
-                </div>
-                <div class="card-body">
-                    <p>{{ aday.admin_notes }}</p>
-                </div>
-            </div>
-            {% endif %}
-            
+            </form>
         </div>
     </div>
 </div>
 
-<!-- NEW: Include SuperAdmin Exam Reset Button -->
-{% include 'partials/exam_reset_button.html' %}
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card border-0 h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">Kişi Bilgileri</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>Ad Soyad:</strong> {{ aday.ad_soyad if aday is mapping else aday[1] }}</p>
+                <p><strong>Email:</strong> {{ aday.email if aday is mapping else aday[4] }}</p>
+                <p><strong>Durum:</strong>
+                    {% set durum = aday.durum if aday is mapping else aday[8] %}
+                    <span
+                        class="badge bg-{{ 'success' if durum == 'Tamamlandi' else 'warning' if durum == 'Devam' else 'secondary' }}">{{
+                        durum }}</span>
+                </p>
+                <p><strong>Puan:</strong> {{ aday.puan if aday is mapping else aday[7] }}%</p>
+                <p><strong>Seviye:</strong> {{ aday.seviye_sonuc if aday is mapping else aday[24] }}</p>
+                <p><strong>Trust Score:</strong> {{ aday.trust_score if aday is mapping else aday[9] }}</p>
+            </div>
+        </div>
+    </div>
 
+    <div class="col-md-8">
+        <div class="card border-0">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">Kategori Bazlı Performans</h6>
+            </div>
+            <div class="card-body">
+                {% for kat, stats in kategori_stats.items() %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>{{ kat }}</span>
+                        <span>{{ stats.dogru }}/{{ stats.toplam }} ({{ ((stats.dogru / stats.toplam) * 100)|int
+                            }}%)</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-{{ 'success' if (stats.dogru / stats.toplam) > 0.7 else 'warning' if (stats.dogru / stats.toplam) > 0.4 else 'danger' }}"
+                            style="width: {{ ((stats.dogru / stats.toplam) * 100)|int }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 mt-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0">Cevaplar</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Soru</th>
+                        <th>Kategori</th>
+                        <th>Zorluk</th>
+                        <th>Cevap</th>
+                        <th>Doğru</th>
+                        <th>Sonuç</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cevaplar %}
+                    <tr>
+                        <td>{{ (c.soru_metni if c is mapping else c[5])[:50] }}...</td>
+                        <td><span class="badge bg-info">{{ c.kategori if c is mapping else c[6] }}</span></td>
+                        <td>{{ c.zorluk if c is mapping else c[7] }}</td>
+                        <td><strong>{{ c.verilen_cevap if c is mapping else c[3] }}</strong></td>
+                        <td>{{ c.correct_answer if c is mapping else c[8] }}</td>
+                        <td>
+                            {% if (c.dogru_mu if c is mapping else c[4]) %}
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                            {% else %}
+                            <i class="bi bi-x-circle-fill text-danger"></i>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 {% endblock %}
