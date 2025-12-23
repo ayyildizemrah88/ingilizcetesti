@@ -760,11 +760,29 @@ def kullanici_duzenle(id):
 @login_required
 @superadmin_required
 def kullanici_sil(id):
-    """Delete user"""
+    """Delete user - HARD DELETE"""
+    from sqlalchemy import text
+    
     user = User.query.get_or_404(id)
-    user.is_active = False
-    db.session.commit()
-    flash("Kullanıcı silindi.", "warning")
+    user_email = user.email
+    
+    # Prevent deleting yourself
+    if user.id == session.get('kullanici_id'):
+        flash("Kendinizi silemezsiniz!", "danger")
+        return redirect(url_for('admin.kullanicilar'))
+    
+    try:
+        # Hard delete using raw SQL
+        db.session.execute(text("DELETE FROM kullanicilar WHERE id = :id"), {'id': id})
+        db.session.commit()
+        flash(f"Kullanıcı '{user_email}' kalıcı olarak silindi.", "success")
+    except Exception as e:
+        db.session.rollback()
+        # Fallback to soft delete
+        user.is_active = False
+        db.session.commit()
+        flash(f"Kullanıcı silinemedi, pasife alındı. Hata: {str(e)[:50]}", "warning")
+    
     return redirect(url_for('admin.kullanicilar'))
 
 # ══════════════════════════════════════════════════════════════
