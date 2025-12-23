@@ -1,0 +1,339 @@
+{% extends "dashboard.html" %}
+{% block title %}Veri Yönetimi - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-database-gear me-2"></i>Veri Yönetimi</h3>
+    <span class="badge bg-danger"><i class="bi bi-shield-lock me-1"></i>Süper Admin</span>
+</div>
+
+<!-- KVKK Info Alert -->
+<div class="alert alert-info mb-4">
+    <h6><i class="bi bi-info-circle me-2"></i>KVKK Uyumlu Veri Saklama Politikası</h6>
+    <div class="row">
+        <div class="col-md-3"><small><strong>Speaking Kayıtları:</strong> 1 yıl</small></div>
+        <div class="col-md-3"><small><strong>Sınav Cevapları:</strong> 1 yıl</small></div>
+        <div class="col-md-3"><small><strong>Audit Logları:</strong> 2 yıl</small></div>
+        <div class="col-md-3"><small><strong>Onay Kayıtları:</strong> 5 yıl</small></div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Data Statistics -->
+    <div class="col-md-8">
+        <div class="card border-0 h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Veri İstatistikleri</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h3>{{ stats.total_candidates or 0 }}</h3>
+                                <small>Toplam Aday</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h3>{{ stats.total_questions or 0 }}</h3>
+                                <small>Toplam Soru</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h3>{{ stats.total_answers or 0 }}</h3>
+                                <small>Toplam Cevap</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-warning text-dark">
+                            <div class="card-body text-center">
+                                <h3>{{ stats.speaking_recordings or 0 }}</h3>
+                                <small>Speaking Kayıtları</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-secondary text-white">
+                            <div class="card-body text-center">
+                                <h3>{{ stats.audit_logs or 0 }}</h3>
+                                <small>Audit Log</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-dark text-white">
+                            <div class="card-body text-center">
+                                <h3>{{ "%.2f"|format(stats.db_size_mb or 0) }} MB</h3>
+                                <small>Veritabanı Boyutu</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-md-4">
+        <div class="card border-0 h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Hızlı İşlemler</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#backupModal">
+                        <i class="bi bi-cloud-download me-2"></i>Yedek Al
+                    </button>
+                    <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#restoreModal">
+                        <i class="bi bi-cloud-upload me-2"></i>Yedek Geri Yükle
+                    </button>
+                    <button class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#cleanupModal">
+                        <i class="bi bi-trash me-2"></i>Eski Verileri Temizle
+                    </button>
+                    <a href="/admin/veri-yonetimi/kvkk-rapor" class="btn btn-outline-info">
+                        <i class="bi bi-file-earmark-text me-2"></i>KVKK Raporu
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Cleanup Section -->
+<div class="card border-0 mt-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-calendar-x me-2"></i>Manuel Veri Temizleme</h6>
+        <span class="badge bg-warning text-dark">Dikkat: Bu işlem geri alınamaz!</span>
+    </div>
+    <div class="card-body">
+        <form action="/admin/veri-yonetimi/manuel-temizle" method="POST"
+            onsubmit="return confirm('Bu işlem geri alınamaz! Devam etmek istediğinize emin misiniz?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Veri Türü</label>
+                    <select name="data_type" class="form-select" required>
+                        <option value="">Seçin...</option>
+                        <option value="speaking_recordings">Speaking Kayıtları</option>
+                        <option value="exam_answers">Sınav Cevapları</option>
+                        <option value="completed_candidates">Tamamlanan Adaylar</option>
+                        <option value="audit_logs">Audit Logları</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Bu Tarihten Önce</label>
+                    <input type="date" name="before_date" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Onay Kodu</label>
+                    <input type="text" name="confirmation_code" class="form-control" placeholder="SIL-ONAY yazın"
+                        required>
+                    <small class="text-muted">Silme işlemini onaylamak için "SIL-ONAY" yazın</small>
+                </div>
+            </div>
+            <div class="mt-3">
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash me-1"></i>Verileri Sil
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Backup History -->
+<div class="card border-0 mt-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Yedek Geçmişi</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Dosya</th>
+                        <th>Boyut</th>
+                        <th>Konum</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for backup in backups %}
+                    <tr>
+                        <td>{{ backup.created_at.strftime('%d.%m.%Y %H:%M') if backup.created_at else '-' }}</td>
+                        <td><code>{{ backup.filename }}</code></td>
+                        <td>{{ "%.2f"|format(backup.size_mb) }} MB</td>
+                        <td>
+                            {% if backup.location == 'local' %}
+                            <span class="badge bg-secondary">Yerel</span>
+                            {% else %}
+                            <span class="badge bg-primary">Google Drive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="/admin/veri-yonetimi/yedek-indir/{{ backup.filename }}"
+                                class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-download"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-danger"
+                                onclick="deleteBackup('{{ backup.filename }}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">Henüz yedek bulunmuyor</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- GDPR/KVKK Deletion Requests -->
+<div class="card border-0 mt-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="bi bi-person-x me-2"></i>KVKK Veri Silme Talepleri</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Talep Tarihi</th>
+                        <th>Aday</th>
+                        <th>Email</th>
+                        <th>Durum</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in deletion_requests %}
+                    <tr>
+                        <td>{{ req.created_at.strftime('%d.%m.%Y') }}</td>
+                        <td>{{ req.ad_soyad }}</td>
+                        <td>{{ req.email }}</td>
+                        <td>
+                            {% if req.status == 'pending' %}
+                            <span class="badge bg-warning">Bekliyor</span>
+                            {% elif req.status == 'completed' %}
+                            <span class="badge bg-success">Tamamlandı</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ req.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if req.status == 'pending' %}
+                            <form action="/admin/veri-yonetimi/kvkk-sil/{{ req.id }}" method="POST"
+                                style="display:inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Bu adayın TÜM verileri silinecek. Devam?')">
+                                    <i class="bi bi-trash me-1"></i>Verileri Sil
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">Bekleyen talep yok</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Backup Modal -->
+<div class="modal fade" id="backupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-cloud-download me-2"></i>Yedek Al</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/admin/veri-yonetimi/yedek-al" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <p>Veritabanının tam yedeği alınacaktır.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Yedek Konumu</label>
+                        <select name="location" class="form-select">
+                            <option value="local">Yerel Sunucu</option>
+                            <option value="google_drive">Google Drive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-cloud-download me-1"></i>Yedek Al
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Cleanup Modal -->
+<div class="modal fade" id="cleanupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="bi bi-trash me-2"></i>Otomatik Temizlik</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/admin/veri-yonetimi/otomatik-temizle" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <p>KVKK uyumlu otomatik temizlik işlemi başlatılacaktır:</p>
+                    <ul class="small">
+                        <li>1 yıldan eski speaking kayıtları silinecek</li>
+                        <li>1 yıldan eski sınav cevapları silinecek</li>
+                        <li>2 yıldan eski audit logları silinecek</li>
+                    </ul>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-1"></i>Bu işlem geri alınamaz!
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-trash me-1"></i>Temizliği Başlat
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function deleteBackup(filename) {
+        if (confirm('Bu yedeği silmek istediğinize emin misiniz?')) {
+            fetch('/admin/veri-yonetimi/yedek-sil/' + filename, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Silme işlemi başarısız!');
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}
