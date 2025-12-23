@@ -16,109 +16,99 @@
     </div>
 </div>
 
-<!-- Platform Özet Kartları -->
-<div class="row mb-4">
-    <div class="col-md-4 col-lg-2 mb-3">
-        <div class="card bg-primary text-white h-100">
-            <div class="card-body text-center">
-                <i class="bi bi-building" style="font-size: 2rem;"></i>
-                <h3 class="mt-2 mb-0">{{ stats.total_companies or 0 }}</h3>
-                <small>Toplam Şirket</small>
+<div class="row">
+    <!-- Şirket Bazlı İstatistikler -->
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-building me-2"></i>Şirket Bazlı İstatistikler
             </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-lg-2 mb-3">
-        <div class="card bg-success text-white h-100">
-            <div class="card-body text-center">
-                <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
-                <h3 class="mt-2 mb-0">{{ stats.active_companies or 0 }}</h3>
-                <small>Aktif Şirket</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-lg-2 mb-3">
-        <div class="card bg-info text-white h-100">
-            <div class="card-body text-center">
-                <i class="bi bi-people" style="font-size: 2rem;"></i>
-                <h3 class="mt-2 mb-0">{{ stats.total_users or 0 }}</h3>
-                <small>Kullanıcı</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-lg-2 mb-3">
-        <div class="card bg-warning text-dark h-100">
-            <div class="card-body text-center">
-                <i class="bi bi-person-badge" style="font-size: 2rem;"></i>
-                <h3 class="mt-2 mb-0">{{ stats.total_candidates or 0 }}</h3>
-                <small>Aday</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-lg-2 mb-3">
-        <div class="card bg-secondary text-white h-100">
-            <div class="card-body text-center">
-                <i class="bi bi-clipboard-check" style="font-size: 2rem;"></i>
-                <h3 class="mt-2 mb-0">{{ stats.completed_exams or 0 }}</h3>
-                <small>Tamamlanan</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-lg-2 mb-3">
-        <div class="card bg-dark text-white h-100">
-            <div class="card-body text-center">
-                <i class="bi bi-coin" style="font-size: 2rem;"></i>
-                <h3 class="mt-2 mb-0">{{ stats.total_credits_used or 0 }}</h3>
-                <small>Kredi Kullanım</small>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Şirket Listesi -->
-<div class="card">
-    <div class="card-header bg-dark text-white">
-        <i class="bi bi-building me-2"></i>Şirket Bazlı İstatistikler
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Şirket Adı</th>
-                        <th>Email</th>
-                        <th>Kredi</th>
-                        <th>Durum</th>
-                        <th>Kayıt Tarihi</th>
-                        <th>İşlemler</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for company in companies %}
-                    <tr>
-                        <td><strong>{{ company.isim }}</strong></td>
-                        <td>{{ company.email or '-' }}</td>
-                        <td><span class="badge bg-success">{{ company.kredi or 0 }}</span></td>
-                        <td>
-                            {% if company.is_active %}
-                            <span class="badge bg-success">Aktif</span>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Şirket</th>
+                                <th>Toplam Aday</th>
+                                <th>Tamamlanan</th>
+                                <th>Ortalama Puan</th>
+                                <th>Kredi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if sirket_stats %}
+                            {% for stat in sirket_stats %}
+                            <tr>
+                                <td><strong>{{ stat.sirket_adi }}</strong></td>
+                                <td>{{ stat.toplam_aday }}</td>
+                                <td>{{ stat.tamamlanan }}</td>
+                                <td>{{ '%.1f'|format(stat.ortalama or 0) }}%</td>
+                                <td><span class="badge bg-success">{{ stat.kredi }}</span></td>
+                            </tr>
+                            {% endfor %}
                             {% else %}
-                            <span class="badge bg-danger">Pasif</span>
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">Henüz veri yok.</td>
+                            </tr>
                             {% endif %}
-                        </td>
-                        <td>{{ company.created_at.strftime('%d.%m.%Y') if company.created_at else '-' }}</td>
-                        <td>
-                            <a href="{{ url_for('admin.sirket_duzenle', id=company.id) }}" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">Henüz şirket bulunmuyor.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sistem Özeti -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-cpu me-2"></i>Sistem Özeti
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Toplam Şirket:</span>
+                    <strong>{{ platform_stats.toplam_sirket }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Aktif Şirket:</span>
+                    <strong class="text-success">{{ platform_stats.aktif_sirket }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Toplam Kullanıcı:</span>
+                    <strong>{{ platform_stats.toplam_kullanici }}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Toplam Soru:</span>
+                    <strong>{{ platform_stats.toplam_soru }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Haftalık Aktivite -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-calendar-week me-2"></i>Haftalık Aktivite
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Bu Hafta Sınav:</span>
+                    <strong>{{ platform_stats.bu_hafta_sinav }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Yeni Aday:</span>
+                    <strong>{{ platform_stats.bu_hafta_aday }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Yeni Şirket:</span>
+                    <strong>{{ platform_stats.bu_hafta_sirket }}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Kredi Kullanımı:</span>
+                    <strong>{{ platform_stats.bu_hafta_kredi }}</strong>
+                </div>
+            </div>
         </div>
     </div>
 </div>
