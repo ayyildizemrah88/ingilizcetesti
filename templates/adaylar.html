@@ -2,7 +2,6 @@
 {% block title %}Adaylar - Skills Test Center{% endblock %}
 
 {% block content %}
-<!-- Header with white background for readability -->
 <div class="card shadow-sm mb-4">
     <div class="card-body d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center">
@@ -41,43 +40,40 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% if adaylar.items is defined %}
-                    {% for aday in adaylar.items %}
-                    <tr>
-                        <td>{{ aday.id }}</td>
-                        <td><strong>{{ aday.ad_soyad }}</strong></td>
-                        <td>{{ aday.email or '-' }}</td>
-                        <td><code>{{ aday.giris_kodu }}</code></td>
-                        <td>
-                            {% if aday.sinav_durumu == 'tamamlandi' %}
-                            <span class="badge bg-success">Tamamlandı</span>
-                            {% elif aday.sinav_durumu == 'devam_ediyor' %}
-                            <span class="badge bg-warning">Devam Ediyor</span>
-                            {% else %}
-                            <span class="badge bg-secondary">Bekliyor</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ '%.1f'|format(aday.toplam_puan or 0) }}%</td>
-                        <td>{{ aday.seviye_sonuc or '-' }}</td>
-                        <td>
-                            <a href="{{ url_for('admin.aday_detay', id=aday.id) }}"
-                                class="btn btn-sm btn-outline-primary me-1">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <form action="{{ url_for('admin.aday_sil', id=aday.id) }}" method="POST"
-                                style="display: inline;">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-sm btn-outline-danger"
-                                    onclick="return confirm('Bu adayı silmek istediğinize emin misiniz?')">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
+                    {% if adaylar and adaylar.items is defined %}
+                        {% for aday in adaylar.items %}
+                        <tr>
+                            <td>{{ aday.id }}</td>
+                            <td><strong>{{ aday.ad_soyad }}</strong></td>
+                            <td>{{ aday.email or '-' }}</td>
+                            <td><code>{{ aday.giris_kodu }}</code></td>
+                            <td>
+                                {% if aday.sinav_durumu == 'tamamlandi' %}
+                                <span class="badge bg-success">Tamamlandı</span>
+                                {% elif aday.sinav_durumu == 'devam_ediyor' %}
+                                <span class="badge bg-warning">Devam Ediyor</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Bekliyor</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ '%.1f'|format(aday.toplam_puan or 0) }}%</td>
+                            <td>{{ aday.seviye_sonuc or aday.cefr_seviye or '-' }}</td>
+                            <td>
+                                <a href="{{ url_for('admin.aday_detay', id=aday.id) }}" class="btn btn-sm btn-outline-primary me-1">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <form action="{{ url_for('admin.aday_sil', id=aday.id) }}" method="POST" style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bu adayı silmek istediğinize emin misiniz?')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted">Henüz aday bulunmuyor.</td>
+                        <td colspan="8" class="text-center text-muted py-4">Henüz aday bulunmuyor.</td>
                     </tr>
                     {% endif %}
                 </tbody>
@@ -86,7 +82,32 @@
     </div>
 </div>
 
-<!-- Bulk Upload Modal -->
+{% if adaylar and adaylar.pages is defined and adaylar.pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if adaylar.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('admin.adaylar', page=adaylar.prev_num) }}">Önceki</a>
+        </li>
+        {% endif %}
+        {% for p in adaylar.iter_pages() %}
+            {% if p %}
+            <li class="page-item {{ 'active' if p == adaylar.page else '' }}">
+                <a class="page-link" href="{{ url_for('admin.adaylar', page=p) }}">{{ p }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+        {% if adaylar.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('admin.adaylar', page=adaylar.next_num) }}">Sonraki</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
 <div class="modal fade" id="bulkModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
