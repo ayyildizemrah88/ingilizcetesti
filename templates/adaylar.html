@@ -41,32 +41,31 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for aday in adaylar %}
+                    {% if adaylar.items is defined %}
+                    {% for aday in adaylar.items %}
                     <tr>
-                        <td>{{ aday[0] if aday is not mapping else aday.id }}</td>
-                        <td><strong>{{ aday[1] if aday is not mapping else aday.ad_soyad }}</strong></td>
-                        <td>{{ aday[4] if aday is not mapping else aday.email }}</td>
-                        <td><code>{{ aday[5] if aday is not mapping else aday.giris_kodu }}</code></td>
+                        <td>{{ aday.id }}</td>
+                        <td><strong>{{ aday.ad_soyad }}</strong></td>
+                        <td>{{ aday.email or '-' }}</td>
+                        <td><code>{{ aday.giris_kodu }}</code></td>
                         <td>
-                            {% set durum = aday[8] if aday is not mapping else aday.durum %}
-                            {% if durum == 'Tamamlandi' %}
+                            {% if aday.sinav_durumu == 'tamamlandi' %}
                             <span class="badge bg-success">Tamamlandı</span>
-                            {% elif durum == 'Devam' %}
+                            {% elif aday.sinav_durumu == 'devam_ediyor' %}
                             <span class="badge bg-warning">Devam Ediyor</span>
                             {% else %}
                             <span class="badge bg-secondary">Bekliyor</span>
                             {% endif %}
                         </td>
-                        <td>{{ aday[7] if aday is not mapping else aday.puan }}%</td>
-                        <td>{{ aday[24] if aday is not mapping else aday.seviye_sonuc or '-' }}</td>
+                        <td>{{ '%.1f'|format(aday.puan or 0) }}%</td>
+                        <td>{{ aday.seviye_sonuc or '-' }}</td>
                         <td>
-                            <a href="{{ url_for('admin.aday_detay', id=aday[0] if aday is not mapping else aday.id) }}"
+                            <a href="{{ url_for('admin.aday_detay', id=aday.id) }}"
                                 class="btn btn-sm btn-outline-primary me-1">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            <form
-                                action="{{ url_for('admin.aday_sil', id=aday[0] if aday is not mapping else aday.id) }}"
-                                method="POST" style="display: inline;">
+                            <form action="{{ url_for('admin.aday_sil', id=aday.id) }}" method="POST"
+                                style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger"
                                     onclick="return confirm('Bu adayı silmek istediğinize emin misiniz?')">
@@ -76,6 +75,11 @@
                         </td>
                     </tr>
                     {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">Henüz aday bulunmuyor.</td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
