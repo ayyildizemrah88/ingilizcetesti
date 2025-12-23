@@ -93,7 +93,8 @@
                         <!-- Soru Tipi -->
                         <div class="mb-3">
                             <label for="soru_tipi" class="form-label">Soru Tipi *</label>
-                            <select class="form-select" id="soru_tipi" name="soru_tipi" required>
+                            <select class="form-select" id="soru_tipi" name="soru_tipi" required
+                                onchange="toggleOptions()">
                                 <option value="SECMELI" {{ 'selected' if soru and soru.soru_tipi=='SECMELI' else '' }}>
                                     Seçmeli (Multiple Choice)</option>
                                 <option value="READING" {{ 'selected' if soru and soru.soru_tipi=='READING' else '' }}>
@@ -109,35 +110,36 @@
                                 beklenir.</div>
                         </div>
 
-                        <!-- Şıklar -->
-                        <div class="mb-3">
-                            <label class="form-label">Şıklar *</label>
+                        <!-- Şıklar - Sadece seçmeli sorular için -->
+                        <div class="mb-3" id="options-section">
+                            <label class="form-label">Şıklar <span id="options-required">*</span></label>
                             <div class="input-group mb-2">
                                 <span class="input-group-text">A</span>
-                                <input type="text" class="form-control" name="secenek_a"
-                                    value="{{ soru.secenek_a if soru else '' }}" required placeholder="A şıkkı">
+                                <input type="text" class="form-control option-input" name="secenek_a"
+                                    value="{{ soru.secenek_a if soru else '' }}" placeholder="A şıkkı">
                             </div>
                             <div class="input-group mb-2">
                                 <span class="input-group-text">B</span>
-                                <input type="text" class="form-control" name="secenek_b"
-                                    value="{{ soru.secenek_b if soru else '' }}" required placeholder="B şıkkı">
+                                <input type="text" class="form-control option-input" name="secenek_b"
+                                    value="{{ soru.secenek_b if soru else '' }}" placeholder="B şıkkı">
                             </div>
                             <div class="input-group mb-2">
                                 <span class="input-group-text">C</span>
-                                <input type="text" class="form-control" name="secenek_c"
-                                    value="{{ soru.secenek_c if soru else '' }}" required placeholder="C şıkkı">
+                                <input type="text" class="form-control option-input" name="secenek_c"
+                                    value="{{ soru.secenek_c if soru else '' }}" placeholder="C şıkkı">
                             </div>
                             <div class="input-group mb-2">
                                 <span class="input-group-text">D</span>
-                                <input type="text" class="form-control" name="secenek_d"
-                                    value="{{ soru.secenek_d if soru else '' }}" required placeholder="D şıkkı">
+                                <input type="text" class="form-control option-input" name="secenek_d"
+                                    value="{{ soru.secenek_d if soru else '' }}" placeholder="D şıkkı">
                             </div>
                         </div>
 
-                        <!-- Doğru Cevap -->
-                        <div class="mb-4">
-                            <label for="dogru_cevap" class="form-label">Doğru Cevap *</label>
-                            <select class="form-select" id="dogru_cevap" name="dogru_cevap" required>
+                        <!-- Doğru Cevap - Sadece seçmeli sorular için -->
+                        <div class="mb-4" id="answer-section">
+                            <label for="dogru_cevap" class="form-label">Doğru Cevap <span
+                                    id="answer-required">*</span></label>
+                            <select class="form-select" id="dogru_cevap" name="dogru_cevap">
                                 <option value="">Seçiniz</option>
                                 <option value="A" {{ 'selected' if soru and soru.dogru_cevap=='A' else '' }}>A</option>
                                 <option value="B" {{ 'selected' if soru and soru.dogru_cevap=='B' else '' }}>B</option>
@@ -164,4 +166,40 @@
         </div>
     </div>
 </div>
+
+<script>
+    function toggleOptions() {
+        const soruTipi = document.getElementById('soru_tipi').value;
+        const optionsSection = document.getElementById('options-section');
+        const answerSection = document.getElementById('answer-section');
+        const optionInputs = document.querySelectorAll('.option-input');
+        const answerSelect = document.getElementById('dogru_cevap');
+        const optionsRequired = document.getElementById('options-required');
+        const answerRequired = document.getElementById('answer-required');
+
+        // Speaking ve Writing için şıkları gizle
+        if (soruTipi === 'SPEAKING' || soruTipi === 'WRITING') {
+            optionsSection.style.display = 'none';
+            answerSection.style.display = 'none';
+
+            // Required kaldır
+            optionInputs.forEach(input => input.removeAttribute('required'));
+            answerSelect.removeAttribute('required');
+            optionsRequired.style.display = 'none';
+            answerRequired.style.display = 'none';
+        } else {
+            optionsSection.style.display = 'block';
+            answerSection.style.display = 'block';
+
+            // Required ekle
+            optionInputs.forEach(input => input.setAttribute('required', 'required'));
+            answerSelect.setAttribute('required', 'required');
+            optionsRequired.style.display = 'inline';
+            answerRequired.style.display = 'inline';
+        }
+    }
+
+    // Sayfa yüklendiğinde çalıştır
+    document.addEventListener('DOMContentLoaded', toggleOptions);
+</script>
 {% endblock %}
