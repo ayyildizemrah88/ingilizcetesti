@@ -2,20 +2,25 @@
 {% block title %}Sorular - Skills Test Center{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div class="d-flex align-items-center">
-        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary me-3">
-            <i class="bi bi-house-fill"></i>
-        </a>
-        <h3 class="mb-0"><i class="bi bi-question-circle me-2"></i>Soru Havuzu</h3>
-    </div>
-    <div>
-        <a href="{{ url_for('admin.bulk_soru_yukle') }}" class="btn btn-outline-success me-2">
-            <i class="bi bi-upload me-1"></i>Toplu Yükle
-        </a>
-        <a href="{{ url_for('admin.soru_ekle') }}" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i>Yeni Soru
-        </a>
+<!-- Header with white background for better visibility -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary me-3" title="Dashboard">
+                <i class="bi bi-house-fill"></i>
+            </a>
+            <h4 class="mb-0 text-dark">
+                <i class="bi bi-question-circle me-2"></i>Soru Havuzu
+            </h4>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.bulk_soru_yukle') }}" class="btn btn-success me-2">
+                <i class="bi bi-upload me-1"></i>Toplu Yükle
+            </a>
+            <a href="{{ url_for('admin.soru_ekle') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Yeni Soru
+            </a>
+        </div>
     </div>
 </div>
 
