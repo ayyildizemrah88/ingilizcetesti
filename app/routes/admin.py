@@ -1,66 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Admin Routes - Complete Superadmin Features
-Company management, demo accounts, credits, questions, templates, reports
-
-All model imports are at the top level for better performance and code clarity.
+Admin Routes - Dashboard and management
 """
 from functools import wraps
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from app.extensions import db
-from datetime import datetime, timedelta
-import io
-import csv
-import json
-import string
-import random
-
-# ══════════════════════════════════════════════════════════════
-# MODEL IMPORTS - All imports at module level (best practice)
-# ══════════════════════════════════════════════════════════════
-from app.models import Candidate, Question, Company, User, ExamTemplate, ExamAnswer
-from app.models.admin import CreditTransaction
-from app.models.audit_log import AuditLog
-import secrets
 
 admin_bp = Blueprint('admin', __name__)
 
 
 # ══════════════════════════════════════════════════════════════
-# PASSWORD GENERATOR
-# ══════════════════════════════════════════════════════════════
-def generate_secure_password(length=12):
-    """
-    Generate a secure random password.
-    Includes: uppercase, lowercase, digits, special chars
-    Meets security requirements: min 8 chars, 1 upper, 1 lower, 1 digit
-    """
-    uppercase = string.ascii_uppercase
-    lowercase = string.ascii_lowercase
-    digits = string.digits
-    special = "!@#$%^&*"
-    
-    # Ensure at least one of each type
-    password = [
-        secrets.choice(uppercase),
-        secrets.choice(lowercase),
-        secrets.choice(digits),
-        secrets.choice(special),
-    ]
-    
-    # Fill remaining with random chars
-    all_chars = uppercase + lowercase + digits + special
-    password += [secrets.choice(all_chars) for _ in range(length - 4)]
-    
-    # Shuffle to randomize position
-    random.shuffle(password)
-    
-    return ''.join(password)
-
-
-# ══════════════════════════════════════════════════════════════
 # DECORATORS
 # ══════════════════════════════════════════════════════════════
+
 def login_required(f):
     """Require admin login"""
     @wraps(f)
@@ -71,8 +23,9 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
 def superadmin_required(f):
-    """Only superadmin can access"""
+    """Only superadmin can access - for questions, users, settings"""
     @wraps(f)
     def decorated(*args, **kwargs):
         if session.get('rol') != 'superadmin':
@@ -81,8 +34,9 @@ def superadmin_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
 def customer_or_superadmin(f):
-    """Superadmin and customer can access"""
+    """Superadmin and customer can access - for candidates, reports"""
     @wraps(f)
     def decorated(*args, **kwargs):
         if session.get('rol') not in ['superadmin', 'customer']:
@@ -91,106 +45,98 @@ def customer_or_superadmin(f):
         return f(*args, **kwargs)
     return decorated
 
-# ══════════════════════════════════════════════════════════════
-# DASHBOARD
-# ══════════════════════════════════════════════════════════════
+
 @admin_bp.route('/')
 @admin_bp.route('/dashboard')
 @login_required
 def dashboard():
-    """Admin dashboard with statistics"""
+    """
+    Admin dashboard with statistics
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: Dashboard page
+    """
+    from app.models import Candidate, Question, Company, User
+    from datetime import datetime, timedelta
+    
     sirket_id = session.get('sirket_id')
-    is_superadmin = session.get('rol') == 'superadmin'
+    
+    # Statistics
+    today = datetime.utcnow().date()
     week_ago = datetime.utcnow() - timedelta(days=7)
     
     stats = {
-        'total_candidates': 0,
-        'completed_exams': 0,
-        'pending_exams': 0,
-        'total_questions': 0,
-        'exams_this_week': 0,
-        'total_companies': 0,
-        'total_users': 0
+        'total_candidates': Candidate.query.filter_by(sirket_id=sirket_id, is_deleted=False).count(),
+        'completed_exams': Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='tamamlandi').count(),
+        'pending_exams': Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='beklemede').count(),
+        'total_questions': Question.query.filter_by(sirket_id=sirket_id, is_active=True).count(),
+        'exams_this_week': Candidate.query.filter(
+            Candidate.sirket_id == sirket_id,
+            Candidate.bitis_tarihi >= week_ago
+        ).count()
     }
     
-    try:
-        if is_superadmin:
-            stats['total_candidates'] = Candidate.query.filter_by(is_deleted=False).count()
-            stats['completed_exams'] = Candidate.query.filter_by(sinav_durumu='tamamlandi').count()
-            stats['pending_exams'] = Candidate.query.filter_by(sinav_durumu='beklemede').count()
-            stats['total_questions'] = Question.query.filter_by(is_active=True).count()
-            stats['total_companies'] = Company.query.count()
-            stats['total_users'] = User.query.count()
-        elif sirket_id:
-            stats['total_candidates'] = Candidate.query.filter_by(sirket_id=sirket_id, is_deleted=False).count()
-            stats['completed_exams'] = Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='tamamlandi').count()
-            stats['pending_exams'] = Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='beklemede').count()
-            stats['total_questions'] = Question.query.filter_by(is_active=True).count()
-    except Exception as e:
-        print(f"Stats error: {e}")
+    # Recent candidates
+    recent_candidates = Candidate.query.filter_by(
+        sirket_id=sirket_id, is_deleted=False
+    ).order_by(Candidate.created_at.desc()).limit(10).all()
     
-    recent_candidates = []
-    try:
-        if is_superadmin:
-            recent_candidates = Candidate.query.filter_by(is_deleted=False).order_by(
-                Candidate.created_at.desc()
-            ).limit(10).all()
-        elif sirket_id:
-            recent_candidates = Candidate.query.filter_by(
-                sirket_id=sirket_id, is_deleted=False
-            ).order_by(Candidate.created_at.desc()).limit(10).all()
-    except:
-        pass
-    
-    company = None
-    try:
-        if sirket_id:
-            company = Company.query.get(sirket_id)
-    except:
-        pass
+    # Company info
+    company = Company.query.get(sirket_id)
     
     return render_template('dashboard.html', 
                           stats=stats, 
                           recent_candidates=recent_candidates,
-                          company=company,
-                          is_superadmin=is_superadmin)
+                          company=company)
 
-# ══════════════════════════════════════════════════════════════
-# CANDIDATE MANAGEMENT
-# ══════════════════════════════════════════════════════════════
+
 @admin_bp.route('/adaylar')
 @login_required
 def adaylar():
-    """List all candidates"""
+    """
+    List all candidates
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Candidate
+    
     sirket_id = session.get('sirket_id')
-    is_superadmin = session.get('rol') == 'superadmin'
     page = request.args.get('page', 1, type=int)
     per_page = 20
     
-    if is_superadmin:
-        candidates = Candidate.query.filter_by(is_deleted=False).order_by(
-            Candidate.created_at.desc()
-        ).paginate(page=page, per_page=per_page)
-    elif sirket_id:
-        candidates = Candidate.query.filter_by(
-            sirket_id=sirket_id, is_deleted=False
-        ).order_by(Candidate.created_at.desc()).paginate(page=page, per_page=per_page)
-    else:
-        candidates = []
+    candidates = Candidate.query.filter_by(
+        sirket_id=sirket_id, is_deleted=False
+    ).order_by(Candidate.created_at.desc()).paginate(page=page, per_page=per_page)
     
     return render_template('adaylar.html', adaylar=candidates)
+
 
 @admin_bp.route('/aday/ekle', methods=['GET', 'POST'])
 @login_required
 def aday_ekle():
-    """Add new candidate"""
+    """
+    Add new candidate
+    ---
+    tags:
+      - Admin
+    """
     if request.method == 'POST':
+        from app.models import Candidate
+        import string
+        import random
+        
         ad_soyad = request.form.get('ad_soyad', '').strip()
         email = request.form.get('email', '').strip().lower()
         tc_kimlik = request.form.get('tc_kimlik', '').strip()
         cep_no = request.form.get('cep_no', '').strip()
         sinav_suresi = int(request.form.get('sinav_suresi', 30))
         soru_limiti = int(request.form.get('soru_limiti', 25))
+        
+        # Generate unique code
         giris_kodu = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
         
         candidate = Candidate(
@@ -203,94 +149,84 @@ def aday_ekle():
             soru_limiti=soru_limiti,
             sirket_id=session.get('sirket_id')
         )
+        
         db.session.add(candidate)
         db.session.commit()
+        
+        # Send invitation email via Celery
+        if email:
+            from app.tasks.email_tasks import send_exam_invitation
+            send_exam_invitation.delay(candidate.id)
+        
         flash(f"Aday eklendi. Giriş Kodu: {giris_kodu}", "success")
         return redirect(url_for('admin.adaylar'))
     
     return render_template('aday_form.html')
 
+
 @admin_bp.route('/aday/<int:id>/detay')
 @login_required
 def aday_detay(id):
-    """Candidate detail view"""
+    """
+    Candidate detail view
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Candidate
+    
     candidate = Candidate.query.get_or_404(id)
     
+    # Check company access
     if candidate.sirket_id != session.get('sirket_id') and session.get('rol') != 'superadmin':
         flash("Bu adaya erişim yetkiniz yok.", "danger")
         return redirect(url_for('admin.adaylar'))
     
     return render_template('aday_detay.html', aday=candidate)
 
-@admin_bp.route('/aday/<int:id>/sil', methods=['POST'])
-@login_required
-def aday_sil(id):
-    """Delete candidate (soft delete)"""
-    candidate = Candidate.query.get_or_404(id)
 
-    if candidate.sirket_id != session.get('sirket_id') and session.get('rol') != 'superadmin':
-        flash("Bu adayı silme yetkiniz yok.", "danger")
-        return redirect(url_for('admin.adaylar'))
-    
-    candidate.is_deleted = True
-    db.session.commit()
-    flash("Aday silindi.", "success")
-    return redirect(url_for('admin.adaylar'))
-
-@admin_bp.route('/aday/<int:id>/sifirla', methods=['POST'])
-@login_required
-def aday_sifirla(id):
-    """Reset candidate exam"""
-    candidate = Candidate.query.get_or_404(id)
-
-    if candidate.sirket_id != session.get('sirket_id') and session.get('rol') != 'superadmin':
-        flash("Bu işlem için yetkiniz yok.", "danger")
-        return redirect(url_for('admin.adaylar'))
-    
-    # Reset exam data
-    candidate.baslama_tarihi = None
-    candidate.bitis_tarihi = None
-    candidate.sinav_durumu = 'beklemede'
-    candidate.toplam_puan = None
-    candidate.cefr_seviye = None
-
-    # Delete answers
-    ExamAnswer.query.filter_by(aday_id=id).delete()
-
-    # Generate new code
-    candidate.giris_kodu = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-
-    db.session.commit()
-    flash(f"Aday sıfırlandı. Yeni Giriş Kodu: {candidate.giris_kodu}", "success")
-    return redirect(url_for('admin.aday_detay', id=id))
-
-# ══════════════════════════════════════════════════════════════
-# QUESTION MANAGEMENT
-# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/sorular')
 @login_required
 @superadmin_required
 def sorular():
-    """Question bank management"""
+    """
+    Question bank management
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Question
+    
+    sirket_id = session.get('sirket_id')
     kategori = request.args.get('kategori')
     zorluk = request.args.get('zorluk')
     page = request.args.get('page', 1, type=int)
     
-    query = Question.query.filter_by(is_active=True)
+    query = Question.query.filter_by(sirket_id=sirket_id, is_active=True)
+    
     if kategori:
         query = query.filter_by(kategori=kategori)
     if zorluk:
         query = query.filter_by(zorluk=zorluk)
     
     questions = query.order_by(Question.id.desc()).paginate(page=page, per_page=20)
+    
     return render_template('sorular.html', sorular=questions)
+
 
 @admin_bp.route('/soru/ekle', methods=['GET', 'POST'])
 @login_required
 @superadmin_required
 def soru_ekle():
-    """Add new question"""
+    """
+    Add new question
+    ---
+    tags:
+      - Admin
+    """
     if request.method == 'POST':
+        from app.models import Question
+        
         question = Question(
             soru_metni=request.form.get('soru_metni'),
             secenek_a=request.form.get('secenek_a'),
@@ -303,765 +239,145 @@ def soru_ekle():
             soru_tipi=request.form.get('soru_tipi', 'SECMELI'),
             sirket_id=session.get('sirket_id')
         )
+        
         db.session.add(question)
         db.session.commit()
+        
         flash("Soru eklendi.", "success")
         return redirect(url_for('admin.sorular'))
     
     return render_template('soru_form.html')
 
-@admin_bp.route('/soru/<int:id>/duzenle', methods=['GET', 'POST'])
-@login_required
-@superadmin_required
-def soru_duzenle(id):
-    """Edit question"""
-    question = Question.query.get_or_404(id)
-    
-    if request.method == 'POST':
-        question.soru_metni = request.form.get('soru_metni')
-        question.secenek_a = request.form.get('secenek_a')
-        question.secenek_b = request.form.get('secenek_b')
-        question.secenek_c = request.form.get('secenek_c')
-        question.secenek_d = request.form.get('secenek_d')
-        question.dogru_cevap = request.form.get('dogru_cevap')
-        question.kategori = request.form.get('kategori')
-        question.zorluk = request.form.get('zorluk', 'B1')
-
-        db.session.commit()
-        flash("Soru güncellendi.", "success")
-        return redirect(url_for('admin.sorular'))
-    
-    return render_template('soru_form.html', soru=question)
 
 @admin_bp.route('/soru/<int:id>/sil', methods=['POST'])
 @login_required
 @superadmin_required
 def soru_sil(id):
-    """Delete question (soft delete)"""
+    """
+    Delete question (soft delete)
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Question
+    
     question = Question.query.get_or_404(id)
+    
+    # Check company access
+    if question.sirket_id != session.get('sirket_id') and session.get('rol') != 'superadmin':
+        flash("Bu soruya erişim yetkiniz yok.", "danger")
+        return redirect(url_for('admin.sorular'))
+    
     question.is_active = False
     db.session.commit()
+    
     flash("Soru silindi.", "success")
     return redirect(url_for('admin.sorular'))
 
-# ══════════════════════════════════════════════════════════════
-# TEMPLATE MANAGEMENT
-# ══════════════════════════════════════════════════════════════
-@admin_bp.route('/sablonlar')
-@login_required
-def sablonlar():
-    """Exam templates list"""
-    sirket_id = session.get('sirket_id')
-    is_superadmin = session.get('rol') == 'superadmin'
-    
-    try:
-        if is_superadmin:
-            templates = ExamTemplate.query.all()
-        elif sirket_id:
-            templates = ExamTemplate.query.filter_by(sirket_id=sirket_id).all()
-        else:
-            templates = []
-    except:
-        templates = []
-    
-    return render_template('sablonlar.html', sablonlar=templates)
 
-@admin_bp.route('/sablon/ekle', methods=['GET', 'POST'])
-@login_required
-def sablon_ekle():
-    """Add exam template"""
-    if request.method == 'POST':
-        template = ExamTemplate(
-            isim=request.form.get('isim'),
-            sinav_suresi=int(request.form.get('sinav_suresi', 30)),
-            soru_limiti=int(request.form.get('soru_sayisi', 25)),
-            sirket_id=session.get('sirket_id')
-        )
-        db.session.add(template)
-        db.session.commit()
-        flash("Şablon eklendi.", "success")
-        return redirect(url_for('admin.sablonlar'))
-    
-    return render_template('sablon_form.html')
-
-@admin_bp.route('/sablon/<int:id>/duzenle', methods=['GET', 'POST'])
-@login_required
-def sablon_duzenle(id):
-    """Edit exam template"""
-    template = ExamTemplate.query.get_or_404(id)
-    
-    if request.method == 'POST':
-        template.isim = request.form.get('isim')
-        template.sinav_suresi = int(request.form.get('sinav_suresi', 30))
-        template.soru_limiti = int(request.form.get('soru_sayisi', 25))
-
-        db.session.commit()
-        flash("Şablon güncellendi.", "success")
-        return redirect(url_for('admin.sablonlar'))
-    
-    return render_template('sablon_form.html', sablon=template)
-
-@admin_bp.route('/sablon/<int:id>/sil', methods=['POST'])
-@login_required
-def sablon_sil(id):
-    """Delete exam template"""
-    template = ExamTemplate.query.get_or_404(id)
-    db.session.delete(template)
-    db.session.commit()
-    flash("Şablon silindi.", "success")
-    return redirect(url_for('admin.sablonlar'))
-
-# ══════════════════════════════════════════════════════════════
-# COMPANY MANAGEMENT
-# ══════════════════════════════════════════════════════════════
-@admin_bp.route('/sirketler')
-@login_required
-@superadmin_required
-def sirketler():
-    """Company management"""
-    companies = Company.query.order_by(Company.created_at.desc()).all()
-    return render_template('sirketler.html', sirketler=companies)
-
-@admin_bp.route('/sirket/ekle', methods=['GET', 'POST'])
-@login_required
-@superadmin_required
-def sirket_ekle():
-    """Add new company with admin user"""
-    if request.method == 'POST':
-        # Create company
-        company = Company(
-            isim=request.form.get('isim'),
-            email=request.form.get('email'),
-            telefon=request.form.get('telefon'),
-            adres=request.form.get('adres', ''),
-            kredi=int(request.form.get('kredi', 0)),
-            is_active=True
-        )
-        db.session.add(company)
-        db.session.flush()  # Get company ID
-        
-        # Create admin user for this company
-        admin_email = request.form.get('email')
-        admin_sifre = request.form.get('admin_sifre', '').strip()
-        admin_ad_soyad = request.form.get('admin_ad_soyad', f"{company.isim} Admin")
-        
-        # Auto-generate password if not provided
-        if not admin_sifre:
-            admin_sifre = generate_secure_password()
-        
-        admin_user = User(
-            email=admin_email,
-            ad_soyad=admin_ad_soyad,
-            rol='customer',
-            sirket_id=company.id,
-            is_active=True
-        )
-        admin_user.set_password(admin_sifre)
-        db.session.add(admin_user)
-        
-        db.session.commit()
-        flash(f"Şirket ve admin oluşturuldu. Email: {admin_email} | Şifre: {admin_sifre}", "success")
-        return redirect(url_for('admin.sirketler'))
-    
-    return render_template('sirket_form.html')
-
-@admin_bp.route('/sirket/<int:id>/duzenle', methods=['GET', 'POST'])
-@login_required
-@superadmin_required
-def sirket_duzenle(id):
-    """Edit company"""
-    company = Company.query.get_or_404(id)
-    
-    if request.method == 'POST':
-        company.isim = request.form.get('isim')
-        company.email = request.form.get('email')
-        company.telefon = request.form.get('telefon')
-        company.adres = request.form.get('adres', '')
-
-        db.session.commit()
-        flash("Şirket güncellendi.", "success")
-        return redirect(url_for('admin.sirketler'))
-    
-    return render_template('sirket_form.html', sirket=company)
-
-@admin_bp.route('/sirket/<int:id>/pasif', methods=['POST'])
-@login_required
-@superadmin_required
-def sirket_pasif(id):
-    """Deactivate company"""
-    company = Company.query.get_or_404(id)
-    company.is_active = False
-    db.session.commit()
-    flash("Şirket pasife alındı.", "warning")
-    return redirect(url_for('admin.sirketler'))
-
-@admin_bp.route('/sirket/<int:id>/aktif', methods=['POST'])
-@login_required
-@superadmin_required
-def sirket_aktif(id):
-    """Activate company"""
-    company = Company.query.get_or_404(id)
-    company.is_active = True
-    db.session.commit()
-    flash("Şirket aktif edildi.", "success")
-    return redirect(url_for('admin.sirketler'))
-
-@admin_bp.route('/sirket/<int:id>/sil', methods=['POST'])
-@login_required
-@superadmin_required
-def sirket_sil(id):
-    """
-    Delete company and ALL related data using RAW SQL.
-    Uses individual transactions to prevent InFailedSqlTransaction errors.
-    """
-    from sqlalchemy import text
-    
-    # Get company name before deletion
-    company = Company.query.get(id)
-    if not company:
-        flash("Şirket bulunamadı.", "danger")
-        return redirect(url_for('admin.sirketler'))
-    
-    company_name = company.isim
-    deleted_items = []
-    
-    try:
-        # Step 1: Delete credit transactions (kredi_hareketleri table)
-        try:
-            result = db.session.execute(text("DELETE FROM kredi_hareketleri WHERE sirket_id = :id"), {'id': id})
-            db.session.commit()
-            deleted_items.append(f"kredi_hareketleri: {result.rowcount}")
-        except Exception as e:
-            db.session.rollback()
-        
-        # Step 2: Get candidate IDs for this company
-        candidate_ids = []
-        try:
-            result = db.session.execute(text("SELECT id FROM adaylar WHERE sirket_id = :id"), {'id': id})
-            candidate_ids = [row[0] for row in result.fetchall()]
-        except Exception:
-            db.session.rollback()
-        
-        # Step 3: Delete exam answers for these candidates
-        if candidate_ids:
-            try:
-                for cid in candidate_ids:
-                    db.session.execute(text("DELETE FROM sinav_cevaplari WHERE aday_id = :cid"), {'cid': cid})
-                db.session.commit()
-                deleted_items.append(f"sinav_cevaplari: {len(candidate_ids)} candidates")
-            except Exception:
-                db.session.rollback()
-            
-            # Step 4: Delete speaking recordings
-            try:
-                for cid in candidate_ids:
-                    db.session.execute(text("DELETE FROM speaking_recordings WHERE aday_id = :cid"), {'cid': cid})
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-        
-        # Step 5: Delete candidates
-        try:
-            result = db.session.execute(text("DELETE FROM adaylar WHERE sirket_id = :id"), {'id': id})
-            db.session.commit()
-            deleted_items.append(f"adaylar: {result.rowcount}")
-        except Exception:
-            db.session.rollback()
-        
-        # Step 6: Delete users
-        try:
-            result = db.session.execute(text("DELETE FROM kullanicilar WHERE sirket_id = :id"), {'id': id})
-            db.session.commit()
-            deleted_items.append(f"kullanicilar: {result.rowcount}")
-        except Exception:
-            db.session.rollback()
-        
-        # Step 7: Delete exam templates
-        try:
-            result = db.session.execute(text("DELETE FROM sinav_sablonlari WHERE sirket_id = :id"), {'id': id})
-            db.session.commit()
-            deleted_items.append(f"sinav_sablonlari: {result.rowcount}")
-        except Exception:
-            db.session.rollback()
-        
-        # Step 8: Delete questions
-        try:
-            result = db.session.execute(text("DELETE FROM sorular WHERE sirket_id = :id"), {'id': id})
-            db.session.commit()
-            deleted_items.append(f"sorular: {result.rowcount}")
-        except Exception:
-            db.session.rollback()
-        
-        # Step 9: Finally delete the company
-        try:
-            result = db.session.execute(text("DELETE FROM sirketler WHERE id = :id"), {'id': id})
-            db.session.commit()
-            deleted_items.append(f"sirketler: {result.rowcount}")
-            flash(f"'{company_name}' şirketi ve tüm verileri başarıyla silindi. ({', '.join(deleted_items)})", "success")
-        except Exception as e:
-            db.session.rollback()
-            # If company delete fails, deactivate instead
-            try:
-                db.session.execute(text("UPDATE sirketler SET is_active = false WHERE id = :id"), {'id': id})
-                db.session.commit()
-                flash(f"'{company_name}' şirketi silinemedi (FK hatası), bunun yerine pasife alındı.", "warning")
-            except Exception:
-                db.session.rollback()
-                flash(f"Şirket silinemedi: {str(e)[:100]}", "danger")
-        
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Silme işlemi başarısız: {str(e)[:100]}", "danger")
-    
-    return redirect(url_for('admin.sirketler'))
-
-@admin_bp.route('/sirket/<int:id>/kredi', methods=['GET', 'POST'])
-@login_required
-@superadmin_required
-def sirket_kredi(id):
-    """Add credits to company"""
-    company = Company.query.get_or_404(id)
-    
-    if request.method == 'POST':
-        miktar = int(request.form.get('miktar', 0))
-        aciklama = request.form.get('aciklama', 'Manuel kredi yükleme')
-        
-        if miktar > 0:
-            company.kredi = (company.kredi or 0) + miktar
-
-            # Log transaction with correct field names
-            try:
-                from app.models.company import CreditTransaction as CT
-                transaction = CT(
-                    sirket_id=company.id,
-                    islem_tipi='manual',
-                    miktar=miktar,
-                    aciklama=aciklama,
-                    onceki_bakiye=company.kredi - miktar,
-                    sonraki_bakiye=company.kredi,
-                    kullanici_id=session.get('kullanici_id')
-                )
-                db.session.add(transaction)
-            except:
-                pass
-
-            db.session.commit()
-            flash(f"{miktar} kredi eklendi. Toplam: {company.kredi}", "success")
-        else:
-            flash("Geçersiz miktar.", "danger")
-        return redirect(url_for('admin.sirketler'))
-    
-    return render_template('kredi_yukle.html', sirket=company)
-
-# ══════════════════════════════════════════════════════════════
-# DEMO ACCOUNT CREATION
-# ══════════════════════════════════════════════════════════════
-@admin_bp.route('/demo/olustur', methods=['GET', 'POST'])
-@login_required
-@superadmin_required
-def demo_olustur():
-    """Create demo company with user and sample data"""
-    if request.method == 'POST':
-        firma_adi = request.form.get('firma_adi', 'Demo Şirket')
-        admin_email = request.form.get('admin_email', '').strip().lower()
-        admin_sifre = request.form.get('admin_sifre', '').strip()
-        kredi = int(request.form.get('kredi', 10))
-        
-        # Auto-generate password if not provided
-        if not admin_sifre:
-            admin_sifre = generate_secure_password()
-        
-        # Create company
-        company = Company(
-            isim=firma_adi,
-            email=admin_email,
-            kredi=kredi,
-            is_active=True
-        )
-        db.session.add(company)
-        db.session.flush()
-        
-        # Create admin user
-        user = User(
-            email=admin_email,
-            ad_soyad=f"{firma_adi} Admin",
-            rol='customer',
-            sirket_id=company.id,
-            is_active=True
-        )
-        user.set_password(admin_sifre)
-        db.session.add(user)
-        db.session.commit()
-        
-        flash(f"Demo hesap oluşturuldu! Email: {admin_email} | Şifre: {admin_sifre}", "success")
-        return redirect(url_for('admin.sirketler'))
-    
-    return render_template('demo_olustur.html')
-
-# ══════════════════════════════════════════════════════════════
-# USER MANAGEMENT
-# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/kullanicilar')
 @login_required
 @superadmin_required
 def kullanicilar():
-    """User management"""
-    users = User.query.order_by(User.created_at.desc()).all()
+    """
+    User management
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import User
+    
+    sirket_id = session.get('sirket_id')
+    
+    if session.get('rol') == 'superadmin':
+        users = User.query.all()
+    else:
+        users = User.query.filter_by(sirket_id=sirket_id).all()
+    
     return render_template('kullanicilar.html', kullanicilar=users)
 
-@admin_bp.route('/kullanici/ekle', methods=['GET', 'POST'])
-@login_required
-@superadmin_required
-def kullanici_ekle():
-    """Add new user"""
-    if request.method == 'POST':
-        user = User(
-            email=request.form.get('email', '').strip().lower(),
-            ad_soyad=request.form.get('ad_soyad', '').strip(),
-            rol=request.form.get('rol', 'customer'),
-            sirket_id=request.form.get('sirket_id', type=int),
-            is_active=True
-        )
-        user.set_password(request.form.get('sifre', 'Temp123!'))
 
-        db.session.add(user)
-        db.session.commit()
-        flash("Kullanıcı eklendi.", "success")
-        return redirect(url_for('admin.kullanicilar'))
-    
-    companies = Company.query.filter_by(is_active=True).all()
-    return render_template('kullanici_form.html', sirketler=companies)
-
-@admin_bp.route('/kullanici/<int:id>/duzenle', methods=['GET', 'POST'])
-@login_required
-@superadmin_required
-def kullanici_duzenle(id):
-    """Edit user"""
-    user = User.query.get_or_404(id)
-    
-    if request.method == 'POST':
-        user.email = request.form.get('email', '').strip().lower()
-        user.ad_soyad = request.form.get('ad_soyad', '').strip()
-        user.rol = request.form.get('rol', 'customer')
-        user.sirket_id = request.form.get('sirket_id', type=int)
-
-        new_password = request.form.get('sifre', '')
-        if new_password:
-            user.set_password(new_password)
-
-        db.session.commit()
-        flash("Kullanıcı güncellendi.", "success")
-        return redirect(url_for('admin.kullanicilar'))
-    
-    companies = Company.query.filter_by(is_active=True).all()
-    return render_template('kullanici_form.html', kullanici=user, sirketler=companies)
-
-@admin_bp.route('/kullanici/<int:id>/sil', methods=['POST'])
-@login_required
-@superadmin_required
-def kullanici_sil(id):
-    """Delete user - HARD DELETE"""
-    from sqlalchemy import text
-    
-    user = User.query.get_or_404(id)
-    user_email = user.email
-    
-    # Prevent deleting yourself
-    if user.id == session.get('kullanici_id'):
-        flash("Kendinizi silemezsiniz!", "danger")
-        return redirect(url_for('admin.kullanicilar'))
-    
-    try:
-        # Hard delete using raw SQL
-        db.session.execute(text("DELETE FROM kullanicilar WHERE id = :id"), {'id': id})
-        db.session.commit()
-        flash(f"Kullanıcı '{user_email}' kalıcı olarak silindi.", "success")
-    except Exception as e:
-        db.session.rollback()
-        # Fallback to soft delete
-        user.is_active = False
-        db.session.commit()
-        flash(f"Kullanıcı silinemedi, pasife alındı. Hata: {str(e)[:50]}", "warning")
-    
-    return redirect(url_for('admin.kullanicilar'))
-
-# ══════════════════════════════════════════════════════════════
-# REPORTS
-# ══════════════════════════════════════════════════════════════
-@admin_bp.route('/raporlar')
-@login_required
-def raporlar():
-    """Reports page"""
-    sirket_id = session.get('sirket_id')
-    is_superadmin = session.get('rol') == 'superadmin'
-    
-    stats = {
-        'total': 0,
-        'completed': 0,
-        'pending': 0,
-        'in_progress': 0,
-        'average_score': 0,
-        'pass_rate': 0
-    }
-    
-    try:
-        if is_superadmin:
-            candidates = Candidate.query.filter_by(is_deleted=False)
-        elif sirket_id:
-            candidates = Candidate.query.filter_by(sirket_id=sirket_id, is_deleted=False)
-        else:
-            candidates = Candidate.query.filter_by(id=-1)  # Empty
-        
-        stats['total'] = candidates.count()
-        stats['completed'] = candidates.filter_by(sinav_durumu='tamamlandi').count()
-        stats['pending'] = candidates.filter_by(sinav_durumu='beklemede').count()
-        stats['in_progress'] = candidates.filter_by(sinav_durumu='devam_ediyor').count()
-        
-        completed_list = candidates.filter_by(sinav_durumu='tamamlandi').all()
-        if completed_list:
-            scores = [c.toplam_puan or 0 for c in completed_list]
-            stats['average_score'] = round(sum(scores) / len(scores), 1)
-            passed = len([s for s in scores if s >= 60])
-            stats['pass_rate'] = round((passed / len(scores)) * 100, 1)
-    except:
-        pass
-    
-    return render_template('raporlar.html', stats=stats)
-
-@admin_bp.route('/super-rapor')
-@login_required
-@superadmin_required
-def super_rapor():
-    """Platform-wide report for superadmin"""
-    stats = {
-        'total_companies': Company.query.count(),
-        'active_companies': Company.query.filter_by(is_active=True).count(),
-        'total_users': User.query.count(),
-        'total_candidates': Candidate.query.count(),
-        'completed_exams': Candidate.query.filter_by(sinav_durumu='tamamlandi').count(),
-        'total_credits_used': 0
-    }
-    
-    companies = Company.query.order_by(Company.created_at.desc()).all()
-    return render_template('super_rapor.html', stats=stats, companies=companies)
-
-# ══════════════════════════════════════════════════════════════
-# SETTINGS
-# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/ayarlar', methods=['GET', 'POST'])
 @login_required
+@superadmin_required
 def ayarlar():
-    """Company settings"""
+    """
+    Company settings
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Company
+    
     company = Company.query.get(session.get('sirket_id'))
     
-    if request.method == 'POST' and company:
+    if request.method == 'POST':
         company.isim = request.form.get('isim')
         company.email = request.form.get('email')
         company.telefon = request.form.get('telefon')
         company.logo_url = request.form.get('logo_url')
         company.primary_color = request.form.get('primary_color')
         company.webhook_url = request.form.get('webhook_url')
+        
+        # SMTP settings
         company.smtp_host = request.form.get('smtp_host')
-        company.smtp_port = int(request.form.get('smtp_port', 587) or 587)
+        company.smtp_port = int(request.form.get('smtp_port', 587))
         company.smtp_user = request.form.get('smtp_user')
         if request.form.get('smtp_pass'):
             company.smtp_pass = request.form.get('smtp_pass')
         company.smtp_from = request.form.get('smtp_from')
+        
         db.session.commit()
         flash("Ayarlar kaydedildi.", "success")
     
     return render_template('ayarlar.html', company=company)
 
-# ══════════════════════════════════════════════════════════════
-# EXPORT & LOGS
-# ══════════════════════════════════════════════════════════════
-@admin_bp.route('/export')
+
+@admin_bp.route('/sablonlar')
 @login_required
-def export_data():
-    """Export candidates data as CSV"""
+@superadmin_required
+def sablonlar():
+    """
+    Exam templates list
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import ExamTemplate
+    
     sirket_id = session.get('sirket_id')
-    is_superadmin = session.get('rol') == 'superadmin'
-
-    if is_superadmin:
-        candidates = Candidate.query.filter_by(is_deleted=False).all()
-    elif sirket_id:
-        candidates = Candidate.query.filter_by(sirket_id=sirket_id, is_deleted=False).all()
-    else:
-        candidates = []
+    templates = ExamTemplate.query.filter_by(sirket_id=sirket_id, is_active=True).all()
     
-    output = io.StringIO()
-    output.write("Ad Soyad,Email,TC Kimlik,Giriş Kodu,Durum,Puan,CEFR,Başlangıç,Bitiş\n")
+    return render_template('sablonlar.html', sablonlar=templates)
 
-    for c in candidates:
-        baslama = c.baslama_tarihi.strftime('%Y-%m-%d %H:%M') if c.baslama_tarihi else ''
-        bitis = c.bitis_tarihi.strftime('%Y-%m-%d %H:%M') if c.bitis_tarihi else ''
-        output.write(f"{c.ad_soyad},{c.email},{c.tc_kimlik},{c.giris_kodu},{c.sinav_durumu},{c.toplam_puan or 0},{c.cefr_seviye or ''},{baslama},{bitis}\n")
-    
-    output.seek(0)
 
-    return send_file(
-        io.BytesIO(output.getvalue().encode('utf-8-sig')),
-        mimetype='text/csv',
-        as_attachment=True,
-        download_name='adaylar.csv'
-    )
-
-@admin_bp.route('/logs')
+@admin_bp.route('/sablon-ekle', methods=['GET', 'POST'])
 @login_required
 @superadmin_required
-def admin_logs():
-    """Admin activity logs"""
-    page = request.args.get('page', 1, type=int)
-
-    try:
-        logs = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(page=page, per_page=50)
-    except:
-        logs = None
-    
-    return render_template('admin_logs.html', logs=logs)
-
-@admin_bp.route('/fraud-heatmap')
-@login_required
-@superadmin_required
-def fraud_heatmap():
-    """Fraud detection heatmap"""
-    return render_template('fraud_heatmap.html')
-
-# ══════════════════════════════════════════════════════════════
-# BULK UPLOAD - Candidates
-# ══════════════════════════════════════════════════════════════
-@admin_bp.route('/bulk-upload', methods=['POST'])
-@login_required
-def bulk_upload():
-    """Bulk upload candidates from Excel file"""
-    try:
-        import pandas as pd
-    except ImportError:
-        flash("pandas kütüphanesi yüklü değil. Toplu yükleme yapılamıyor.", "danger")
-        return redirect(url_for('admin.adaylar'))
-    
-    if 'file' not in request.files:
-        flash("Dosya seçilmedi.", "danger")
-        return redirect(url_for('admin.adaylar'))
-    
-    file = request.files['file']
-    if file.filename == '':
-        flash("Dosya seçilmedi.", "danger")
-        return redirect(url_for('admin.adaylar'))
-    
-    if not file.filename.endswith(('.xlsx', '.xls')):
-        flash("Sadece Excel dosyaları (.xlsx, .xls) kabul edilir.", "danger")
-        return redirect(url_for('admin.adaylar'))
-    
-    try:
-        df = pd.read_excel(file)
+def sablon_ekle():
+    """
+    Add new exam template
+    ---
+    tags:
+      - Admin
+    """
+    if request.method == 'POST':
+        from app.models import ExamTemplate
         
-        if 'ad_soyad' not in df.columns:
-            flash("Excel dosyasında 'ad_soyad' kolonu bulunamadı.", "danger")
-            return redirect(url_for('admin.adaylar'))
+        template = ExamTemplate(
+            isim=request.form.get('isim'),
+            sinav_suresi=int(request.form.get('sinav_suresi', 30)),
+            soru_suresi=int(request.form.get('soru_suresi', 60)),
+            soru_limiti=int(request.form.get('soru_limiti', 10)),
+            baslangic_seviyesi=request.form.get('baslangic_seviyesi', 'B1'),
+            sirket_id=session.get('sirket_id')
+        )
         
-        sirket_id = session.get('sirket_id')
-        added_count = 0
-        
-        for index, row in df.iterrows():
-            ad_soyad = str(row.get('ad_soyad', '')).strip()
-            if not ad_soyad or ad_soyad == 'nan':
-                continue
-                
-            email = str(row.get('email', '')).strip().lower() if 'email' in df.columns else ''
-            tc_kimlik = str(row.get('tc_kimlik', '')).strip() if 'tc_kimlik' in df.columns else ''
-            giris_kodu = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-            
-            candidate = Candidate(
-                ad_soyad=ad_soyad,
-                email=email if email != 'nan' else '',
-                tc_kimlik=tc_kimlik if tc_kimlik != 'nan' else '',
-                giris_kodu=giris_kodu,
-                sirket_id=sirket_id,
-                sinav_suresi=30,
-                soru_limiti=25
-            )
-            db.session.add(candidate)
-            added_count += 1
-        
+        db.session.add(template)
         db.session.commit()
-        flash(f"{added_count} aday başarıyla eklendi.", "success")
         
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Yükleme hatası: {str(e)[:100]}", "danger")
+        flash("Şablon oluşturuldu.", "success")
+        return redirect(url_for('admin.sablonlar'))
     
-    return redirect(url_for('admin.adaylar'))
+    return render_template('sablon_form.html')
 
-# ══════════════════════════════════════════════════════════════
-# BULK UPLOAD - Questions
-# ══════════════════════════════════════════════════════════════
-@admin_bp.route('/bulk-soru-yukle', methods=['GET', 'POST'])
-@login_required
-@superadmin_required
-def bulk_soru_yukle():
-    """Bulk upload questions from Excel file"""
-    if request.method == 'GET':
-        return render_template('bulk_soru_yukle.html')
-    
-    try:
-        import pandas as pd
-    except ImportError:
-        flash("pandas kütüphanesi yüklü değil. Toplu yükleme yapılamıyor.", "danger")
-        return redirect(url_for('admin.sorular'))
-    
-    if 'file' not in request.files:
-        flash("Dosya seçilmedi.", "danger")
-        return redirect(url_for('admin.bulk_soru_yukle'))
-    
-    file = request.files['file']
-    if file.filename == '':
-        flash("Dosya seçilmedi.", "danger")
-        return redirect(url_for('admin.bulk_soru_yukle'))
-    
-    if not file.filename.endswith(('.xlsx', '.xls')):
-        flash("Sadece Excel dosyaları (.xlsx, .xls) kabul edilir.", "danger")
-        return redirect(url_for('admin.bulk_soru_yukle'))
-    
-    try:
-        df = pd.read_excel(file)
-        
-        required_cols = ['soru_metni', 'kategori', 'zorluk']
-        missing_cols = [col for col in required_cols if col not in df.columns]
-        
-        if missing_cols:
-            flash(f"Eksik kolonlar: {', '.join(missing_cols)}", "danger")
-            return redirect(url_for('admin.bulk_soru_yukle'))
-        
-        added_count = 0
-        
-        for index, row in df.iterrows():
-            soru_metni = str(row.get('soru_metni', '')).strip()
-            if not soru_metni or soru_metni == 'nan':
-                continue
-            
-            soru_tipi = str(row.get('soru_tipi', 'SECMELI')).strip().upper()
-            
-            question = Question(
-                soru_metni=soru_metni,
-                kategori=str(row.get('kategori', '')).strip(),
-                zorluk=str(row.get('zorluk', 'B1')).strip(),
-                soru_tipi=soru_tipi,
-                secenek_a=str(row.get('secenek_a', '')).strip() if 'secenek_a' in df.columns else '',
-                secenek_b=str(row.get('secenek_b', '')).strip() if 'secenek_b' in df.columns else '',
-                secenek_c=str(row.get('secenek_c', '')).strip() if 'secenek_c' in df.columns else '',
-                secenek_d=str(row.get('secenek_d', '')).strip() if 'secenek_d' in df.columns else '',
-                dogru_cevap=str(row.get('dogru_cevap', '')).strip().upper() if 'dogru_cevap' in df.columns else '',
-                is_active=True
-            )
-            db.session.add(question)
-            added_count += 1
-        
-        db.session.commit()
-        flash(f"{added_count} soru başarıyla eklendi.", "success")
-        
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Yükleme hatası: {str(e)[:100]}", "danger")
-    
-    return redirect(url_for('admin.sorular'))
