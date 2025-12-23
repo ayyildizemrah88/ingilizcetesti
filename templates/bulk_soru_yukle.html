@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Toplu Soru Yükleme - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Navigation -->
+    <div class="mb-3">
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-house-fill me-1"></i>Dashboard
+        </a>
+        <a href="{{ url_for('admin.sorular') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left me-1"></i>Sorular
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-upload me-2"></i>Toplu Soru Yükleme
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle me-1"></i>Excel Dosya Formatı</h6>
+                        <p class="mb-2">Excel dosyanızda aşağıdaki kolonlar olmalıdır:</p>
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Kolon</th>
+                                    <th>Zorunlu</th>
+                                    <th>Açıklama</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>soru_metni</code></td>
+                                    <td><span class="badge bg-success">Evet</span></td>
+                                    <td>Soru metni</td>
+                                </tr>
+                                <tr>
+                                    <td><code>kategori</code></td>
+                                    <td><span class="badge bg-success">Evet</span></td>
+                                    <td>grammar, vocabulary, reading, listening, speaking, writing</td>
+                                </tr>
+                                <tr>
+                                    <td><code>zorluk</code></td>
+                                    <td><span class="badge bg-success">Evet</span></td>
+                                    <td>A1, A2, B1, B2, C1, C2</td>
+                                </tr>
+                                <tr>
+                                    <td><code>soru_tipi</code></td>
+                                    <td><span class="badge bg-secondary">Hayır</span></td>
+                                    <td>SECMELI, READING, LISTENING, SPEAKING, WRITING</td>
+                                </tr>
+                                <tr>
+                                    <td><code>secenek_a</code></td>
+                                    <td><span class="badge bg-secondary">Hayır</span></td>
+                                    <td>A şıkkı (seçmeli sorular için)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>secenek_b</code></td>
+                                    <td><span class="badge bg-secondary">Hayır</span></td>
+                                    <td>B şıkkı</td>
+                                </tr>
+                                <tr>
+                                    <td><code>secenek_c</code></td>
+                                    <td><span class="badge bg-secondary">Hayır</span></td>
+                                    <td>C şıkkı</td>
+                                </tr>
+                                <tr>
+                                    <td><code>secenek_d</code></td>
+                                    <td><span class="badge bg-secondary">Hayır</span></td>
+                                    <td>D şıkkı</td>
+                                </tr>
+                                <tr>
+                                    <td><code>dogru_cevap</code></td>
+                                    <td><span class="badge bg-secondary">Hayır</span></td>
+                                    <td>A, B, C veya D</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="mb-3">
+                            <label for="file" class="form-label">Excel Dosyası Seçin *</label>
+                            <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
+                            <div class="form-text">Sadece .xlsx ve .xls dosyaları kabul edilir.</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-upload me-1"></i>Soruları Yükle
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
