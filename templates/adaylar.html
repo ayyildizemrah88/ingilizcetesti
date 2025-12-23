@@ -57,7 +57,7 @@
                             <span class="badge bg-secondary">Bekliyor</span>
                             {% endif %}
                         </td>
-                        <td>{{ '%.1f'|format(aday.puan or 0) }}%</td>
+                        <td>{{ '%.1f'|format(aday.toplam_puan or 0) }}%</td>
                         <td>{{ aday.seviye_sonuc or '-' }}</td>
                         <td>
                             <a href="{{ url_for('admin.aday_detay', id=aday.id) }}"
