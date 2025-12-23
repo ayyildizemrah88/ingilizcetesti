@@ -1,0 +1,181 @@
+{% extends "dashboard.html" %}
+{% block title %}KVKK Raporu - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-file-earmark-text me-2"></i>KVKK Uyumluluk Raporu</h3>
+    <div>
+        <button class="btn btn-outline-primary" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i>Yazdır
+        </button>
+        <a href="/admin/veri-yonetimi" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Geri
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-shield-check me-2"></i>6698 Sayılı KVKK Uyumluluk Durumu</h5>
+    </div>
+    <div class="card-body">
+        <p class="text-muted">Rapor oluşturma tarihi: {{ report.generated_at.strftime('%d.%m.%Y %H:%M') }}</p>
+
+        <div class="row g-4 mt-2">
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h2 class="text-primary">{{ report.total_candidates }}</h2>
+                        <small>Toplam Kişi Kaydı</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h2 class="text-success">{{ report.active_candidates }}</h2>
+                        <small>Aktif Kayıtlar</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h2 class="text-danger">{{ report.deleted_candidates }}</h2>
+                        <small>Silinen/Anonimleştirilen</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-light">
+                    <div class="card-body text-center">
+                        <h2 class="text-warning">{{ report.candidates_older_than_1year }}</h2>
+                        <small>1 Yıldan Eski</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card border-0 h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-clock me-2"></i>Veri Saklama Süreleri</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Veri Türü</th>
+                            <th>Saklama Süresi</th>
+                            <th>Yasal Dayanak</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Speaking Kayıtları</td>
+                            <td><span class="badge bg-info">{{ report.retention_policy.speaking_recordings }}</span>
+                            </td>
+                            <td><small>KVKK Md. 7</small></td>
+                        </tr>
+                        <tr>
+                            <td>Sınav Cevapları</td>
+                            <td><span class="badge bg-info">{{ report.retention_policy.exam_answers }}</span></td>
+                            <td><small>KVKK Md. 7</small></td>
+                        </tr>
+                        <tr>
+                            <td>Denetim Logları</td>
+                            <td><span class="badge bg-warning text-dark">{{ report.retention_policy.audit_logs }}</span>
+                            </td>
+                            <td><small>5651 Sayılı Kanun</small></td>
+                        </tr>
+                        <tr>
+                            <td>Açık Rıza Kayıtları</td>
+                            <td><span class="badge bg-danger">{{ report.retention_policy.consent_logs }}</span></td>
+                            <td><small>KVKK Md. 5</small></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-0 h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-check-circle me-2"></i>Uyumluluk Kontrol Listesi</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-check-circle text-success me-2"></i>Açık rıza mekanizması</span>
+                        <span class="badge bg-success">Uygun</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-check-circle text-success me-2"></i>Veri minimizasyonu</span>
+                        <span class="badge bg-success">Uygun</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-check-circle text-success me-2"></i>Otomatik silme mekanizması</span>
+                        <span class="badge bg-success">Aktif</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-check-circle text-success me-2"></i>Veri talep silme hakkı</span>
+                        <span class="badge bg-success">Uygun</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-check-circle text-success me-2"></i>Şifreli veri saklama</span>
+                        <span class="badge bg-success">SSL/TLS</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-check-circle text-success me-2"></i>Yedekleme politikası</span>
+                        <span class="badge bg-success">Günlük</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 mt-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>KVKK Hakkında Bilgi</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Veri Sorumlusu</h6>
+                <p class="text-muted">Skills Test Center platformu, 6698 sayılı Kişisel Verilerin Korunması Kanunu
+                    kapsamında veri sorumlusu olarak hareket etmektedir.</p>
+            </div>
+            <div class="col-md-6">
+                <h6>İlgili Kişi Hakları</h6>
+                <ul class="text-muted small">
+                    <li>Kişisel verilerinin işlenip işlenmediğini öğrenme</li>
+                    <li>Kişisel verileri işlenmişse buna ilişkin bilgi talep etme</li>
+                    <li>Kişisel verilerin silinmesini veya yok edilmesini isteme</li>
+                    <li>İşlenen verilerin münhasıran otomatik sistemler vasıtasıyla analiz edilmesi sonucu aleyhine bir
+                        sonuç doğurması halinde itiraz etme</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+
+        .navbar,
+        .btn,
+        .dropdown {
+            display: none !important;
+        }
+
+        .card {
+            border: 1px solid #ddd !important;
+        }
+    }
+</style>
+{% endblock %}
