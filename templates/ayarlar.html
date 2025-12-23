@@ -1,146 +1,194 @@
-{% extends "base.html" %}
-
-{% block title %}Şirket Ayarları{% endblock %}
+{% extends "dashboard.html" %}
+{% block title %}Ayarlar - Skills Test Center{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row justify-content-center">
-        <div class="col-md-10 col-lg-8">
+<h3 class="mb-4"><i class="bi bi-gear me-2"></i>Ayarlar</h3>
 
-            <div class="card shadow">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0">
-                        <i class="material-icons align-middle me-2">settings</i>
-                        Şirket Ayarları
-                    </h5>
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="row">
+        <!-- Şirket Bilgileri -->
+        <div class="col-md-6">
+            <div class="card border-0 mb-4">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-building me-2"></i>Şirket Bilgileri</h6>
                 </div>
                 <div class="card-body">
-
-                    <!-- Flash Messages -->
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <div class="mb-3">
+                        <label class="form-label">Şirket Adı</label>
+                        <input type="text" name="isim" class="form-control"
+                            value="{{ company.isim if company else '' }}" required>
                     </div>
-                    {% endfor %}
-                    {% endif %}
-                    {% endwith %}
-
-                    {% if company %}
-                    <form method="POST">
-                        <!-- CSRF Token for Security -->
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                        <!-- Temel Bilgiler -->
-                        <h6 class="border-bottom pb-2 mb-3">
-                            <i class="material-icons align-middle me-1">business</i>
-                            Temel Bilgiler
-                        </h6>
-
-                        <div class="row mb-4">
-                            <div class="col-md-6 mb-3">
-                                <label for="isim" class="form-label">Şirket Adı</label>
-                                <input type="text" class="form-control" id="isim" name="isim"
-                                    value="{{ company.isim or '' }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="email" class="form-label">E-posta</label>
-                                <input type="email" class="form-control" id="email" name="email"
-                                    value="{{ company.email or '' }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="telefon" class="form-label">Telefon</label>
-                                <input type="tel" class="form-control" id="telefon" name="telefon"
-                                    value="{{ company.telefon or '' }}">
-                            </div>
-                        </div>
-
-                        <!-- Görünüm Ayarları -->
-                        <h6 class="border-bottom pb-2 mb-3">
-                            <i class="material-icons align-middle me-1">palette</i>
-                            Görünüm Ayarları
-                        </h6>
-
-                        <div class="row mb-4">
-                            <div class="col-md-6 mb-3">
-                                <label for="logo_url" class="form-label">Logo URL</label>
-                                <input type="url" class="form-control" id="logo_url" name="logo_url"
-                                    value="{{ company.logo_url or '' }}" placeholder="https://example.com/logo.png">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="primary_color" class="form-label">Ana Renk</label>
-                                <input type="color" class="form-control form-control-color" id="primary_color"
-                                    name="primary_color" value="{{ company.primary_color or '#0d6efd' }}">
-                            </div>
-                        </div>
-
-                        <!-- Webhook Ayarları -->
-                        <h6 class="border-bottom pb-2 mb-3">
-                            <i class="material-icons align-middle me-1">webhook</i>
-                            Webhook Ayarları
-                        </h6>
-
-                        <div class="mb-4">
-                            <label for="webhook_url" class="form-label">Webhook URL</label>
-                            <input type="url" class="form-control" id="webhook_url" name="webhook_url"
-                                value="{{ company.webhook_url or '' }}" placeholder="https://yourserver.com/webhook">
-                            <div class="form-text">Sınav tamamlandığında bu URL'e POST isteği gönderilir.</div>
-                        </div>
-
-                        <!-- SMTP Ayarları -->
-                        <h6 class="border-bottom pb-2 mb-3">
-                            <i class="material-icons align-middle me-1">email</i>
-                            E-posta (SMTP) Ayarları
-                        </h6>
-
-                        <div class="row mb-4">
-                            <div class="col-md-6 mb-3">
-                                <label for="smtp_host" class="form-label">SMTP Sunucu</label>
-                                <input type="text" class="form-control" id="smtp_host" name="smtp_host"
-                                    value="{{ company.smtp_host or '' }}" placeholder="smtp.gmail.com">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="smtp_port" class="form-label">SMTP Port</label>
-                                <input type="number" class="form-control" id="smtp_port" name="smtp_port"
-                                    value="{{ company.smtp_port or 587 }}" placeholder="587">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="smtp_user" class="form-label">SMTP Kullanıcı</label>
-                                <input type="text" class="form-control" id="smtp_user" name="smtp_user"
-                                    value="{{ company.smtp_user or '' }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="smtp_pass" class="form-label">SMTP Şifre</label>
-                                <input type="password" class="form-control" id="smtp_pass" name="smtp_pass"
-                                    placeholder="Değiştirmek için doldurun">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="smtp_from" class="form-label">Gönderen E-posta</label>
-                                <input type="email" class="form-control" id="smtp_from" name="smtp_from"
-                                    value="{{ company.smtp_from or '' }}" placeholder="noreply@sirket.com">
-                            </div>
-                        </div>
-
-                        <!-- Submit -->
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="material-icons align-middle me-1">save</i>
-                                Ayarları Kaydet
-                            </button>
-                        </div>
-                    </form>
-                    {% else %}
-                    <div class="alert alert-warning">
-                        <i class="material-icons align-middle me-2">warning</i>
-                        Şirket bilgisi bulunamadı.
+                    <div class="mb-3">
+                        <label class="form-label">E-posta</label>
+                        <input type="email" name="email" class="form-control"
+                            value="{{ company.email if company else '' }}">
                     </div>
-                    {% endif %}
+                    <div class="mb-3">
+                        <label class="form-label">Telefon</label>
+                        <input type="text" name="telefon" class="form-control"
+                            value="{{ company.telefon if company else '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Logo URL</label>
+                        <input type="url" name="logo_url" class="form-control"
+                            value="{{ company.logo_url if company else '' }}"
+                            placeholder="https://example.com/logo.png">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ana Renk</label>
+                        <input type="color" name="primary_color" class="form-control form-control-color"
+                            value="{{ company.primary_color if company and company.primary_color else '#667eea' }}">
+                    </div>
                 </div>
             </div>
+        </div>
 
+        <!-- E-posta/SMTP Ayarları -->
+        <div class="col-md-6">
+            <div class="card border-0 mb-4">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-envelope me-2"></i>E-posta (SMTP) Ayarları</h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        E-posta bildirimleri için SMTP ayarlarınızı girin. Brevo, SendGrid veya Gmail kullanabilirsiniz.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">SMTP Server</label>
+                        <input type="text" name="smtp_host" class="form-control"
+                            value="{{ company.smtp_host if company else '' }}" placeholder="smtp-relay.brevo.com">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Port</label>
+                            <input type="number" name="smtp_port" class="form-control"
+                                value="{{ company.smtp_port if company else 587 }}" placeholder="587">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Şifreleme</label>
+                            <select name="smtp_tls" class="form-select">
+                                <option value="1" selected>TLS (Önerilen)</option>
+                                <option value="0">SSL</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kullanıcı Adı / Login</label>
+                        <input type="text" name="smtp_user" class="form-control"
+                            value="{{ company.smtp_user if company else '' }}" placeholder="9c6577001@smtp-brevo.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Şifre / API Key</label>
+                        <input type="password" name="smtp_pass" class="form-control"
+                            placeholder="{% if company and company.smtp_pass %}●●●●●●●●{% else %}SMTP şifresi veya API key{% endif %}">
+                        <small class="text-muted">Değiştirmemek için boş bırakın</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Gönderen Adres</label>
+                        <input type="email" name="smtp_from" class="form-control"
+                            value="{{ company.smtp_from if company else '' }}"
+                            placeholder="noreply@skillstestcenter.com">
+                    </div>
+
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="testSmtp()">
+                        <i class="bi bi-send me-1"></i>Test E-postası Gönder
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
-</div>
+
+    <div class="row">
+        <!-- Webhook Ayarları -->
+        <div class="col-md-6">
+            <div class="card border-0 mb-4">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-link-45deg me-2"></i>Webhook Ayarları</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Webhook URL</label>
+                        <input type="url" name="webhook_url" class="form-control"
+                            value="{{ company.webhook_url if company else '' }}"
+                            placeholder="https://yourserver.com/webhook/exam-completed">
+                        <small class="text-muted">Sınav tamamlandığında bu URL'e POST isteği gönderilir</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Erişimi -->
+        <div class="col-md-6">
+            <div class="card border-0 mb-4">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-code-slash me-2"></i>API Erişimi</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small">REST API kullanarak sisteme entegre olabilirsiniz.</p>
+
+                    <div class="mb-3">
+                        <label class="form-label">API Key</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="apiKey"
+                                value="{{ company.api_key if company and company.api_key else 'Henüz oluşturulmadı' }}"
+                                readonly>
+                            <button type="button" class="btn btn-outline-secondary" onclick="copyApiKey()">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <a href="/api/v1/docs" target="_blank" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-book me-1"></i>API Dokümantasyonu
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-end">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-lg me-1"></i>Ayarları Kaydet
+        </button>
+    </div>
+</form>
+
+<script>
+    function testSmtp() {
+        const host = document.querySelector('[name="smtp_host"]').value;
+        const port = document.querySelector('[name="smtp_port"]').value;
+        const user = document.querySelector('[name="smtp_user"]').value;
+
+        if (!host || !user) {
+            alert('Lütfen önce SMTP ayarlarını girin ve kaydedin.');
+            return;
+        }
+
+        fetch('/api/test-smtp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ test: true })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Test e-postası başarıyla gönderildi! E-postanızı kontrol edin.');
+                } else {
+                    alert('Hata: ' + (data.error || 'SMTP bağlantısı başarısız'));
+                }
+            })
+            .catch(e => alert('Hata: ' + e.message));
+    }
+
+    function copyApiKey() {
+        const input = document.getElementById('apiKey');
+        input.select();
+        document.execCommand('copy');
+        alert('API Key kopyalandı!');
+    }
+</script>
 {% endblock %}
