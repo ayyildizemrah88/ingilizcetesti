@@ -381,3 +381,206 @@ def sablon_ekle():
     
     return render_template('sablon_form.html')
 
+
+# ══════════════════════════════════════════════════════════════
+# DATA MANAGEMENT (KVKK/GDPR Compliant)
+# ══════════════════════════════════════════════════════════════
+
+@admin_bp.route('/veri-yonetimi')
+@login_required
+@superadmin_required
+def veri_yonetimi():
+    """
+    Data management dashboard
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Candidate, Question, Answer
+    from sqlalchemy import func
+    import os
+    
+    # Get data statistics
+    sirket_id = session.get('sirket_id')
+    
+    stats = {
+        'total_candidates': Candidate.query.count(),
+        'total_questions': Question.query.count(),
+        'total_answers': Answer.query.count() if hasattr(Answer, 'query') else 0,
+        'speaking_recordings': 0,  # Count from storage
+        'audit_logs': 0,
+        'db_size_mb': 0
+    }
+    
+    # Get backup list
+    backup_dir = os.path.join(os.getcwd(), 'backups')
+    backups = []
+    if os.path.exists(backup_dir):
+        for f in os.listdir(backup_dir):
+            if f.endswith('.sql.gz') or f.endswith('.sql'):
+                filepath = os.path.join(backup_dir, f)
+                backups.append({
+                    'filename': f,
+                    'size_mb': os.path.getsize(filepath) / (1024 * 1024),
+                    'created_at': None,
+                    'location': 'local'
+                })
+    
+    # Get deletion requests (would need a DeletionRequest model)
+    deletion_requests = []
+    
+    return render_template('veri_yonetimi.html', 
+                          stats=stats, 
+                          backups=backups,
+                          deletion_requests=deletion_requests)
+
+
+@admin_bp.route('/veri-yonetimi/yedek-al', methods=['POST'])
+@login_required
+@superadmin_required
+def yedek_al():
+    """Create database backup"""
+    try:
+        from app.tasks.backup_tasks import backup_database
+        
+        location = request.form.get('location', 'local')
+        
+        # Trigger async backup task
+        backup_database.delay()
+        
+        flash("Yedekleme işlemi başlatıldı. Tamamlandığında bildirim alacaksınız.", "success")
+    except Exception as e:
+        flash(f"Yedekleme başlatılamadı: {str(e)}", "danger")
+    
+    return redirect(url_for('admin.veri_yonetimi'))
+
+
+@admin_bp.route('/veri-yonetimi/otomatik-temizle', methods=['POST'])
+@login_required
+@superadmin_required
+def otomatik_temizle():
+    """Run automatic KVKK-compliant cleanup"""
+    try:
+        from app.tasks.cleanup_tasks import run_all_cleanup_tasks
+        
+        # Trigger async cleanup task
+        run_all_cleanup_tasks.delay()
+        
+        flash("Temizlik işlemi başlatıldı. KVKK uyumlu veriler silinecek.", "success")
+    except Exception as e:
+        flash(f"Temizlik başlatılamadı: {str(e)}", "danger")
+    
+    return redirect(url_for('admin.veri_yonetimi'))
+
+
+@admin_bp.route('/veri-yonetimi/manuel-temizle', methods=['POST'])
+@login_required
+@superadmin_required
+def manuel_temizle():
+    """Manual data cleanup by date and type"""
+    from datetime import datetime
+    from app.models import Candidate, Answer
+    
+    data_type = request.form.get('data_type')
+    before_date_str = request.form.get('before_date')
+    confirmation = request.form.get('confirmation_code')
+    
+    # Validate confirmation
+    if confirmation != 'SIL-ONAY':
+        flash("Geçersiz onay kodu! İşlem iptal edildi.", "danger")
+        return redirect(url_for('admin.veri_yonetimi'))
+    
+    try:
+        before_date = datetime.strptime(before_date_str, '%Y-%m-%d')
+        deleted_count = 0
+        
+        if data_type == 'completed_candidates':
+            # Soft delete completed candidates before date
+            candidates = Candidate.query.filter(
+                Candidate.sinav_bitis < before_date,
+                Candidate.durum == 'tamamlandi'
+            ).all()
+            
+            for c in candidates:
+                c.is_deleted = True
+                deleted_count += 1
+            
+            db.session.commit()
+            
+        elif data_type == 'exam_answers':
+            # Delete old answers
+            deleted_count = Answer.query.filter(
+                Answer.created_at < before_date
+            ).delete()
+            db.session.commit()
+        
+        flash(f"{deleted_count} kayıt başarıyla silindi.", "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Silme hatası: {str(e)}", "danger")
+    
+    return redirect(url_for('admin.veri_yonetimi'))
+
+
+@admin_bp.route('/veri-yonetimi/kvkk-sil/<int:candidate_id>', methods=['POST'])
+@login_required
+@superadmin_required
+def kvkk_sil(candidate_id):
+    """GDPR/KVKK compliant full data deletion for a candidate"""
+    from app.models import Candidate, Answer
+    
+    try:
+        candidate = Candidate.query.get_or_404(candidate_id)
+        
+        # Delete all answers for this candidate
+        Answer.query.filter_by(aday_id=candidate_id).delete()
+        
+        # Anonymize candidate data (keep for statistics)
+        candidate.ad_soyad = f"Silinen Kullanıcı #{candidate_id}"
+        candidate.email = f"deleted_{candidate_id}@anonymized.local"
+        candidate.telefon = None
+        candidate.is_deleted = True
+        candidate.kvkk_deleted_at = db.func.now()
+        
+        db.session.commit()
+        
+        flash(f"Aday #{candidate_id} verileri KVKK uyumlu olarak silindi.", "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Silme hatası: {str(e)}", "danger")
+    
+    return redirect(url_for('admin.veri_yonetimi'))
+
+
+@admin_bp.route('/veri-yonetimi/kvkk-rapor')
+@login_required
+@superadmin_required
+def kvkk_rapor():
+    """Generate KVKK compliance report"""
+    from app.models import Candidate, Question
+    from datetime import datetime, timedelta
+    
+    now = datetime.utcnow()
+    one_year_ago = now - timedelta(days=365)
+    two_years_ago = now - timedelta(days=730)
+    
+    report = {
+        'generated_at': now,
+        'total_candidates': Candidate.query.count(),
+        'active_candidates': Candidate.query.filter_by(is_deleted=False).count(),
+        'deleted_candidates': Candidate.query.filter_by(is_deleted=True).count(),
+        'candidates_older_than_1year': Candidate.query.filter(
+            Candidate.created_at < one_year_ago
+        ).count(),
+        'total_questions': Question.query.count(),
+        'retention_policy': {
+            'speaking_recordings': '1 yıl',
+            'exam_answers': '1 yıl',
+            'audit_logs': '2 yıl',
+            'consent_logs': '5 yıl'
+        }
+    }
+    
+    return render_template('kvkk_rapor.html', report=report)
