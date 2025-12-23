@@ -9,9 +9,14 @@
         </a>
         <h3 class="mb-0"><i class="bi bi-question-circle me-2"></i>Soru Havuzu</h3>
     </div>
-    <a href="{{ url_for('admin.soru_ekle') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-1"></i>Yeni Soru
-    </a>
+    <div>
+        <a href="{{ url_for('admin.bulk_soru_yukle') }}" class="btn btn-outline-success me-2">
+            <i class="bi bi-upload me-1"></i>Toplu Yükle
+        </a>
+        <a href="{{ url_for('admin.soru_ekle') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Yeni Soru
+        </a>
+    </div>
 </div>
 
 <div class="card border-0">
