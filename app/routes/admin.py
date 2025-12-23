@@ -511,66 +511,107 @@ def sirket_aktif(id):
 @superadmin_required
 def sirket_sil(id):
     """
-    Delete company and ALL related data.
-    This function handles foreign key constraints by deleting related records first.
+    Delete company and ALL related data using RAW SQL.
+    Uses individual transactions to prevent InFailedSqlTransaction errors.
     """
-    company = Company.query.get_or_404(id)
+    from sqlalchemy import text
+    
+    # Get company name before deletion
+    company = Company.query.get(id)
+    if not company:
+        flash("Şirket bulunamadı.", "danger")
+        return redirect(url_for('admin.sirketler'))
+    
     company_name = company.isim
+    deleted_items = []
     
     try:
-        # Step 1: Delete credit transactions for this company
+        # Step 1: Delete credit transactions (kredi_hareketleri table)
         try:
-            CreditTransaction.query.filter_by(company_id=id).delete(synchronize_session=False)
-        except Exception:
-            pass  # Table might not exist
+            result = db.session.execute(text("DELETE FROM kredi_hareketleri WHERE sirket_id = :id"), {'id': id})
+            db.session.commit()
+            deleted_items.append(f"kredi_hareketleri: {result.rowcount}")
+        except Exception as e:
+            db.session.rollback()
         
-        # Step 2: Delete exam answers for candidates of this company
+        # Step 2: Get candidate IDs for this company
+        candidate_ids = []
         try:
-            candidate_ids = [c.id for c in Candidate.query.filter_by(sirket_id=id).all()]
-            if candidate_ids:
-                ExamAnswer.query.filter(ExamAnswer.aday_id.in_(candidate_ids)).delete(synchronize_session=False)
+            result = db.session.execute(text("SELECT id FROM adaylar WHERE sirket_id = :id"), {'id': id})
+            candidate_ids = [row[0] for row in result.fetchall()]
         except Exception:
-            pass
+            db.session.rollback()
         
-        # Step 3: Delete candidates for this company
-        Candidate.query.filter_by(sirket_id=id).delete(synchronize_session=False)
+        # Step 3: Delete exam answers for these candidates
+        if candidate_ids:
+            try:
+                for cid in candidate_ids:
+                    db.session.execute(text("DELETE FROM sinav_cevaplari WHERE aday_id = :cid"), {'cid': cid})
+                db.session.commit()
+                deleted_items.append(f"sinav_cevaplari: {len(candidate_ids)} candidates")
+            except Exception:
+                db.session.rollback()
+            
+            # Step 4: Delete speaking recordings
+            try:
+                for cid in candidate_ids:
+                    db.session.execute(text("DELETE FROM speaking_recordings WHERE aday_id = :cid"), {'cid': cid})
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
         
-        # Step 4: Delete users for this company
-        User.query.filter_by(sirket_id=id).delete(synchronize_session=False)
-        
-        # Step 5: Delete exam templates for this company
+        # Step 5: Delete candidates
         try:
-            ExamTemplate.query.filter_by(sirket_id=id).delete(synchronize_session=False)
+            result = db.session.execute(text("DELETE FROM adaylar WHERE sirket_id = :id"), {'id': id})
+            db.session.commit()
+            deleted_items.append(f"adaylar: {result.rowcount}")
         except Exception:
-            pass
+            db.session.rollback()
         
-        # Step 6: Delete questions for this company
+        # Step 6: Delete users
         try:
-            Question.query.filter_by(sirket_id=id).delete(synchronize_session=False)
+            result = db.session.execute(text("DELETE FROM kullanicilar WHERE sirket_id = :id"), {'id': id})
+            db.session.commit()
+            deleted_items.append(f"kullanicilar: {result.rowcount}")
         except Exception:
-            pass
+            db.session.rollback()
         
-        # Step 7: Now delete the company itself
-        db.session.delete(company)
-        db.session.commit()
+        # Step 7: Delete exam templates
+        try:
+            result = db.session.execute(text("DELETE FROM sinav_sablonlari WHERE sirket_id = :id"), {'id': id})
+            db.session.commit()
+            deleted_items.append(f"sinav_sablonlari: {result.rowcount}")
+        except Exception:
+            db.session.rollback()
         
-        flash(f"'{company_name}' şirketi ve tüm verileri başarıyla silindi.", "success")
+        # Step 8: Delete questions
+        try:
+            result = db.session.execute(text("DELETE FROM sorular WHERE sirket_id = :id"), {'id': id})
+            db.session.commit()
+            deleted_items.append(f"sorular: {result.rowcount}")
+        except Exception:
+            db.session.rollback()
+        
+        # Step 9: Finally delete the company
+        try:
+            result = db.session.execute(text("DELETE FROM sirketler WHERE id = :id"), {'id': id})
+            db.session.commit()
+            deleted_items.append(f"sirketler: {result.rowcount}")
+            flash(f"'{company_name}' şirketi ve tüm verileri başarıyla silindi. ({', '.join(deleted_items)})", "success")
+        except Exception as e:
+            db.session.rollback()
+            # If company delete fails, deactivate instead
+            try:
+                db.session.execute(text("UPDATE sirketler SET is_active = false WHERE id = :id"), {'id': id})
+                db.session.commit()
+                flash(f"'{company_name}' şirketi silinemedi (FK hatası), bunun yerine pasife alındı.", "warning")
+            except Exception:
+                db.session.rollback()
+                flash(f"Şirket silinemedi: {str(e)[:100]}", "danger")
         
     except Exception as e:
         db.session.rollback()
-        
-        # If deletion still fails, try to deactivate
-        try:
-            company = Company.query.get(id)
-            if company:
-                company.is_active = False
-                db.session.commit()
-                flash(f"'{company_name}' şirketi silinemedi (hata: {str(e)[:50]}), bunun yerine pasife alındı.", "warning")
-            else:
-                flash("Şirket bulunamadı.", "danger")
-        except Exception:
-            db.session.rollback()
-            flash("Silme hatası. Lütfen veritabanını kontrol edin.", "danger")
+        flash(f"Silme işlemi başarısız: {str(e)[:100]}", "danger")
     
     return redirect(url_for('admin.sirketler'))
 
@@ -588,14 +629,17 @@ def sirket_kredi(id):
         if miktar > 0:
             company.kredi = (company.kredi or 0) + miktar
 
-            # Log transaction
+            # Log transaction with correct field names
             try:
-                transaction = CreditTransaction(
-                    company_id=company.id,
-                    amount=miktar,
-                    transaction_type='manual',
-                    description=aciklama,
-                    created_by=session.get('kullanici_id')
+                from app.models.company import CreditTransaction as CT
+                transaction = CT(
+                    sirket_id=company.id,
+                    islem_tipi='manual',
+                    miktar=miktar,
+                    aciklama=aciklama,
+                    onceki_bakiye=company.kredi - miktar,
+                    sonraki_bakiye=company.kredi,
+                    kullanici_id=session.get('kullanici_id')
                 )
                 db.session.add(transaction)
             except:
