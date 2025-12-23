@@ -926,3 +926,142 @@ def admin_logs():
 def fraud_heatmap():
     """Fraud detection heatmap"""
     return render_template('fraud_heatmap.html')
+
+# ══════════════════════════════════════════════════════════════
+# BULK UPLOAD - Candidates
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/bulk-upload', methods=['POST'])
+@login_required
+def bulk_upload():
+    """Bulk upload candidates from Excel file"""
+    try:
+        import pandas as pd
+    except ImportError:
+        flash("pandas kütüphanesi yüklü değil. Toplu yükleme yapılamıyor.", "danger")
+        return redirect(url_for('admin.adaylar'))
+    
+    if 'file' not in request.files:
+        flash("Dosya seçilmedi.", "danger")
+        return redirect(url_for('admin.adaylar'))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash("Dosya seçilmedi.", "danger")
+        return redirect(url_for('admin.adaylar'))
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        flash("Sadece Excel dosyaları (.xlsx, .xls) kabul edilir.", "danger")
+        return redirect(url_for('admin.adaylar'))
+    
+    try:
+        df = pd.read_excel(file)
+        
+        if 'ad_soyad' not in df.columns:
+            flash("Excel dosyasında 'ad_soyad' kolonu bulunamadı.", "danger")
+            return redirect(url_for('admin.adaylar'))
+        
+        sirket_id = session.get('sirket_id')
+        added_count = 0
+        
+        for index, row in df.iterrows():
+            ad_soyad = str(row.get('ad_soyad', '')).strip()
+            if not ad_soyad or ad_soyad == 'nan':
+                continue
+                
+            email = str(row.get('email', '')).strip().lower() if 'email' in df.columns else ''
+            tc_kimlik = str(row.get('tc_kimlik', '')).strip() if 'tc_kimlik' in df.columns else ''
+            giris_kodu = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            
+            candidate = Candidate(
+                ad_soyad=ad_soyad,
+                email=email if email != 'nan' else '',
+                tc_kimlik=tc_kimlik if tc_kimlik != 'nan' else '',
+                giris_kodu=giris_kodu,
+                sirket_id=sirket_id,
+                sinav_suresi=30,
+                soru_limiti=25
+            )
+            db.session.add(candidate)
+            added_count += 1
+        
+        db.session.commit()
+        flash(f"{added_count} aday başarıyla eklendi.", "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Yükleme hatası: {str(e)[:100]}", "danger")
+    
+    return redirect(url_for('admin.adaylar'))
+
+# ══════════════════════════════════════════════════════════════
+# BULK UPLOAD - Questions
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/bulk-soru-yukle', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def bulk_soru_yukle():
+    """Bulk upload questions from Excel file"""
+    if request.method == 'GET':
+        return render_template('bulk_soru_yukle.html')
+    
+    try:
+        import pandas as pd
+    except ImportError:
+        flash("pandas kütüphanesi yüklü değil. Toplu yükleme yapılamıyor.", "danger")
+        return redirect(url_for('admin.sorular'))
+    
+    if 'file' not in request.files:
+        flash("Dosya seçilmedi.", "danger")
+        return redirect(url_for('admin.bulk_soru_yukle'))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash("Dosya seçilmedi.", "danger")
+        return redirect(url_for('admin.bulk_soru_yukle'))
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        flash("Sadece Excel dosyaları (.xlsx, .xls) kabul edilir.", "danger")
+        return redirect(url_for('admin.bulk_soru_yukle'))
+    
+    try:
+        df = pd.read_excel(file)
+        
+        required_cols = ['soru_metni', 'kategori', 'zorluk']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        
+        if missing_cols:
+            flash(f"Eksik kolonlar: {', '.join(missing_cols)}", "danger")
+            return redirect(url_for('admin.bulk_soru_yukle'))
+        
+        added_count = 0
+        
+        for index, row in df.iterrows():
+            soru_metni = str(row.get('soru_metni', '')).strip()
+            if not soru_metni or soru_metni == 'nan':
+                continue
+            
+            soru_tipi = str(row.get('soru_tipi', 'SECMELI')).strip().upper()
+            
+            question = Question(
+                soru_metni=soru_metni,
+                kategori=str(row.get('kategori', '')).strip(),
+                zorluk=str(row.get('zorluk', 'B1')).strip(),
+                soru_tipi=soru_tipi,
+                secenek_a=str(row.get('secenek_a', '')).strip() if 'secenek_a' in df.columns else '',
+                secenek_b=str(row.get('secenek_b', '')).strip() if 'secenek_b' in df.columns else '',
+                secenek_c=str(row.get('secenek_c', '')).strip() if 'secenek_c' in df.columns else '',
+                secenek_d=str(row.get('secenek_d', '')).strip() if 'secenek_d' in df.columns else '',
+                dogru_cevap=str(row.get('dogru_cevap', '')).strip().upper() if 'dogru_cevap' in df.columns else '',
+                is_active=True
+            )
+            db.session.add(question)
+            added_count += 1
+        
+        db.session.commit()
+        flash(f"{added_count} soru başarıyla eklendi.", "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Yükleme hatası: {str(e)[:100]}", "danger")
+    
+    return redirect(url_for('admin.sorular'))
