@@ -76,6 +76,25 @@
                             </div>
                         </div>
 
+                        <!-- Soru Tipi -->
+                        <div class="mb-3">
+                            <label for="soru_tipi" class="form-label">Soru Tipi *</label>
+                            <select class="form-select" id="soru_tipi" name="soru_tipi" required>
+                                <option value="SECMELI" {{ 'selected' if soru and soru.soru_tipi=='SECMELI' else '' }}>
+                                    Seçmeli (Multiple Choice)</option>
+                                <option value="READING" {{ 'selected' if soru and soru.soru_tipi=='READING' else '' }}>
+                                    Reading (Okuma Parçası)</option>
+                                <option value="LISTENING" {{ 'selected' if soru and soru.soru_tipi=='LISTENING' else ''
+                                    }}>Listening (Dinleme)</option>
+                                <option value="SPEAKING" {{ 'selected' if soru and soru.soru_tipi=='SPEAKING' else ''
+                                    }}>Speaking (Konuşma)</option>
+                                <option value="WRITING" {{ 'selected' if soru and soru.soru_tipi=='WRITING' else '' }}>
+                                    Writing (Yazma)</option>
+                            </select>
+                            <div class="form-text">Speaking sorularında ses kaydı istenir, Writing sorularında essay
+                                beklenir.</div>
+                        </div>
+
                         <!-- Şıklar -->
                         <div class="mb-3">
                             <label class="form-label">Şıklar *</label>
