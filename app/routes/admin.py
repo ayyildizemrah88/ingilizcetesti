@@ -380,4 +380,3 @@ def sablon_ekle():
         return redirect(url_for('admin.sablonlar'))
     
     return render_template('sablon_form.html')
-
