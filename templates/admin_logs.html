@@ -1,125 +1,96 @@
-{% extends "base.html" %}
+{% extends "dashboard.html" %}
 {% block title %}Aktivite Logları - Skills Test Center{% endblock %}
+
 {% block content %}
-<div class="page-container">
-    <div class="page-header">
-        <h4><span class="material-symbols-outlined">history</span> Aktivite Logları</h4>
+<!-- Header with white background -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary me-3" title="Dashboard">
+                <i class="bi bi-house-fill"></i>
+            </a>
+            <h4 class="mb-0 text-dark">
+                <i class="bi bi-activity me-2"></i>Aktivite Logları
+            </h4>
+        </div>
     </div>
-    <div class="card">
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
                     <tr>
                         <th>Tarih</th>
                         <th>Kullanıcı</th>
                         <th>İşlem</th>
                         <th>Detay</th>
-                        <th>IP Adresi</th>
+                        <th>IP</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% if logs and logs.items %}
                     {% for log in logs.items %}
                     <tr>
+                        <td>{{ log.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                        <td>{{ log.kullanici_email or '-' }}</td>
                         <td>
-                            <small>{{ log.created_at.strftime('%d.%m.%Y %H:%M') if log.created_at else '-' }}</small>
-                        </td>
-                        <td>{{ log.user.email if log.user else 'Sistem' }}</td>
-                        <td>
-                            {% if log.action == 'login' %}
+                            {% if log.islem_tipi == 'login' %}
                             <span class="badge bg-success">Giriş</span>
-                            {% elif log.action == 'logout' %}
+                            {% elif log.islem_tipi == 'logout' %}
                             <span class="badge bg-secondary">Çıkış</span>
-                            {% elif log.action == 'create' %}
-                            <span class="badge bg-primary">Oluştur</span>
-                            {% elif log.action == 'update' %}
-                            <span class="badge bg-warning">Güncelle</span>
-                            {% elif log.action == 'delete' %}
-                            <span class="badge bg-danger">Sil</span>
+                            {% elif log.islem_tipi == 'create' %}
+                            <span class="badge bg-primary">Oluşturma</span>
+                            {% elif log.islem_tipi == 'update' %}
+                            <span class="badge bg-warning text-dark">Güncelleme</span>
+                            {% elif log.islem_tipi == 'delete' %}
+                            <span class="badge bg-danger">Silme</span>
                             {% else %}
-                            <span class="badge bg-info">{{ log.action }}</span>
+                            <span class="badge bg-info">{{ log.islem_tipi }}</span>
                             {% endif %}
                         </td>
-                        <td>{{ log.details or '-' }}</td>
-                        <td><small class="text-muted">{{ log.ip_address or '-' }}</small></td>
+                        <td>{{ log.detay[:100] if log.detay else '-' }}...</td>
+                        <td><code>{{ log.ip_adresi or '-' }}</code></td>
                     </tr>
                     {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-4">Henüz log kaydı bulunmuyor.</td>
+                        <td colspan="5" class="text-center text-muted">Henüz log kaydı yok.</td>
                     </tr>
                     {% endif %}
                 </tbody>
             </table>
         </div>
-        {% if logs and logs.pages > 1 %}
-        <nav class="pagination-nav">
-            <ul class="pagination">
-                {% if logs.has_prev %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ logs.prev_num }}">← Önceki</a>
-                </li>
-                {% endif %}
-                <li class="page-item disabled">
-                    <span class="page-link">Sayfa {{ logs.page }} / {{ logs.pages }}</span>
-                </li>
-                {% if logs.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ logs.next_num }}">Sonraki →</a>
-                </li>
-                {% endif %}
-            </ul>
-        </nav>
-        {% endif %}
     </div>
 </div>
-<style>
-    .page-container {
-        padding: 20px;
-        max-width: 1400px;
-        margin: 0 auto;
-    }
-    .page-header {
-        margin-bottom: 20px;
-    }
-    .page-header h4 {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin: 0;
-    }
-    .card {
-        background: white;
-        border-radius: 16px;
-        padding: 25px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    }
-    .pagination-nav {
-        display: flex;
-        justify-content: center;
-        margin-top: 20px;
-    }
-    .pagination {
-        display: flex;
-        gap: 5px;
-        list-style: none;
-        margin: 0;
-        padding: 0;
-    }
-    .page-item .page-link {
-        padding: 8px 16px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        text-decoration: none;
-        color: #667eea;
-    }
-    .page-item .page-link:hover {
-        background: #667eea;
-        color: white;
-    }
-    .page-item.disabled .page-link {
-        color: #999;
-        cursor: default;
-    }
-</style>
+
+<!-- Pagination -->
+{% if logs and logs.pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if logs.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('admin.admin_logs', page=logs.prev_num) }}">Önceki</a>
+        </li>
+        {% endif %}
+
+        {% for p in logs.iter_pages() %}
+        {% if p %}
+        <li class="page-item {{ 'active' if p == logs.page else '' }}">
+            <a class="page-link" href="{{ url_for('admin.admin_logs', page=p) }}">{{ p }}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% endif %}
+        {% endfor %}
+
+        {% if logs.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('admin.admin_logs', page=logs.next_num) }}">Sonraki</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
 {% endblock %}
