@@ -616,7 +616,7 @@ def sablonlar():
     from app.models import ExamTemplate
     
     sirket_id = session.get('sirket_id')
-    templates = ExamTemplate.query.filter_by(sirket_id=sirket_id, is_active=True).all()
+    templates = ExamTemplate.query.filter_by(sirket_id=sirket_id).all()
     
     return render_template('sablonlar.html', sablonlar=templates)
 
