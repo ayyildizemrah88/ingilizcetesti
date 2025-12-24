@@ -198,13 +198,13 @@
         data: {
             labels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
             datasets: [
-                { label: 'Etiketli', data: {{ labeled_dist| tojson | safe }
+                { label: 'Etiketli', data: {{ labeled_dist | tojson | safe }
     }, backgroundColor: '#667eea' },
-        { label: 'Hesaplanan', data: {{ calculated_dist| tojson | safe }}, backgroundColor: '#ffc107' }
-        ]
-    },
+        { label: 'Hesaplanan', data: {{ calculated_dist | tojson | safe }}, backgroundColor: '#ffc107' }
+            ]
+        },
         options: { responsive: true }
-});
+    });
 
     // Category Chart
     new Chart(document.getElementById('categoryChart'), {
