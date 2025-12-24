@@ -27,12 +27,20 @@
                     {% for soru in sorular.items if sorular.items else sorular %}
                     <tr>
                         <td>{{ soru.id if soru is mapping or soru.id is defined else soru[0] }}</td>
-                        <td>{{ (soru.soru_metni if soru is mapping or soru.soru_metni is defined else soru[1])[:80] }}...</td>
-                        <td><span class="badge bg-info">{{ soru.kategori if soru is mapping or soru.kategori is defined else soru[7] }}</span></td>
-                        <td><span class="badge bg-secondary">{{ soru.zorluk if soru is mapping or soru.zorluk is defined else soru[8] }}</span></td>
-                        <td><span class="badge bg-success">{{ soru.dogru_cevap if soru is mapping or soru.dogru_cevap is defined else soru[6] }}</span></td>
+                        <td>{{ (soru.soru_metni if soru is mapping or soru.soru_metni is defined else soru[1])[:80]
+                            }}...</td>
+                        <td><span class="badge bg-info">{{ soru.kategori if soru is mapping or soru.kategori is defined
+                                else soru[7] }}</span></td>
+                        <td><span class="badge bg-secondary">{{ soru.zorluk if soru is mapping or soru.zorluk is defined
+                                else soru[8] }}</span></td>
+                        <td><span class="badge bg-success">{{ soru.dogru_cevap if soru is mapping or soru.dogru_cevap is
+                                defined else soru[6] }}</span></td>
                         <td>
-                            <form action="/admin/soru/{{ soru.id if soru is mapping or soru.id is defined else soru[0] }}/sil" method="POST" class="d-inline" onsubmit="return confirm('Bu soruyu silmek istediğinize emin misiniz?');">
+                            <form
+                                action="{{ url_for('admin.soru_sil', id=soru.id if soru is mapping or soru.id is defined else soru[0]) }}"
+                                method="POST" class="d-inline"
+                                onsubmit="return confirm('Bu soruyu silmek istediğinize emin misiniz?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Sil">
                                     <i class="bi bi-trash"></i>
                                 </button>
@@ -54,17 +62,17 @@
             <a class="page-link" href="?page={{ sorular.prev_num }}">Önceki</a>
         </li>
         {% endif %}
-        
+
         {% for page_num in sorular.iter_pages() %}
-            {% if page_num %}
-                <li class="page-item {{ 'active' if page_num == sorular.page else '' }}">
-                    <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
-                </li>
-            {% else %}
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-            {% endif %}
+        {% if page_num %}
+        <li class="page-item {{ 'active' if page_num == sorular.page else '' }}">
+            <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% endif %}
         {% endfor %}
-        
+
         {% if sorular.has_next %}
         <li class="page-item">
             <a class="page-link" href="?page={{ sorular.next_num }}">Sonraki</a>
