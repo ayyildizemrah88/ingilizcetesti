@@ -5,9 +5,10 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3><i class="bi bi-building me-2"></i>Şirketler</h3>
     <div>
-        <a href="/admin/demo-olustur" class="btn btn-success me-2"><i class="bi bi-rocket-takeoff me-1"></i>Hızlı
-            Demo</a>
-        <a href="/admin/sirket-ekle" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Yeni Şirket</a>
+        <a href="{{ url_for('admin.demo_olustur') }}" class="btn btn-success me-2"><i
+                class="bi bi-rocket-takeoff me-1"></i>Hızlı Demo</a>
+        <a href="{{ url_for('admin.sirket_ekle') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Yeni
+            Şirket</a>
     </div>
 </div>
 
@@ -19,9 +20,7 @@
                     <tr>
                         <th>ID</th>
                         <th>İsim</th>
-                        <th>Alt Alan</th>
                         <th>Kredi</th>
-                        <th>Demo</th>
                         <th>Durum</th>
                         <th>İşlemler</th>
                     </tr>
@@ -29,22 +28,17 @@
                 <tbody>
                     {% for s in sirketler %}
                     <tr>
-                        <td>{{ s[0] if s is not mapping else s.id }}</td>
-                        <td><strong>{{ s[1] if s is not mapping else s.isim }}</strong></td>
-                        <td><code>{{ s[2] if s is not mapping else s.kadi }}</code></td>
+                        <td>{{ s.id }}</td>
+                        <td><strong>{{ s.isim or s.ad or '-' }}</strong></td>
                         <td>
+                            {% set kredi = s.kredi or 0 %}
                             <span
-                                class="badge bg-{{ 'success' if (s[3] if s is not mapping else s.kredi) > 50 else 'warning' if (s[3] if s is not mapping else s.kredi) > 10 else 'danger' }}">
-                                {{ s[3] if s is not mapping else s.kredi }}
+                                class="badge bg-{{ 'success' if kredi > 50 else 'warning' if kredi > 10 else 'danger' }}">
+                                {{ kredi }}
                             </span>
                         </td>
                         <td>
-                            {% if (s[10] if s is not mapping else s.is_demo) %}
-                            <span class="badge bg-info">Demo</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if (s[4] if s is not mapping else s.is_active) %}
+                            {% if s.is_active %}
                             <span class="badge bg-success">Aktif</span>
                             {% else %}
                             <span class="badge bg-secondary">Pasif</span>
@@ -52,12 +46,12 @@
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ url_for('admin.sirket_duzenle', id=s.id if s is mapping else s[0]) }}"
-                                    class="btn btn-outline-primary" title="Düzenle"><i class="bi bi-pencil"></i></a>
-                                <a href="{{ url_for('admin.sirket_kredi', id=s.id if s is mapping else s[0]) }}"
-                                    class="btn btn-outline-warning" title="Kredi Yükle"><i class="bi bi-coin"></i></a>
-                                <form action="{{ url_for('admin.sirket_sil', id=s.id if s is mapping else s[0]) }}"
-                                    method="POST" style="display:inline;">
+                                <a href="{{ url_for('admin.sirket_duzenle', id=s.id) }}" class="btn btn-outline-primary"
+                                    title="Düzenle"><i class="bi bi-pencil"></i></a>
+                                <a href="{{ url_for('admin.sirket_kredi', id=s.id) }}" class="btn btn-outline-warning"
+                                    title="Kredi Yükle"><i class="bi bi-coin"></i></a>
+                                <form action="{{ url_for('admin.sirket_sil', id=s.id) }}" method="POST"
+                                    style="display:inline;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-outline-danger btn-sm" title="Sil"
                                         onclick="return confirm('Bu şirket ve TÜM VERİLERİ kalıcı olarak silinecek! Emin misiniz?')">
