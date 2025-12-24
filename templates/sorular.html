@@ -4,7 +4,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3><i class="bi bi-question-circle me-2"></i>Soru Havuzu</h3>
-    <a href="/admin/soru/ekle" class="btn btn-primary">
+    <a href="{{ url_for('admin.soru_ekle') }}" class="btn btn-primary">
         <i class="bi bi-plus-lg me-1"></i>Yeni Soru
     </a>
 </div>
@@ -24,21 +24,16 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for soru in sorular.items if sorular.items else sorular %}
+                    {% set items = sorular.items if sorular.items is defined else sorular %}
+                    {% for soru in items %}
                     <tr>
-                        <td>{{ soru.id if soru is mapping or soru.id is defined else soru[0] }}</td>
-                        <td>{{ (soru.soru_metni if soru is mapping or soru.soru_metni is defined else soru[1])[:80]
-                            }}...</td>
-                        <td><span class="badge bg-info">{{ soru.kategori if soru is mapping or soru.kategori is defined
-                                else soru[7] }}</span></td>
-                        <td><span class="badge bg-secondary">{{ soru.zorluk if soru is mapping or soru.zorluk is defined
-                                else soru[8] }}</span></td>
-                        <td><span class="badge bg-success">{{ soru.dogru_cevap if soru is mapping or soru.dogru_cevap is
-                                defined else soru[6] }}</span></td>
+                        <td>{{ soru.id }}</td>
+                        <td>{{ (soru.soru_metni or '')[:80] }}...</td>
+                        <td><span class="badge bg-info">{{ soru.kategori or '-' }}</span></td>
+                        <td><span class="badge bg-secondary">{{ soru.zorluk or 'B1' }}</span></td>
+                        <td><span class="badge bg-success">{{ soru.dogru_cevap or '-' }}</span></td>
                         <td>
-                            <form
-                                action="{{ url_for('admin.soru_sil', id=soru.id if soru is mapping or soru.id is defined else soru[0]) }}"
-                                method="POST" class="d-inline"
+                            <form action="{{ url_for('admin.soru_sil', id=soru.id) }}" method="POST" class="d-inline"
                                 onsubmit="return confirm('Bu soruyu silmek istediğinize emin misiniz?');">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Sil">
