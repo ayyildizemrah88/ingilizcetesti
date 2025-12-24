@@ -6,6 +6,7 @@ Handles database migrations with Flask-Migrate
 from __future__ import with_statement
 
 import logging
+import os
 from logging.config import fileConfig
 
 from flask import current_app
@@ -18,7 +19,12 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name)
+# Handle missing alembic.ini gracefully (may not exist in Docker container)
+if config.config_file_name and os.path.exists(config.config_file_name):
+    fileConfig(config.config_file_name)
+else:
+    # Setup basic logging if alembic.ini is not found
+    logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('alembic.env')
 
 
