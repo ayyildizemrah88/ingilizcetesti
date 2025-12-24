@@ -476,6 +476,35 @@ def kullanici_sil(id):
     return redirect(url_for('admin.kullanicilar'))
 
 
+@admin_bp.route('/kullanici/<int:id>/duzenle', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def kullanici_duzenle(id):
+    """
+    Edit user
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import User, Company
+    
+    user = User.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        user.ad_soyad = request.form.get('ad_soyad', '').strip()
+        user.email = request.form.get('email', '').strip().lower()
+        user.rol = request.form.get('rol', 'customer')
+        user.sirket_id = request.form.get('sirket_id', type=int)
+        user.is_active = request.form.get('is_active') == 'on'
+        
+        db.session.commit()
+        flash("Kullanıcı güncellendi.", "success")
+        return redirect(url_for('admin.kullanicilar'))
+    
+    companies = Company.query.filter_by(is_active=True).all()
+    return render_template('kullanici_form.html', kullanici=user, sirketler=companies)
+
+
 @admin_bp.route('/demo-olustur', methods=['GET', 'POST'])
 @login_required
 @superadmin_required
@@ -782,6 +811,33 @@ def sirket_kredi_yukle(id):
     return redirect(url_for('admin.sirketler'))
 
 
+@admin_bp.route('/sirket/<int:id>/kredi', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def sirket_kredi(id):
+    """
+    Company credit management page (alias for templates)
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Company
+    
+    company = Company.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        miktar = int(request.form.get('miktar', 0))
+        if miktar > 0:
+            company.kredi = (company.kredi or 0) + miktar
+            db.session.commit()
+            flash(f"{miktar} kredi yüklendi. Yeni bakiye: {company.kredi}", "success")
+        else:
+            flash("Geçersiz miktar.", "danger")
+        return redirect(url_for('admin.sirketler'))
+    
+    return render_template('kredi_yukle.html', sirket=company)
+
+
 @admin_bp.route('/super-rapor')
 @login_required
 @superadmin_required
@@ -862,7 +918,22 @@ def raporlar():
         'pending': Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='beklemede').count() if sirket_id else 0,
     }
     
-    return render_template('raporlar.html', stats=stats)
+    # Get completed candidates for the report
+    tamamlananlar = []
+    try:
+        if sirket_id:
+            tamamlananlar = Candidate.query.filter_by(
+                sirket_id=sirket_id, 
+                sinav_durumu='tamamlandi'
+            ).order_by(Candidate.sinav_bitis.desc()).limit(50).all()
+        else:
+            tamamlananlar = Candidate.query.filter_by(
+                sinav_durumu='tamamlandi'
+            ).order_by(Candidate.sinav_bitis.desc()).limit(50).all()
+    except Exception as e:
+        pass
+    
+    return render_template('raporlar.html', stats=stats, tamamlananlar=tamamlananlar)
 
 
 # ══════════════════════════════════════════════════════════════
