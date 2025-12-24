@@ -882,7 +882,7 @@ def super_rapor():
 @superadmin_required
 def admin_logs():
     """Admin activity logs"""
-    from app.models.admin import AuditLog
+    from app.models import AuditLog
     
     page = request.args.get('page', 1, type=int)
     
