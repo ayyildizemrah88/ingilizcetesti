@@ -1,69 +1,39 @@
-{% extends "base.html" %}
-
-{% block title %}Sınav Şablonları{% endblock %}
+{% extends "dashboard.html" %}
+{% block title %}Şablonlar - Skills Test Center{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Header with white background for readability -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary me-3" title="Dashboard">
-                    <span class="material-icons align-middle">home</span>
-                </a>
-                <h4 class="mb-0 text-dark">
-                    <span class="material-icons align-middle me-2">assignment</span>
-                    Sınav Şablonları
-                </h4>
-            </div>
-            <a href="{{ url_for('admin.sablon_ekle') }}" class="btn btn-primary">
-                <span class="material-icons align-middle">add</span> Yeni Şablon
-            </a>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-file-earmark-text me-2"></i>Sınav Şablonları</h3>
+    <a href="{{ url_for('admin.sablon_ekle') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Yeni
+        Şablon</a>
+</div>
+
+<div class="card border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>İsim</th>
+                        <th>Süre (dk)</th>
+                        <th>Soru Limiti</th>
+                        <th>Başlangıç Seviyesi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in sablonlar %}
+                    <tr>
+                        <td>{{ s.id }}</td>
+                        <td><strong>{{ s.isim or '-' }}</strong></td>
+                        <td>{{ s.sinav_suresi or 30 }} dk</td>
+                        <td>{{ s.soru_limiti or 10 }}</td>
+                        <td><span class="badge bg-info">{{ s.baslangic_seviyesi or 'B1' }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
-
-    {% if sablonlar %}
-    <div class="row">
-        {% for sablon in sablonlar %}
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header" style="background-color: #e8f4fd; border-bottom: 2px solid #0d6efd;">
-                    <h5 class="mb-0 text-primary">{{ sablon.isim }}</h5>
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled mb-0">
-                        <li><strong>Süre:</strong> {{ sablon.sinav_suresi }} dakika</li>
-                        <li><strong>Soru Limiti:</strong> {{ sablon.soru_limiti or 25 }}</li>
-                        <li><strong>Başlangıç:</strong> {{ sablon.baslangic_seviyesi or 'B1' }}</li>
-                    </ul>
-                </div>
-                <div class="card-footer bg-light">
-                    <div class="btn-group btn-group-sm w-100">
-                        <a href="{{ url_for('admin.sablon_duzenle', id=sablon.id) }}" class="btn btn-outline-primary">
-                            <span class="material-icons" style="font-size: 18px;">edit</span> Düzenle
-                        </a>
-
-                        <!-- Sil -->
-                        <form action="{{ url_for('admin.sablon_sil', id=sablon.id) }}" method="POST"
-                            style="display: inline;">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-outline-danger"
-                                onclick="return confirm('Bu şablonu silmek istediğinize emin misiniz?')">
-                                <span class="material-icons" style="font-size: 18px;">delete</span> Sil
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="alert alert-info">
-        <span class="material-icons align-middle me-2">info</span>
-        Henüz kayıtlı şablon bulunmuyor.
-        <a href="{{ url_for('admin.sablon_ekle') }}">Yeni şablon ekleyin</a>.
-    </div>
-    {% endif %}
 </div>
 {% endblock %}
