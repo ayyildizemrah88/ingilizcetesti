@@ -64,31 +64,40 @@ def dashboard():
     
     sirket_id = session.get('sirket_id')
     
-    # Statistics
-    today = datetime.utcnow().date()
-    week_ago = datetime.utcnow() - timedelta(days=7)
+    # Statistics - with error handling
+    try:
+        aday_sayisi = Candidate.query.filter_by(sirket_id=sirket_id, is_deleted=False).count() if sirket_id else Candidate.query.filter_by(is_deleted=False).count()
+    except:
+        aday_sayisi = 0
     
-    stats = {
-        'total_candidates': Candidate.query.filter_by(sirket_id=sirket_id, is_deleted=False).count(),
-        'completed_exams': Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='tamamlandi').count(),
-        'pending_exams': Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='beklemede').count(),
-        'total_questions': Question.query.filter_by(sirket_id=sirket_id, is_active=True).count(),
-        'exams_this_week': Candidate.query.filter(
-            Candidate.sirket_id == sirket_id,
-            Candidate.bitis_tarihi >= week_ago
-        ).count()
-    }
+    try:
+        soru_sayisi = Question.query.filter_by(sirket_id=sirket_id, is_active=True).count() if sirket_id else Question.query.filter_by(is_active=True).count()
+    except:
+        soru_sayisi = 0
+    
+    try:
+        sirket_sayisi = Company.query.count()
+    except:
+        sirket_sayisi = 0
     
     # Recent candidates
-    recent_candidates = Candidate.query.filter_by(
-        sirket_id=sirket_id, is_deleted=False
-    ).order_by(Candidate.created_at.desc()).limit(10).all()
+    try:
+        recent_candidates = Candidate.query.filter_by(
+            sirket_id=sirket_id, is_deleted=False
+        ).order_by(Candidate.created_at.desc()).limit(10).all() if sirket_id else []
+    except:
+        recent_candidates = []
     
     # Company info
-    company = Company.query.get(sirket_id)
+    try:
+        company = Company.query.get(sirket_id) if sirket_id else None
+    except:
+        company = None
     
     return render_template('dashboard.html', 
-                          stats=stats, 
+                          aday_sayisi=aday_sayisi,
+                          soru_sayisi=soru_sayisi,
+                          sirket_sayisi=sirket_sayisi,
                           recent_candidates=recent_candidates,
                           company=company)
 
@@ -380,6 +389,109 @@ def sablon_ekle():
         return redirect(url_for('admin.sablonlar'))
     
     return render_template('sablon_form.html')
+
+
+# ══════════════════════════════════════════════════════════════
+# COMPANY MANAGEMENT (SuperAdmin Only)
+# ══════════════════════════════════════════════════════════════
+
+@admin_bp.route('/sirketler')
+@login_required
+@superadmin_required
+def sirketler():
+    """
+    Company management page
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Company
+    
+    companies = Company.query.order_by(Company.id.desc()).all()
+    return render_template('sirketler.html', sirketler=companies)
+
+
+@admin_bp.route('/super-rapor')
+@login_required
+@superadmin_required
+def super_rapor():
+    """
+    Platform-wide report for superadmin
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Candidate, Question, Company, User
+    from datetime import datetime, timedelta
+    from sqlalchemy import func
+    
+    # Platform statistics
+    stats = {
+        'total_companies': Company.query.count(),
+        'total_candidates': Candidate.query.count(),
+        'total_questions': Question.query.count(),
+        'total_users': User.query.count(),
+        'active_exams': Candidate.query.filter_by(sinav_durumu='sinavda').count(),
+        'completed_exams': Candidate.query.filter_by(sinav_durumu='tamamlandi').count(),
+    }
+    
+    # Company breakdown
+    company_stats = []
+    for company in Company.query.all():
+        company_stats.append({
+            'id': company.id,
+            'isim': company.isim or company.ad,
+            'aday_sayisi': Candidate.query.filter_by(sirket_id=company.id).count(),
+            'soru_sayisi': Question.query.filter_by(sirket_id=company.id).count(),
+        })
+    
+    return render_template('super_rapor.html', 
+                          stats=stats, 
+                          company_stats=company_stats)
+
+
+@admin_bp.route('/logs')
+@login_required
+@superadmin_required
+def admin_logs():
+    """Admin activity logs"""
+    from app.models.admin import AuditLog
+    
+    page = request.args.get('page', 1, type=int)
+    
+    try:
+        logs = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(page=page, per_page=50)
+    except:
+        logs = []
+    
+    return render_template('admin_logs.html', logs=logs)
+
+
+@admin_bp.route('/fraud-heatmap')
+@login_required
+@superadmin_required
+def fraud_heatmap():
+    """Fraud detection heatmap"""
+    return render_template('fraud_heatmap.html')
+
+
+@admin_bp.route('/raporlar')
+@login_required
+def raporlar():
+    """Company reports page"""
+    from app.models import Candidate
+    from datetime import datetime, timedelta
+    
+    sirket_id = session.get('sirket_id')
+    
+    # Basic stats
+    stats = {
+        'total': Candidate.query.filter_by(sirket_id=sirket_id).count() if sirket_id else 0,
+        'completed': Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='tamamlandi').count() if sirket_id else 0,
+        'pending': Candidate.query.filter_by(sirket_id=sirket_id, sinav_durumu='beklemede').count() if sirket_id else 0,
+    }
+    
+    return render_template('raporlar.html', stats=stats)
 
 
 # ══════════════════════════════════════════════════════════════
