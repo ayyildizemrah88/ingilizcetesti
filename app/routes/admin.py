@@ -401,6 +401,143 @@ def kullanicilar():
     return render_template('kullanicilar.html', kullanicilar=users)
 
 
+@admin_bp.route('/kullanici-ekle', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def kullanici_ekle():
+    """
+    Add new user
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import User, Company
+    from werkzeug.security import generate_password_hash
+    import string
+    import random
+    
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        ad_soyad = request.form.get('ad_soyad', '').strip()
+        rol = request.form.get('rol', 'customer')
+        sirket_id = request.form.get('sirket_id', type=int)
+        password = request.form.get('password', '')
+        
+        if not email or not ad_soyad:
+            flash("Email ve ad soyad zorunludur.", "danger")
+            companies = Company.query.filter_by(is_active=True).all()
+            return render_template('kullanici_form.html', sirketler=companies)
+        
+        # Check if email exists
+        if User.query.filter_by(email=email).first():
+            flash("Bu email adresi zaten kayıtlı.", "danger")
+            companies = Company.query.filter_by(is_active=True).all()
+            return render_template('kullanici_form.html', sirketler=companies)
+        
+        if not password:
+            password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+        
+        user = User(
+            email=email,
+            ad_soyad=ad_soyad,
+            password=generate_password_hash(password),
+            rol=rol,
+            sirket_id=sirket_id if rol != 'superadmin' else None,
+            is_active=True
+        )
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        flash(f"Kullanıcı oluşturuldu. Email: {email}, Şifre: {password}", "success")
+        return redirect(url_for('admin.kullanicilar'))
+    
+    companies = Company.query.filter_by(is_active=True).all()
+    return render_template('kullanici_form.html', sirketler=companies)
+
+
+@admin_bp.route('/kullanici/<int:id>/sil', methods=['POST'])
+@login_required
+@superadmin_required
+def kullanici_sil(id):
+    """
+    Delete user (soft delete)
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import User
+    
+    user = User.query.get_or_404(id)
+    user.is_active = False
+    db.session.commit()
+    
+    flash("Kullanıcı devre dışı bırakıldı.", "success")
+    return redirect(url_for('admin.kullanicilar'))
+
+
+@admin_bp.route('/demo-olustur', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def demo_olustur():
+    """
+    Create demo company with test data
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Company, User, Candidate
+    from werkzeug.security import generate_password_hash
+    import string
+    import random
+    
+    if request.method == 'POST':
+        demo_name = request.form.get('demo_name', 'Demo Şirket')
+        
+        # Create demo company
+        company = Company(
+            isim=demo_name,
+            ad=demo_name,
+            email=f"demo_{random.randint(1000,9999)}@skillstestcenter.com",
+            kredi=100,
+            is_active=True
+        )
+        db.session.add(company)
+        db.session.flush()
+        
+        # Create demo admin
+        demo_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        demo_email = f"demo{company.id}@skillstestcenter.com"
+        
+        admin = User(
+            email=demo_email,
+            password=generate_password_hash(demo_password),
+            ad_soyad=f"{demo_name} Admin",
+            rol='customer',
+            sirket_id=company.id,
+            is_active=True
+        )
+        db.session.add(admin)
+        
+        # Create some demo candidates
+        for i in range(5):
+            giris_kodu = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            candidate = Candidate(
+                ad_soyad=f"Demo Aday {i+1}",
+                email=f"aday{i+1}@demo.local",
+                giris_kodu=giris_kodu,
+                sirket_id=company.id
+            )
+            db.session.add(candidate)
+        
+        db.session.commit()
+        
+        flash(f"Demo şirket oluşturuldu. Email: {demo_email}, Şifre: {demo_password}", "success")
+        return redirect(url_for('admin.sirketler'))
+    
+    return render_template('demo_olustur.html')
+
+
 @admin_bp.route('/ayarlar', methods=['GET', 'POST'])
 @login_required
 @superadmin_required
@@ -504,6 +641,145 @@ def sirketler():
     
     companies = Company.query.order_by(Company.id.desc()).all()
     return render_template('sirketler.html', sirketler=companies)
+
+
+@admin_bp.route('/sirket-ekle', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def sirket_ekle():
+    """
+    Add new company
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Company, User
+    import string
+    import random
+    from werkzeug.security import generate_password_hash
+    
+    if request.method == 'POST':
+        isim = request.form.get('isim', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        telefon = request.form.get('telefon', '').strip()
+        adres = request.form.get('adres', '').strip()
+        
+        # Admin user details
+        admin_email = request.form.get('admin_email', '').strip().lower()
+        admin_password = request.form.get('admin_password', '')
+        
+        if not isim or not admin_email:
+            flash("Şirket adı ve admin email zorunludur.", "danger")
+            return render_template('sirket_form.html')
+        
+        # Create company
+        company = Company(
+            isim=isim,
+            ad=isim,  # Fallback
+            email=email,
+            telefon=telefon,
+            adres=adres,
+            kredi=10,  # Default credits
+            is_active=True
+        )
+        
+        db.session.add(company)
+        db.session.flush()  # Get the ID
+        
+        # Create admin user for the company
+        if not admin_password:
+            admin_password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+        
+        admin_user = User(
+            email=admin_email,
+            password=generate_password_hash(admin_password),
+            ad_soyad=f"{isim} Admin",
+            rol='customer',
+            sirket_id=company.id,
+            is_active=True
+        )
+        
+        db.session.add(admin_user)
+        db.session.commit()
+        
+        flash(f"Şirket oluşturuldu. Admin: {admin_email}, Şifre: {admin_password}", "success")
+        return redirect(url_for('admin.sirketler'))
+    
+    return render_template('sirket_form.html')
+
+
+@admin_bp.route('/sirket/<int:id>/duzenle', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def sirket_duzenle(id):
+    """
+    Edit company
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Company
+    
+    company = Company.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        company.isim = request.form.get('isim', '').strip()
+        company.ad = company.isim
+        company.email = request.form.get('email', '').strip()
+        company.telefon = request.form.get('telefon', '').strip()
+        company.adres = request.form.get('adres', '').strip()
+        company.is_active = request.form.get('is_active') == 'on'
+        
+        db.session.commit()
+        flash("Şirket güncellendi.", "success")
+        return redirect(url_for('admin.sirketler'))
+    
+    return render_template('sirket_form.html', sirket=company)
+
+
+@admin_bp.route('/sirket/<int:id>/sil', methods=['POST'])
+@login_required
+@superadmin_required
+def sirket_sil(id):
+    """
+    Delete company (soft delete)
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Company
+    
+    company = Company.query.get_or_404(id)
+    company.is_active = False
+    db.session.commit()
+    
+    flash("Şirket devre dışı bırakıldı.", "success")
+    return redirect(url_for('admin.sirketler'))
+
+
+@admin_bp.route('/sirket/<int:id>/kredi-yukle', methods=['POST'])
+@login_required
+@superadmin_required
+def sirket_kredi_yukle(id):
+    """
+    Add credits to company
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Company
+    
+    company = Company.query.get_or_404(id)
+    miktar = int(request.form.get('miktar', 0))
+    
+    if miktar > 0:
+        company.kredi = (company.kredi or 0) + miktar
+        db.session.commit()
+        flash(f"{miktar} kredi yüklendi. Yeni bakiye: {company.kredi}", "success")
+    else:
+        flash("Geçersiz miktar.", "danger")
+    
+    return redirect(url_for('admin.sirketler'))
 
 
 @admin_bp.route('/super-rapor')
