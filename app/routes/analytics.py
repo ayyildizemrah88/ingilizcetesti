@@ -157,27 +157,19 @@ def question_analytics():
 @analytics_bp.route('/fraud')
 def fraud_dashboard():
     """Fraud detection dashboard"""
-    from app.models.admin import FraudCase
     from app.models import Candidate
-    import json
     
-    # Get flagged cases
-    flagged_cases = FraudCase.query.filter_by(status='pending').order_by(FraudCase.created_at.desc()).all()
-    for case in flagged_cases:
-        case.reasons = json.loads(case.reasons) if case.reasons else []
-    
-    # Stats
+    # FraudCase model doesn't exist yet, show placeholder stats
     stats = {
-        'flagged': FraudCase.query.filter_by(status='pending').count(),
-        'plagiarism': FraudCase.query.filter(FraudCase.similarity_score > 75).count(),
-        'ai_detected': FraudCase.query.filter(FraudCase.ai_probability > 0.7).count(),
-        'proctoring': FraudCase.query.filter(FraudCase.proctoring_violations > 0).count()
+        'flagged': 0,
+        'plagiarism': 0,
+        'ai_detected': 0,
+        'proctoring': 0
     }
     
-    # Similarity pairs (placeholder)
+    # Empty lists for placeholders
+    flagged_cases = []
     similarity_pairs = []
-    
-    # Proctoring violations (placeholder)
     proctoring_violations = []
     
     return render_template('fraud_dashboard.html',
@@ -283,36 +275,12 @@ def update_question_difficulty(question_id):
 
 @analytics_bp.route('/api/fraud-cases/<int:case_id>/clear', methods=['POST'])
 def clear_fraud_case(case_id):
-    """Mark fraud case as cleared"""
-    from app.models.admin import FraudCase
-    from flask_login import current_user
-    
-    case = FraudCase.query.get_or_404(case_id)
-    case.status = 'cleared'
-    case.reviewed_by = current_user.id
-    case.reviewed_at = datetime.utcnow()
-    db.session.commit()
-    
-    return jsonify({'status': 'ok'})
+    """Mark fraud case as cleared - FraudCase model not implemented yet"""
+    return jsonify({'status': 'error', 'message': 'FraudCase feature not implemented yet'}), 501
 
 
 @analytics_bp.route('/api/fraud-cases/<int:case_id>/confirm', methods=['POST'])
 def confirm_fraud_case(case_id):
-    """Confirm fraud case and invalidate exam"""
-    from app.models.admin import FraudCase
-    from app.models import Candidate
-    from flask_login import current_user
-    
-    case = FraudCase.query.get_or_404(case_id)
-    case.status = 'confirmed'
-    case.reviewed_by = current_user.id
-    case.reviewed_at = datetime.utcnow()
-    
-    # Invalidate candidate's exam
-    candidate = Candidate.query.get(case.candidate_id)
-    if candidate:
-        candidate.sinav_durumu = 'geçersiz'
-    
-    db.session.commit()
-    
-    return jsonify({'status': 'ok'})
+    """Confirm fraud case - FraudCase model not implemented yet"""
+    return jsonify({'status': 'error', 'message': 'FraudCase feature not implemented yet'}), 501
+
