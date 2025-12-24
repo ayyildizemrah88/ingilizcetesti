@@ -194,6 +194,101 @@ def aday_detay(id):
     return render_template('aday_detay.html', aday=candidate)
 
 
+@admin_bp.route('/aday/<int:id>/sil', methods=['POST'])
+@login_required
+def aday_sil(id):
+    """
+    Delete candidate (soft delete)
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Candidate
+    
+    candidate = Candidate.query.get_or_404(id)
+    
+    # Check company access
+    if candidate.sirket_id != session.get('sirket_id') and session.get('rol') != 'superadmin':
+        flash("Bu adaya erişim yetkiniz yok.", "danger")
+        return redirect(url_for('admin.adaylar'))
+    
+    candidate.is_deleted = True
+    db.session.commit()
+    
+    flash("Aday silindi.", "success")
+    return redirect(url_for('admin.adaylar'))
+
+
+@admin_bp.route('/bulk-upload', methods=['POST'])
+@login_required
+def bulk_upload():
+    """
+    Bulk upload candidates from Excel file
+    ---
+    tags:
+      - Admin
+    """
+    from app.models import Candidate
+    import pandas as pd
+    import string
+    import random
+    import io
+    
+    if 'file' not in request.files:
+        flash("Dosya seçilmedi.", "danger")
+        return redirect(url_for('admin.adaylar'))
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        flash("Dosya seçilmedi.", "danger")
+        return redirect(url_for('admin.adaylar'))
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        flash("Sadece Excel dosyaları (.xlsx, .xls) kabul edilir.", "danger")
+        return redirect(url_for('admin.adaylar'))
+    
+    try:
+        # Read Excel file
+        df = pd.read_excel(io.BytesIO(file.read()))
+        
+        # Check required column
+        if 'ad_soyad' not in df.columns:
+            flash("Excel dosyasında 'ad_soyad' kolonu bulunamadı.", "danger")
+            return redirect(url_for('admin.adaylar'))
+        
+        sirket_id = session.get('sirket_id')
+        added_count = 0
+        
+        for _, row in df.iterrows():
+            ad_soyad = str(row.get('ad_soyad', '')).strip()
+            if not ad_soyad or ad_soyad == 'nan':
+                continue
+            
+            # Generate unique code
+            giris_kodu = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            
+            candidate = Candidate(
+                ad_soyad=ad_soyad,
+                email=str(row.get('email', '')).strip() if pd.notna(row.get('email')) else None,
+                tc_kimlik=str(row.get('tc_kimlik', '')).strip() if pd.notna(row.get('tc_kimlik')) else None,
+                giris_kodu=giris_kodu,
+                sirket_id=sirket_id
+            )
+            
+            db.session.add(candidate)
+            added_count += 1
+        
+        db.session.commit()
+        flash(f"{added_count} aday başarıyla eklendi.", "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Dosya işlenirken hata oluştu: {str(e)}", "danger")
+    
+    return redirect(url_for('admin.adaylar'))
+
+
 @admin_bp.route('/sorular')
 @login_required
 @superadmin_required
