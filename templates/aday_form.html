@@ -42,6 +42,23 @@
                         <!-- CSRF Token for Security -->
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+                        <!-- Superadmin için Şirket Seçimi -->
+                        {% if session.rol in ['superadmin', 'super_admin'] and sirketler %}
+                        <div class="mb-3">
+                            <label for="sirket_id" class="form-label">Şirket *</label>
+                            <select class="form-select" id="sirket_id" name="sirket_id" required>
+                                <option value="">Şirket Seçin...</option>
+                                {% for sirket in sirketler %}
+                                <option value="{{ sirket.id }}" {% if aday and aday.sirket_id==sirket.id %}selected{%
+                                    endif %}>
+                                    {{ sirket.isim }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Adayın hangi şirkete ait olacağını seçin.</div>
+                        </div>
+                        {% endif %}
+
                         <!-- Ad Soyad -->
                         <div class="mb-3">
                             <label for="ad_soyad" class="form-label">Ad Soyad *</label>
