@@ -12,22 +12,22 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item"><a class="nav-link active" href="/admin/dashboard"><i
-                            class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
+                                class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/adaylar"><i
-                            class="bi bi-people me-1"></i>Adaylar</a></li>
+                                class="bi bi-people me-1"></i>Adaylar</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/sorular"><i
-                            class="bi bi-question-circle me-1"></i>Sorular</a></li>
+                                class="bi bi-question-circle me-1"></i>Sorular</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/sablonlar"><i
-                            class="bi bi-file-earmark-text me-1"></i>Şablonlar</a></li>
+                                class="bi bi-file-earmark-text me-1"></i>Şablonlar</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/raporlar"><i
-                            class="bi bi-graph-up me-1"></i>Raporlar</a></li>
+                                class="bi bi-graph-up me-1"></i>Raporlar</a></li>
                 {% if session.rol in ['super_admin', 'sirket_admin', 'superadmin'] %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"><i
                             class="bi bi-gear me-1"></i>Yönetim</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="/admin/kullanicilar"><i
-                                    class="bi bi-person-badge me-1"></i>Kullanıcılar</a></li>
+                                        class="bi bi-person-badge me-1"></i>Kullanıcılar</a></li>
                         <li><a class="dropdown-item" href="/admin/ayarlar"><i class="bi bi-sliders me-1"></i>Ayarlar</a>
                         </li>
                         <li><a class="dropdown-item" href="/credits/"><i class="bi bi-coin me-1"></i>Kredi Yönetimi</a>
@@ -36,33 +36,33 @@
                             <hr class="dropdown-divider">
                         </li>
                         <li><a class="dropdown-item" href="/question-import/import"><i
-                                    class="bi bi-upload me-1"></i>Soru İçe Aktar</a></li>
+                                        class="bi bi-upload me-1"></i>Soru İçe Aktar</a></li>
                         <li><a class="dropdown-item" href="/question-import/download-template"><i
-                                    class="bi bi-file-earmark-excel me-1"></i>Soru Şablonu İndir</a></li>
+                                        class="bi bi-file-earmark-excel me-1"></i>Soru Şablonu İndir</a></li>
                         {% if session.rol in ['super_admin', 'superadmin'] %}
                         <li>
                             <hr class="dropdown-divider">
                         </li>
                         <li><a class="dropdown-item" href="/admin/sirketler"><i
-                                    class="bi bi-building me-1"></i>Şirketler</a></li>
+                                        class="bi bi-building me-1"></i>Şirketler</a></li>
                         <li><a class="dropdown-item" href="/admin/super-rapor"><i
-                                    class="bi bi-bar-chart me-1"></i>Platform Raporu</a></li>
+                                        class="bi bi-bar-chart me-1"></i>Platform Raporu</a></li>
                         <li>
                             <hr class="dropdown-divider">
                         </li>
                         <li><a class="dropdown-item" href="/analytics/dashboard"><i
-                                    class="bi bi-graph-up-arrow me-1"></i>Analytics Dashboard</a></li>
+                                        class="bi bi-graph-up-arrow me-1"></i>Analytics Dashboard</a></li>
                         <li><a class="dropdown-item" href="/analytics/questions"><i
-                                    class="bi bi-clipboard-data me-1"></i>Soru Analizi</a></li>
+                                        class="bi bi-clipboard-data me-1"></i>Soru Analizi</a></li>
                         <li><a class="dropdown-item" href="/analytics/fraud"><i
-                                    class="bi bi-shield-exclamation me-1"></i>Fraud Tespiti</a></li>
+                                        class="bi bi-shield-exclamation me-1"></i>Fraud Tespiti</a></li>
                         <li>
                             <hr class="dropdown-divider">
                         </li>
                         <li><a class="dropdown-item" href="/admin/veri-yonetimi"><i
-                                    class="bi bi-database-gear me-1"></i>Veri Yönetimi</a></li>
+                                        class="bi bi-database-gear me-1"></i>Veri Yönetimi</a></li>
                         <li><a class="dropdown-item" href="/admin/fraud-heatmap"><i
-                                    class="bi bi-exclamation-triangle me-1"></i>Fraud Heatmap</a></li>
+                                        class="bi bi-exclamation-triangle me-1"></i>Fraud Heatmap</a></li>
                         <li><a class="dropdown-item" href="/admin/logs"><i class="bi bi-list-ul me-1"></i>Admin Logs</a>
                         </li>
                         {% endif %}
@@ -86,7 +86,7 @@
                             <hr class="dropdown-divider">
                         </li>
                         <li><a class="dropdown-item text-danger" href="/logout"><i
-                                    class="bi bi-box-arrow-right me-1"></i>Çıkış</a></li>
+                                        class="bi bi-box-arrow-right me-1"></i>Çıkış</a></li>
                     </ul>
                 </li>
             </ul>
@@ -151,13 +151,13 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-3">
-                        <a href="/admin/aday-ekle" class="btn btn-outline-primary w-100 py-3">
+                        <a href="/admin/aday/ekle" class="btn btn-outline-primary w-100 py-3">
                             <i class="bi bi-person-plus d-block mb-2" style="font-size: 1.5rem;"></i>
                             Yeni Aday Ekle
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="/admin/soru-ekle" class="btn btn-outline-success w-100 py-3">
+                        <a href="/admin/soru/ekle" class="btn btn-outline-success w-100 py-3">
                             <i class="bi bi-plus-circle d-block mb-2" style="font-size: 1.5rem;"></i>
                             Yeni Soru Ekle
                         </a>
