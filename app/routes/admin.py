@@ -915,6 +915,19 @@ def raporlar():
 
     sirket_id = session.get('sirket_id')
 
+    # Base query
+    if sirket_id:
+        base_query = Candidate.query.filter_by(sirket_id=sirket_id, is_deleted=False)
+    else:
+        base_query = Candidate.query.filter_by(is_deleted=False)
+
+    # Stats for template
+    stats = {
+        'total': base_query.count(),
+        'completed': base_query.filter_by(sinav_durumu='tamamlandi').count(),
+        'pending': base_query.filter_by(sinav_durumu='beklemede').count()
+    }
+
     # Get completed exams
     if sirket_id:
         completed = Candidate.query.filter_by(
@@ -928,7 +941,7 @@ def raporlar():
             is_deleted=False
         ).order_by(Candidate.bitis_tarihi.desc()).limit(50).all()
 
-    return render_template('raporlar.html', completed=completed)
+    return render_template('raporlar.html', completed=completed, stats=stats)
 
 
 @admin_bp.route('/super-rapor')
@@ -1060,7 +1073,26 @@ def veri_yonetimi():
     tags:
       - Admin
     """
-    return render_template('veri_yonetimi.html')
+    from app.models import Candidate, Question, AuditLog
+
+    # Get statistics
+    stats = {
+        'total_candidates': Candidate.query.filter_by(is_deleted=False).count(),
+        'total_questions': Question.query.filter_by(is_active=True).count(),
+        'total_answers': 0,  # ExamAnswer model if exists
+        'speaking_recordings': 0,  # SpeakingRecording model if exists
+        'audit_logs': AuditLog.query.count() if AuditLog else 0,
+        'db_size_mb': 0  # Would need DB query to calculate
+    }
+
+    # Empty lists for placeholders (these features may not be implemented yet)
+    backups = []
+    deletion_requests = []
+
+    return render_template('veri_yonetimi.html', 
+                          stats=stats, 
+                          backups=backups, 
+                          deletion_requests=deletion_requests)
 
 
 @admin_bp.route('/fraud-heatmap')
