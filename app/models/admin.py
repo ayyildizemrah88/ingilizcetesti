@@ -17,16 +17,16 @@ class FraudCase(db.Model):
 
     # Detection details
     similarity_score = db.Column(db.Float)
-    similar_to_id = db.Column(db.Integer)  # ID of similar candidate
+    similar_to_id = db.Column(db.Integer)
     ai_probability = db.Column(db.Float)
     proctoring_violations = db.Column(db.Integer, default=0)
 
     # Reasons (JSON array)
-    reasons = db.Column(db.Text)  # JSON array of reason strings
+    reasons = db.Column(db.Text)
 
     # Status
-    status = db.Column(db.String(20), default='pending')  # pending, cleared, confirmed
-    reviewed_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    status = db.Column(db.String(20), default='pending')
+    reviewed_by = db.Column(db.Integer, db.ForeignKey('kullanicilar.id'))
     reviewed_at = db.Column(db.DateTime)
     notes = db.Column(db.Text)
 
@@ -34,7 +34,7 @@ class FraudCase(db.Model):
 
     # Relationships
     candidate = db.relationship('Candidate', backref='fraud_cases')
-    reviewer = db.relationship('User', backref='reviewed_cases')
+    reviewer = db.relationship('User', foreign_keys=[reviewed_by], backref='reviewed_cases')
 
     def __repr__(self):
         return f'<FraudCase {self.id} - {self.status}>'
@@ -53,11 +53,10 @@ class ExamSchedule(db.Model):
     reminder_sent = db.Column(db.Boolean, default=False)
     reminder_sent_at = db.Column(db.DateTime)
 
-    # Status
-    status = db.Column(db.String(20), default='scheduled')  # scheduled, started, completed, missed
+    status = db.Column(db.String(20), default='scheduled')
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey('kullanicilar.id'))
 
     # Relationships
     candidate = db.relationship('Candidate', backref='schedules')
@@ -77,15 +76,13 @@ class LearningResource(db.Model):
     description = db.Column(db.Text)
     url = db.Column(db.String(500))
 
-    # Categorization
-    skill = db.Column(db.String(50), index=True)  # grammar, vocabulary, reading, etc.
-    cefr_level = db.Column(db.String(10), index=True)  # A1-C2
-    resource_type = db.Column(db.String(50))  # video, article, quiz, book
-    topic = db.Column(db.String(100))  # specific topic like "present_perfect"
+    skill = db.Column(db.String(50), index=True)
+    cefr_level = db.Column(db.String(10), index=True)
+    resource_type = db.Column(db.String(50))
+    topic = db.Column(db.String(100))
 
-    # Metadata
     duration_minutes = db.Column(db.Integer)
-    difficulty_rating = db.Column(db.Float)  # 1-5 stars
+    difficulty_rating = db.Column(db.Float)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -100,26 +97,23 @@ class BulkImport(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     company_id = db.Column(db.Integer, db.ForeignKey('sirketler.id'), index=True)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey('kullanicilar.id'))
 
-    # File info
     filename = db.Column(db.String(255))
 
-    # Results
     total_count = db.Column(db.Integer, default=0)
     success_count = db.Column(db.Integer, default=0)
     error_count = db.Column(db.Integer, default=0)
-    errors = db.Column(db.Text)  # JSON array of error messages
+    errors = db.Column(db.Text)
 
-    # Status
-    status = db.Column(db.String(20), default='processing')  # processing, completed, failed
+    status = db.Column(db.String(20), default='processing')
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime)
 
     # Relationships
     company = db.relationship('Company', backref='imports')
-    creator = db.relationship('User', backref='imports')
+    creator = db.relationship('User', foreign_keys=[created_by], backref='imports')
 
     def __repr__(self):
         return f'<BulkImport {self.id} - {self.status}>'
@@ -132,14 +126,14 @@ class CreditTransaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey('sirketler.id'), index=True)
 
-    amount = db.Column(db.Integer, nullable=False)  # Positive = add, negative = use
-    transaction_type = db.Column(db.String(20), index=True)  # purchase, usage, refund, bonus
+    amount = db.Column(db.Integer, nullable=False)
+    transaction_type = db.Column(db.String(20), index=True)
 
-    payment_id = db.Column(db.String(255))  # External payment reference
+    payment_id = db.Column(db.String(255))
     description = db.Column(db.Text)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey('kullanicilar.id'))
 
     # Relationships
     company = db.relationship('Company', backref='credit_transactions')
