@@ -51,9 +51,9 @@
 
                         <!-- Email -->
                         <div class="mb-3">
-                            <label for="email" class="form-label">E-posta *</label>
+                            <label for="email" class="form-label">Şirket E-posta</label>
                             <input type="email" class="form-control" id="email" name="email"
-                                value="{{ sirket.email if sirket else '' }}" required>
+                                value="{{ sirket.email if sirket else '' }}" placeholder="sirket@ornek.com">
                         </div>
 
                         <!-- Telefon -->
@@ -74,7 +74,7 @@
                         <!-- Başlangıç Kredisi (sadece yeni şirket için) -->
                         <div class="mb-3">
                             <label for="kredi" class="form-label">Başlangıç Kredisi</label>
-                            <input type="number" class="form-control" id="kredi" name="kredi" value="0" min="0">
+                            <input type="number" class="form-control" id="kredi" name="kredi" value="10" min="0">
                             <div class="form-text">Her sınav 1 kredi tüketir.</div>
                         </div>
 
@@ -87,14 +87,22 @@
                         </h6>
 
                         <div class="mb-3">
-                            <label for="admin_ad_soyad" class="form-label">Admin Ad Soyad *</label>
-                            <input type="text" class="form-control" id="admin_ad_soyad" name="admin_ad_soyad" required>
+                            <label for="admin_email" class="form-label">Admin E-posta *</label>
+                            <input type="email" class="form-control" id="admin_email" name="admin_email" required
+                                placeholder="admin@sirket.com">
+                            <div class="form-text">Bu e-posta ile müşteri admin panele giriş yapabilecek.</div>
                         </div>
 
                         <div class="mb-3">
-                            <label for="admin_sifre" class="form-label">Admin Şifre *</label>
-                            <input type="password" class="form-control" id="admin_sifre" name="admin_sifre" required
-                                minlength="8" placeholder="En az 8 karakter">
+                            <label for="admin_ad_soyad" class="form-label">Admin Ad Soyad *</label>
+                            <input type="text" class="form-control" id="admin_ad_soyad" name="admin_ad_soyad" required
+                                placeholder="Admin kullanıcının adı soyadı">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="admin_password" class="form-label">Admin Şifre *</label>
+                            <input type="password" class="form-control" id="admin_password" name="admin_password"
+                                required minlength="8" placeholder="En az 8 karakter">
                             <div class="form-text">Bu şifre ile müşteri admin panele giriş yapabilecek.</div>
                         </div>
                         {% endif %}
