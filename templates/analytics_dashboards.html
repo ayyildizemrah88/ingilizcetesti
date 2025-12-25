@@ -1,284 +1,295 @@
-{% extends "dashboard.html" %}
+{% extends "base.html" %}
 {% block title %}Analytics Dashboard - Skills Test Center{% endblock %}
 
+{% block navbar %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/admin/dashboard"><i class="bi bi-mortarboard-fill me-2"></i>Skills Test
+            Center</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="/admin/dashboard"><i
+                            class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/adaylar"><i
+                            class="bi bi-people me-1"></i>Adaylar</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/sorular"><i
+                            class="bi bi-question-circle me-1"></i>Sorular</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/analytics/dashboard"><i
+                            class="bi bi-graph-up-arrow me-1"></i>Analytics</a></li>
+            </ul>
+            <ul class="navbar-nav">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-1"></i>{{ session.ad_soyad }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><span class="dropdown-item-text text-muted">{{ session.rol }}</span></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item text-danger" href="/logout"><i
+                                    class="bi bi-box-arrow-right me-1"></i>Çıkış</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+{% endblock %}
+
 {% block content %}
-<div class="row">
-    <!-- Header -->
-    <div class="col-12 mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <h2><i class="bi bi-speedometer2 me-2"></i>Analytics Dashboard</h2>
-            <div class="btn-group">
-                <button class="btn btn-outline-primary active" data-period="week">Hafta</button>
-                <button class="btn btn-outline-primary" data-period="month">Ay</button>
-                <button class="btn btn-outline-primary" data-period="year">Yıl</button>
-            </div>
-        </div>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="bi bi-graph-up-arrow me-2"></i>Analytics Dashboard</h3>
+        <span class="badge bg-primary"><i class="bi bi-clock me-1"></i>Gerçek Zamanlı</span>
     </div>
 
-    <!-- Real-time Stats -->
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-primary text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <div class="display-4">{{ stats.active_exams }}</div>
-                        <p class="mb-0">Aktif Sınav</p>
-                    </div>
-                    <i class="bi bi-play-circle fs-1 opacity-50"></i>
+    <!-- Live Stats -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 bg-primary text-white">
+                <div class="card-body text-center">
+                    <h2>{{ stats.active_exams if stats else 0 }}</h2>
+                    <small>Aktif Sınav</small>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-success text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <div class="display-4">{{ stats.today_completed }}</div>
-                        <p class="mb-0">Bugün Tamamlanan</p>
-                    </div>
-                    <i class="bi bi-check-circle fs-1 opacity-50"></i>
+        <div class="col-md-3">
+            <div class="card border-0 bg-success text-white">
+                <div class="card-body text-center">
+                    <h2>{{ stats.today_completed if stats else 0 }}</h2>
+                    <small>Bugün Tamamlanan</small>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-info text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <div class="display-4">{{ stats.total_candidates }}</div>
-                        <p class="mb-0">Toplam Aday</p>
-                    </div>
-                    <i class="bi bi-people fs-1 opacity-50"></i>
+        <div class="col-md-3">
+            <div class="card border-0 bg-info text-white">
+                <div class="card-body text-center">
+                    <h2>{{ stats.total_candidates if stats else 0 }}</h2>
+                    <small>Toplam Aday</small>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-warning">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <div class="display-4">{{ stats.avg_score|round(1) }}%</div>
-                        <p class="mb-0">Ortalama Puan</p>
-                    </div>
-                    <i class="bi bi-graph-up fs-1 opacity-50"></i>
+        <div class="col-md-3">
+            <div class="card border-0 bg-warning text-dark">
+                <div class="card-body text-center">
+                    <h2>{{ '%.1f'|format(stats.avg_score if stats else 0) }}%</h2>
+                    <small>Ortalama Puan</small>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Charts Row 1 -->
-    <div class="col-lg-8 mt-4">
-        <div class="card border-0 shadow">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">Sınav Tamamlama Trendi</h5>
-            </div>
-            <div class="card-body">
-                <canvas id="completionTrend" height="100"></canvas>
+    <div class="row g-4">
+        <!-- CEFR Distribution Chart -->
+        <div class="col-md-6">
+            <div class="card border-0 h-100">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>CEFR Seviye Dağılımı</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="cefrChart"></canvas>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-lg-4 mt-4">
-        <div class="card border-0 shadow h-100">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">CEFR Dağılımı</h5>
-            </div>
-            <div class="card-body">
-                <canvas id="cefrPie" height="180"></canvas>
+
+        <!-- Trend Chart -->
+        <div class="col-md-6">
+            <div class="card border-0 h-100">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Son 7 Gün Trendi</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="trendChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Charts Row 2 -->
-    <div class="col-lg-6 mt-4">
-        <div class="card border-0 shadow">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">Şirket Bazlı Performans</h5>
-            </div>
-            <div class="card-body">
-                <canvas id="companyChart" height="200"></canvas>
+    <div class="row g-4 mt-2">
+        <!-- Company Comparison -->
+        <div class="col-md-6">
+            <div class="card border-0 h-100">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-building me-2"></i>Şirket Karşılaştırması</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="companyChart"></canvas>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-lg-6 mt-4">
-        <div class="card border-0 shadow">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">Beceri Ortalamaları</h5>
-            </div>
-            <div class="card-body">
-                <canvas id="skillsRadar" height="200"></canvas>
+
+        <!-- Skill Averages -->
+        <div class="col-md-6">
+            <div class="card border-0 h-100">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-star me-2"></i>Yetenek Ortalamaları</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="skillChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Top Performers -->
-    <div class="col-lg-6 mt-4">
-        <div class="card border-0 shadow">
-            <div class="card-header bg-white d-flex justify-content-between">
-                <h5 class="mb-0">En Yüksek Puanlar</h5>
-                <span class="badge bg-success">Bu Hafta</span>
-            </div>
-            <div class="card-body p-0">
+    <div class="card border-0 mt-4">
+        <div class="card-header bg-white">
+            <h6 class="mb-0"><i class="bi bi-trophy me-2"></i>En Yüksek Puanlar (Son 7 Gün)</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
                 <table class="table table-hover mb-0">
-                    <tbody>
-                        {% for candidate in top_performers %}
+                    <thead class="table-light">
                         <tr>
-                            <td>
-                                <span class="badge bg-primary me-2">{{ loop.index }}</span>
-                                {{ candidate.ad_soyad }}
-                            </td>
-                            <td class="text-end">
-                                <span class="badge bg-success">{{ candidate.puan|round(1) }}%</span>
-                            </td>
+                            <th>#</th>
+                            <th>Ad Soyad</th>
+                            <th>Puan</th>
+                            <th>Seviye</th>
+                            <th>Tarih</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if top_performers %}
+                        {% for c in top_performers %}
+                        <tr>
+                            <td><span class="badge bg-warning">{{ loop.index }}</span></td>
+                            <td><strong>{{ c.ad_soyad }}</strong></td>
+                            <td><span class="badge bg-primary">{{ '%.1f'|format(c.puan or 0) }}%</span></td>
+                            <td><span class="badge bg-success">{{ c.seviye_sonuc or '-' }}</span></td>
+                            <td>{{ c.bitis_tarihi.strftime('%d.%m.%Y') if c.bitis_tarihi else '-' }}</td>
                         </tr>
                         {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">Henüz veri yok</td>
+                        </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Alerts -->
-    <div class="col-lg-6 mt-4">
-        <div class="card border-0 shadow">
-            <div class="card-header bg-white d-flex justify-content-between">
-                <h5 class="mb-0">Uyarılar</h5>
-                <span class="badge bg-danger">{{ alerts|length }}</span>
+    <!-- System Alerts -->
+    {% if alerts %}
+    <div class="card border-0 mt-4 border-warning">
+        <div class="card-header bg-warning text-dark">
+            <h6 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Sistem Uyarıları</h6>
+        </div>
+        <div class="card-body">
+            {% for alert in alerts %}
+            <div class="alert alert-{{ alert.type or 'warning' }} mb-2">
+                <i class="bi bi-{{ alert.icon or 'info-circle' }} me-2"></i>{{ alert.message }}
             </div>
-            <div class="card-body p-0">
-                <div class="list-group list-group-flush">
-                    {% for alert in alerts %}
-                    <div class="list-group-item d-flex align-items-center">
-                        <i class="bi bi-exclamation-triangle text-{{ alert.severity }} me-3"></i>
-                        <div>
-                            <p class="mb-0">{{ alert.message }}</p>
-                            <small class="text-muted">{{ alert.time }}</small>
-                        </div>
-                    </div>
-                    {% endfor %}
-                    {% if not alerts %}
-                    <div class="list-group-item text-center text-muted py-4">
-                        <i class="bi bi-check-circle fs-3"></i>
-                        <p class="mb-0 mt-2">Uyarı yok</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
+            {% endfor %}
         </div>
     </div>
-
-    <!-- System Health -->
-    <div class="col-12 mt-4">
-        <div class="card border-0 shadow">
-            <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-heart-pulse me-2"></i>Sistem Durumu</h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-4">
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center">
-                            <span class="badge bg-success p-2 me-3"><i class="bi bi-server"></i></span>
-                            <div>
-                                <h6 class="mb-0">API</h6>
-                                <small class="text-success">Çalışıyor</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center">
-                            <span class="badge bg-success p-2 me-3"><i class="bi bi-database"></i></span>
-                            <div>
-                                <h6 class="mb-0">Database</h6>
-                                <small class="text-success">{{ stats.db_response_time }}ms</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center">
-                            <span class="badge bg-success p-2 me-3"><i class="bi bi-cpu"></i></span>
-                            <div>
-                                <h6 class="mb-0">Celery</h6>
-                                <small class="text-success">{{ stats.celery_queue }} görev</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center">
-                            <span class="badge bg-success p-2 me-3"><i class="bi bi-hdd"></i></span>
-                            <div>
-                                <h6 class="mb-0">Redis</h6>
-                                <small class="text-success">Bağlı</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% endif %}
 </div>
 
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Completion Trend
-    new Chart(document.getElementById('completionTrend'), {
-        type: 'line',
-        data: {
-            labels: {{ trend_labels| tojson | safe }},
-        datasets: [{
-            label: 'Tamamlanan',
-            data: {{ trend_data| tojson | safe }},
-        borderColor: '#667eea',
-        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-        fill: true,
-        tension: 0.4
-        }]
-    },
-        options: { responsive: true, plugins: { legend: { display: false } } }
-});
-
-    // CEFR Pie
-    new Chart(document.getElementById('cefrPie'), {
+    // CEFR Distribution Chart
+    const cefrCtx = document.getElementById('cefrChart').getContext('2d');
+    new Chart(cefrCtx, {
         type: 'doughnut',
         data: {
             labels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
             datasets: [{
-                data: {{ cefr_distribution| tojson | safe }
+                data: {{ cefr_distribution | tojson if cefr_distribution else [0, 0, 0, 0, 0, 0]
+        }
     },
-        backgroundColor: ['#6c757d', '#17a2b8', '#28a745', '#ffc107', '#fd7e14', '#dc3545']
-        }]
+        backgroundColor: [
+        '#dc3545', '#fd7e14', '#ffc107', '#28a745', '#17a2b8', '#6f42c1'
+    ]
+            }]
+        },
+        options: {
+        responsive: true,
+        maintainAspectRatio: true
     }
-});
+    });
 
-    // Company Chart
-    new Chart(document.getElementById('companyChart'), {
+    // Trend Chart
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: {{ trend_labels | tojson if trend_labels else[] }},
+    datasets: [{
+        label: 'Tamamlanan Sınav',
+        data: {{ trend_data | tojson if trend_data else[] }},
+    borderColor: '#0d6efd',
+        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+            fill: true,
+                tension: 0.4
+            }]
+        },
+    options: {
+        responsive: true,
+            maintainAspectRatio: true,
+                scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+    });
+
+    // Company Comparison Chart
+    const companyCtx = document.getElementById('companyChart').getContext('2d');
+    new Chart(companyCtx, {
         type: 'bar',
         data: {
-            labels: {{ company_names| tojson | safe }},
-        datasets: [{
-            label: 'Ortalama Puan',
-            data: {{ company_scores| tojson | safe }},
-        backgroundColor: '#667eea'
-        }]
-    },
-        options: { scales: { y: { beginAtZero: true, max: 100 } } }
-});
+            labels: {{ company_names | tojson if company_names else[] }},
+    datasets: [{
+        label: 'Ortalama Puan',
+        data: {{ company_scores | tojson if company_scores else[] }},
+    backgroundColor: '#0d6efd'
+            }]
+        },
+    options: {
+        responsive: true,
+            maintainAspectRatio: true,
+                scales: {
+            y: {
+                beginAtZero: true,
+                    max: 100
+            }
+        }
+    }
+    });
 
-    // Skills Radar
-    new Chart(document.getElementById('skillsRadar'), {
+    // Skill Averages Chart
+    const skillCtx = document.getElementById('skillChart').getContext('2d');
+    new Chart(skillCtx, {
         type: 'radar',
         data: {
             labels: ['Grammar', 'Vocabulary', 'Reading', 'Listening', 'Speaking', 'Writing'],
             datasets: [{
                 label: 'Ortalama',
-                data: {{ skill_averages| tojson | safe }
+                data: {{ skill_averages | tojson if skill_averages else [0, 0, 0, 0, 0, 0]
+        }
     },
-        backgroundColor: 'rgba(102, 126, 234, 0.2)',
-        borderColor: '#667eea'
-        }]
-    },
-        options: { scales: { r: { beginAtZero: true, max: 100 } } }
-});
+        borderColor: '#0d6efd',
+        backgroundColor: 'rgba(13, 110, 253, 0.2)'
+            }]
+        },
+        options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+            r: {
+                beginAtZero: true,
+                max: 100
+            }
+        }
+    }
+    });
 </script>
 {% endblock %}
