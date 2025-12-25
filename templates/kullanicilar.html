@@ -16,27 +16,31 @@
                         <th>ID</th>
                         <th>Ad Soyad</th>
                         <th>Email</th>
-                        <th>Rol</th>{% if session.rol == 'super_admin' %}<th>Şirket</th>{% endif %}<th>İşlemler</th>
+                        <th>Rol</th>
+                        {% if session.rol == 'superadmin' %}<th>Şirket</th>{% endif %}
+                        <th>İşlemler</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for k in kullanicilar %}
                     <tr>
-                        <td>{{ k[0] if k is not mapping else k.id }}</td>
-                        <td><strong>{{ k[5] if k is not mapping else k.ad_soyad }}</strong></td>
-                        <td>{{ k[1] if k is not mapping else k.kadi }}</td>
+                        <td>{{ k.id }}</td>
+                        <td><strong>{{ k.ad_soyad }}</strong></td>
+                        <td>{{ k.email }}</td>
                         <td>
-                            {% set rol = k[3] if k is not mapping else k.rol %}
-                            <span
-                                class="badge bg-{{ 'danger' if rol == 'super_admin' else 'primary' if rol == 'sirket_admin' else 'info' }}">{{
-                                rol }}</span>
+                            <span class="badge bg-{{ 'danger' if k.rol == 'superadmin' else 'primary' if k.rol == 'customer' else 'info' }}">
+                                {{ k.rol }}
+                            </span>
                         </td>
-                        {% if session.rol == 'super_admin' %}
-                        <td>{{ k.sirket_isim if k is mapping else '-' }}</td>
+                        {% if session.rol == 'superadmin' %}
+                        <td>{{ k.company.isim if k.company else '-' }}</td>
                         {% endif %}
                         <td>
-                            <form action="{{ url_for('admin.kullanici_sil', id=k.id if k is mapping else k[0]) }}"
-                                method="POST" style="display:inline;">
+                            <a href="{{ url_for('admin.kullanici_duzenle', id=k.id) }}" class="btn btn-sm btn-outline-primary me-1">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form action="{{ url_for('admin.kullanici_sil', id=k.id) }}"
+                                  method="POST" style="display:inline;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger"
                                     onclick="return confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?')">
