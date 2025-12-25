@@ -1,69 +1,112 @@
-{% extends "dashboard.html" %}
+{% extends "base.html" %}
 {% block title %}Raporlar - Skills Test Center{% endblock %}
 
+{% block navbar %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/admin/dashboard"><i class="bi bi-mortarboard-fill me-2"></i>Skills Test
+            Center</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="/admin/dashboard"><i
+                            class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/adaylar"><i
+                            class="bi bi-people me-1"></i>Adaylar</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/sorular"><i
+                            class="bi bi-question-circle me-1"></i>Sorular</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/sablonlar"><i
+                            class="bi bi-file-earmark-text me-1"></i>Şablonlar</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/admin/raporlar"><i
+                            class="bi bi-graph-up me-1"></i>Raporlar</a></li>
+            </ul>
+            <ul class="navbar-nav">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-1"></i>{{ session.ad_soyad }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><span class="dropdown-item-text text-muted">{{ session.rol }}</span></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item text-danger" href="/logout"><i
+                                    class="bi bi-box-arrow-right me-1"></i>Çıkış</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3><i class="bi bi-graph-up me-2"></i>Raporlar</h3>
-</div>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="bi bi-graph-up me-2"></i>Raporlar</h3>
+    </div>
 
-<!-- Stats Cards -->
-<div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card border-0 bg-primary text-white">
-            <div class="card-body">
-                <h5 class="card-title">Toplam Aday</h5>
-                <h2>{{ stats.total or 0 }}</h2>
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Toplam Aday</h5>
+                    <h2>{{ stats.total if stats else 0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Tamamlanan</h5>
+                    <h2>{{ stats.completed if stats else 0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 bg-warning text-dark">
+                <div class="card-body">
+                    <h5 class="card-title">Bekleyen</h5>
+                    <h2>{{ stats.pending if stats else 0 }}</h2>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card border-0 bg-success text-white">
-            <div class="card-body">
-                <h5 class="card-title">Tamamlanan</h5>
-                <h2>{{ stats.completed or 0 }}</h2>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card border-0 bg-warning text-dark">
-            <div class="card-body">
-                <h5 class="card-title">Bekleyen</h5>
-                <h2>{{ stats.pending or 0 }}</h2>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div class="card border-0">
-    <div class="card-header bg-white">
-        <h6 class="mb-0">Tamamlanan Sınavlar</h6>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Ad Soyad</th>
-                        <th>Puan</th>
-                        <th>Seviye</th>
-                        <th>Tarih</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for a in tamamlananlar %}
-                    <tr>
-                        <td><strong>{{ a.ad_soyad or '-' }}</strong></td>
-                        <td><span class="badge bg-primary">{{ '%.1f'|format(a.toplam_puan or 0) }}%</span></td>
-                        <td><span class="badge bg-success">{{ a.seviye_sonuc or a.cefr_seviye or '-' }}</span></td>
-                        <td>{{ a.sinav_bitis.strftime('%d.%m.%Y %H:%M') if a.sinav_bitis else '-' }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4" class="text-center text-muted py-4">Henüz tamamlanmış sınav bulunmuyor.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="card border-0">
+        <div class="card-header bg-white">
+            <h6 class="mb-0">Tamamlanan Sınavlar</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ad Soyad</th>
+                            <th>Puan</th>
+                            <th>Seviye</th>
+                            <th>Tarih</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in completed %}
+                        <tr>
+                            <td><strong>{{ a.ad_soyad or '-' }}</strong></td>
+                            <td><span class="badge bg-primary">{{ '%.1f'|format(a.puan or 0) }}%</span></td>
+                            <td><span class="badge bg-success">{{ a.seviye_sonuc or '-' }}</span></td>
+                            <td>{{ a.bitis_tarihi.strftime('%d.%m.%Y %H:%M') if a.bitis_tarihi else '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">Henüz tamamlanmış sınav bulunmuyor.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
