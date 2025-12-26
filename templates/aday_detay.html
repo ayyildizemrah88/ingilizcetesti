@@ -11,7 +11,7 @@
         </div>
         <div class="d-flex gap-2">
             {% if aday and aday.sinav_durumu == 'tamamlandi' and aday.certificate_hash %}
-            <a href="{{ url_for('certificate.download_pdf', hash=aday.certificate_hash) }}" class="btn btn-success">
+            <a href="/certificate/{{ aday.certificate_hash }}/pdf" class="btn btn-success">
                 <i class="fas fa-certificate me-1"></i> Sertifika İndir
             </a>
             {% endif %}
