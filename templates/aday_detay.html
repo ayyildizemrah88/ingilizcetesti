@@ -263,16 +263,40 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                <form action="{{ url_for('admin.aday_sil', id=aday.id) if aday else '#' }}" method="POST"
-                    class="d-inline">
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-redo me-1"></i> Sıfırla
-                    </button>
-                </form>
+                <button type="button" class="btn btn-danger" id="resetExamBtn">
+                    <i class="fas fa-redo me-1"></i> Sıfırla
+                </button>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    document.getElementById('resetExamBtn')?.addEventListener('click', function () {
+        if (confirm('Sınavı sıfırlamak istediğinize emin misiniz?')) {
+            fetch('{{ url_for("admin.aday_sinav_sifirla", id=aday.id) if aday else "#" }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Sınav başarıyla sıfırlandı!');
+                        location.reload();
+                    } else {
+                        alert('Hata: ' + (data.message || 'İşlem başarısız'));
+                    }
+                })
+                .catch(error => {
+                    alert('Sınav sıfırlama özelliği henüz aktif değil veya bir hata oluştu.');
+                    console.error('Error:', error);
+                });
+        }
+    });
+</script>
 
 <!-- Extend Time Modal -->
 <div class="modal fade" id="extendTimeModal" tabindex="-1">
