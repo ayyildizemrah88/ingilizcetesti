@@ -1,53 +1,339 @@
-{% extends "dashboard.html" %}
+{% extends "base.html" %}
 {% block title %}Soru Analitiği - Skills Test Center{% endblock %}
 
 {% block content %}
-<div class="row">
-    <!-- Header -->
-    <div class="col-12 mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <h2><i class="bi bi-question-circle me-2"></i>Soru Analitiği</h2>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary" onclick="runCalibration()">
-                    <i class="bi bi-cpu me-1"></i>Kalibrasyon Çalıştır
-                </button>
-                <a href="/admin/questions" class="btn btn-outline-secondary">
-                    <i class="bi bi-list me-1"></i>Soru Listesi
-                </a>
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-chart-bar me-2"></i>Soru Analitiği</h2>
+            <p class="text-muted mb-0">Soru performansı ve zorluk seviyesi analizi</p>
+        </div>
+        <a href="{{ url_for('admin.sorular') }}" class="btn btn-outline-primary">
+            <i class="fas fa-list me-1"></i> Soru Listesi
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                                <i class="fas fa-question-circle fa-2x text-primary"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h3 class="mb-0">{{ stats.total_questions if stats else 0 }}</h3>
+                            <small class="text-muted">Toplam Soru</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                                <i class="fas fa-check-circle fa-2x text-success"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h3 class="mb-0">{{ stats.calibrated if stats else 0 }}</h3>
+                            <small class="text-muted">Kalibre Edilmiş</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                                <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h3 class="mb-0">{{ stats.warnings if stats else 0 }}</h3>
+                            <small class="text-muted">Uyarı</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                                <i class="fas fa-percentage fa-2x text-info"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h3 class="mb-0">%{{ '%.1f'|format(stats.avg_accuracy if stats else 0) }}</h3>
+                            <small class="text-muted">Ort. Doğruluk</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    ... (HTML kısmı aynı) ...
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <!-- Difficulty Distribution -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0">
+                    <h6 class="mb-0"><i class="fas fa-layer-group me-2"></i>Zorluk Seviyesi Dağılımı</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="difficultyChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Category Accuracy -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0">
+                    <h6 class="mb-0"><i class="fas fa-bullseye me-2"></i>Kategori Bazlı Doğruluk</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="categoryChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warnings Section -->
+    {% if warnings and warnings|length > 0 %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-warning bg-opacity-10 border-0">
+            <h6 class="mb-0 text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Kalibrasyon Uyarıları</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Soru ID</th>
+                            <th>Uyarı</th>
+                            <th>Mevcut Seviye</th>
+                            <th>Önerilen Seviye</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for warning in warnings %}
+                        <tr>
+                            <td>#{{ warning.question_id }}</td>
+                            <td>{{ warning.message }}</td>
+                            <td><span class="badge bg-secondary">{{ warning.current_level }}</span></td>
+                            <td><span class="badge bg-primary">{{ warning.suggested_level }}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="updateDifficulty({{ warning.question_id }}, '{{ warning.suggested_level }}')">
+                                    <i class="fas fa-sync-alt"></i> Güncelle
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Questions Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="fas fa-list me-2"></i>Soru Listesi</h6>
+            <div class="d-flex gap-2">
+                <select class="form-select form-select-sm" id="categoryFilter" style="width: auto;">
+                    <option value="">Tüm Kategoriler</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+                <select class="form-select form-select-sm" id="levelFilter" style="width: auto;">
+                    <option value="">Tüm Seviyeler</option>
+                    <option value="A1">A1</option>
+                    <option value="A2">A2</option>
+                    <option value="B1">B1</option>
+                    <option value="B2">B2</option>
+                    <option value="C1">C1</option>
+                    <option value="C2">C2</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="questionsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Soru</th>
+                            <th>Kategori</th>
+                            <th>Zorluk</th>
+                            <th>Doğru Oranı</th>
+                            <th>Kullanım</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for q in questions %}
+                        <tr data-category="{{ q.kategori }}" data-level="{{ q.zorluk }}">
+                            <td>#{{ q.id }}</td>
+                            <td>
+                                <span class="text-truncate d-inline-block" style="max-width: 300px;" title="{{ q.soru_metni }}">
+                                    {{ q.soru_metni[:80] }}{% if q.soru_metni|length > 80 %}...{% endif %}
+                                </span>
+                            </td>
+                            <td><span class="badge bg-secondary">{{ q.kategori or 'Genel' }}</span></td>
+                            <td>
+                                <span class="badge 
+                                    {% if q.zorluk in ['A1', 'A2'] %}bg-success
+                                    {% elif q.zorluk in ['B1', 'B2'] %}bg-warning text-dark
+                                    {% else %}bg-danger{% endif %}">
+                                    {{ q.zorluk or 'B1' }}
+                                </span>
+                            </td>
+                            <td>
+                                {% set accuracy = q.dogru_orani if q.dogru_orani is defined else 0 %}
+                                <div class="progress" style="width: 100px; height: 6px;">
+                                    <div class="progress-bar 
+                                        {% if accuracy >= 70 %}bg-success{% elif accuracy >= 40 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                        style="width: {{ accuracy }}%"></div>
+                                </div>
+                                <small class="text-muted">%{{ '%.0f'|format(accuracy) }}</small>
+                            </td>
+                            <td>{{ q.kullanim_sayisi if q.kullanim_sayisi is defined else 0 }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox fa-3x mb-3 d-block opacity-50"></i>
+                                Henüz soru bulunmuyor
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Difficulty Chart - DÜZELTİLMİŞ SATIR
-    new Chart(document.getElementById('difficultyChart'), {
-        type: 'bar',
-        data: {
-            labels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
-            datasets: [
-                { label: 'Etiketli', data: {{ labeled_dist | tojson | safe }}, backgroundColor: '#667eea' },
-                { label: 'Hesaplanan', data: {{ calculated_dist | tojson | safe }}, backgroundColor: '#ffc107' }
-            ]
-        },
-        options: { responsive: true }
-    });
+// Difficulty Distribution Chart
+const difficultyCtx = document.getElementById('difficultyChart').getContext('2d');
+new Chart(difficultyCtx, {
+    type: 'bar',
+    data: {
+        labels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+        datasets: [{
+            label: 'Etiketli Seviye',
+            data: {{ labeled_dist|tojson }},
+            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }, {
+            label: 'Hesaplanan Seviye',
+            data: {{ calculated_dist|tojson }},
+            backgroundColor: 'rgba(255, 99, 132, 0.7)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
 
-    // Category Chart - DÜZELTİLMİŞ
-    new Chart(document.getElementById('categoryChart'), {
-        type: 'bar',
-        data: {
-            labels: {{ cat_names | tojson | safe }},
-            datasets: [{
-                label: 'Doğruluk %',
-                data: {{ cat_accuracy | tojson | safe }},
-                backgroundColor: '#28a745'
-            }]
-        },
-        options: { scales: { y: { beginAtZero: true, max: 100 } } }
+// Category Accuracy Chart
+const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+new Chart(categoryCtx, {
+    type: 'radar',
+    data: {
+        labels: {{ cat_names|tojson }},
+        datasets: [{
+            label: 'Doğruluk Oranı (%)',
+            data: {{ cat_accuracy|tojson }},
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 2,
+            pointBackgroundColor: 'rgba(75, 192, 192, 1)'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            r: {
+                beginAtZero: true,
+                max: 100
+            }
+        }
+    }
+});
+
+// Filter functionality
+document.getElementById('categoryFilter').addEventListener('change', filterTable);
+document.getElementById('levelFilter').addEventListener('change', filterTable);
+
+function filterTable() {
+    const category = document.getElementById('categoryFilter').value;
+    const level = document.getElementById('levelFilter').value;
+    const rows = document.querySelectorAll('#questionsTable tbody tr');
+    
+    rows.forEach(row => {
+        const rowCategory = row.dataset.category || '';
+        const rowLevel = row.dataset.level || '';
+        
+        const categoryMatch = !category || rowCategory === category;
+        const levelMatch = !level || rowLevel === level;
+        
+        row.style.display = (categoryMatch && levelMatch) ? '' : 'none';
     });
-    ... (diğer JavaScript aynı) ...
+}
+
+// Update difficulty function
+function updateDifficulty(questionId, newLevel) {
+    if (!confirm(`Soru #${questionId} için zorluk seviyesini ${newLevel} olarak güncellemek istiyor musunuz?`)) {
+        return;
+    }
+    
+    fetch(`/analytics/api/questions/${questionId}/difficulty`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ zorluk: newLevel })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            location.reload();
+        } else {
+            alert('Güncelleme başarısız: ' + (data.message || 'Bilinmeyen hata'));
+        }
+    })
+    .catch(error => {
+        alert('Hata oluştu: ' + error);
+    });
+}
 </script>
 {% endblock %}
