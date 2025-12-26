@@ -1,213 +1,287 @@
-{% extends "dashboard.html" %}
-{% block title %}Kopya Tespit - Skills Test Center{% endblock %}
+{% extends "base.html" %}
+{% block title %}Kopya Tespit Dashboard - Skills Test Center{% endblock %}
 
 {% block content %}
-<div class="row">
-    <!-- Header -->
-    <div class="col-12 mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <h2><i class="bi bi-shield-exclamation me-2"></i>Kopya Tespit Dashboard</h2>
-            <div class="d-flex gap-2">
-                <select class="form-select w-auto" id="periodFilter">
-                    <option value="week">Bu Hafta</option>
-                    <option value="month">Bu Ay</option>
-                    <option value="all">Tümü</option>
-                </select>
-            </div>
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-shield-alt me-2 text-danger"></i>Kopya Tespit Dashboard</h2>
+            <p class="text-muted mb-0">Sınav güvenliği ve kopya tespiti</p>
         </div>
+        <a href="{{ url_for('analytics.analytics_dashboard') }}" class="btn btn-outline-primary">
+            <i class="fas fa-chart-line me-1"></i> Analytics Dashboard
+        </a>
     </div>
 
-    <!-- Summary -->
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-danger text-white">
-            <div class="card-body text-center">
-                <div class="display-4">{{ stats.flagged }}</div>
-                <p class="mb-0">İşaretli Sınav</p>
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-start border-danger border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-danger bg-opacity-10 rounded-circle p-3">
+                                <i class="fas fa-flag fa-2x text-danger"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h3 class="mb-0">{{ stats.flagged if stats else 0 }}</h3>
+                            <small class="text-muted">İşaretli Sınav</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-warning">
-            <div class="card-body text-center">
-                <div class="display-4">{{ stats.plagiarism }}</div>
-                <p class="mb-0">Benzerlik Uyarısı</p>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-start border-warning border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                                <i class="fas fa-copy fa-2x text-warning"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h3 class="mb-0">{{ stats.plagiarism if stats else 0 }}</h3>
+                            <small class="text-muted">Benzerlik Uyarısı</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-info text-white">
-            <div class="card-body text-center">
-                <div class="display-4">{{ stats.ai_detected }}</div>
-                <p class="mb-0">AI Tespit</p>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-start border-info border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                                <i class="fas fa-robot fa-2x text-info"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h3 class="mb-0">{{ stats.ai_detected if stats else 0 }}</h3>
+                            <small class="text-muted">AI Tespit</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-secondary text-white">
-            <div class="card-body text-center">
-                <div class="display-4">{{ stats.proctoring }}</div>
-                <p class="mb-0">Proctoring İhlali</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Flagged Cases -->
-    <div class="col-12 mt-4">
-        <div class="card border-0 shadow">
-            <div class="card-header bg-danger text-white d-flex justify-content-between">
-                <h5 class="mb-0">İşaretli Vakalar</h5>
-                <span>İnceleme bekliyor</span>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Aday</th>
-                                <th>Tarih</th>
-                                <th>İşaretlenme Sebebi</th>
-                                <th>Detay</th>
-                                <th>Durum</th>
-                                <th>İşlem</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for case in flagged_cases %}
-                            <tr>
-                                <td>
-                                    <strong>{{ case.candidate.ad_soyad }}</strong><br>
-                                    <small class="text-muted">{{ case.candidate.email }}</small>
-                                </td>
-                                <td>{{ case.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
-                                <td>
-                                    {% for reason in case.reasons %}
-                                    <span class="badge bg-danger me-1">{{ reason }}</span>
-                                    {% endfor %}
-                                </td>
-                                <td>
-                                    {% if case.similarity_score %}
-                                    Benzerlik: {{ case.similarity_score }}%<br>
-                                    {% endif %}
-                                    {% if case.ai_probability %}
-                                    AI Olasılık: {{ (case.ai_probability * 100)|round(1) }}%
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <span
-                                        class="badge bg-{{ 'warning' if case.status == 'pending' else 'success' if case.status == 'cleared' else 'danger' }}">
-                                        {{ case.status }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="/admin/aday/{{ case.candidate.id }}" class="btn btn-outline-primary">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                        <button class="btn btn-outline-success" onclick="clearCase({{ case.id }})">
-                                            <i class="bi bi-check"></i>
-                                        </button>
-                                        <button class="btn btn-outline-danger" onclick="confirmFraud({{ case.id }})">
-                                            <i class="bi bi-x"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                            {% if not flagged_cases %}
-                            <tr>
-                                <td colspan="6" class="text-center py-5 text-muted">
-                                    <i class="bi bi-check-circle fs-1"></i>
-                                    <p class="mt-2">İşaretli vaka yok</p>
-                                </td>
-                            </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-start border-secondary border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-secondary bg-opacity-10 rounded-circle p-3">
+                                <i class="fas fa-video fa-2x text-secondary"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h3 class="mb-0">{{ stats.proctoring if stats else 0 }}</h3>
+                            <small class="text-muted">Proctoring İhlali</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Similarity Matrix -->
-    <div class="col-lg-6 mt-4">
-        <div class="card border-0 shadow">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">Yüksek Benzerlik Çiftleri</h5>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-sm mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Aday 1</th>
-                            <th>Aday 2</th>
-                            <th>Benzerlik</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for pair in similarity_pairs %}
-                        <tr>
-                            <td>{{ pair.candidate1 }}</td>
-                            <td>{{ pair.candidate2 }}</td>
-                            <td>
-                                <div class="progress" style="height: 20px;">
-                                    <div class="progress-bar bg-danger" style="width: {{ pair.similarity }}%">
-                                        {{ pair.similarity }}%
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <!-- Main Content -->
+    <div class="row g-4">
+        <!-- Flagged Cases -->
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="fas fa-flag me-2 text-danger"></i>İşaretli Vakalar</h6>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary active" data-filter="all">Tümü</button>
+                        <button class="btn btn-outline-danger" data-filter="high">Yüksek Risk</button>
+                        <button class="btn btn-outline-warning" data-filter="medium">Orta Risk</button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if flagged_cases and flagged_cases|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Aday</th>
+                                    <th>Risk Seviyesi</th>
+                                    <th>Tespit Türü</th>
+                                    <th>Tarih</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for case in flagged_cases %}
+                                <tr data-risk="{{ case.risk_level }}">
+                                    <td>
+                                        <strong>{{ case.candidate_name }}</strong>
+                                        <br><small class="text-muted">{{ case.candidate_email }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if case.risk_level == 'high' %}bg-danger
+                                            {% elif case.risk_level == 'medium' %}bg-warning text-dark
+                                            {% else %}bg-info{% endif %}">
+                                            {{ case.risk_level|capitalize }}
+                                        </span>
+                                    </td>
+                                    <td>{{ case.detection_type }}</td>
+                                    <td>{{ case.detected_at.strftime('%d.%m.%Y %H:%M') if case.detected_at else 'N/A' }}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-success" onclick="clearCase({{ case.id }})"
+                                                title="Temizle">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" onclick="confirmCase({{ case.id }})"
+                                                title="Onayla">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                            <button class="btn btn-outline-primary" onclick="viewDetails({{ case.id }})"
+                                                title="Detay">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-shield-check fa-4x text-success opacity-50 mb-3"></i>
+                        <h5 class="text-muted">İşaretli vaka yok</h5>
+                        <p class="text-muted mb-0">Tüm sınavlar temiz görünüyor!</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Proctoring Violations -->
-    <div class="col-lg-6 mt-4">
-        <div class="card border-0 shadow">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">Proctoring İhlalleri</h5>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-sm mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Aday</th>
-                            <th>İhlal Tipi</th>
-                            <th>Sayı</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for v in proctoring_violations %}
-                        <tr>
-                            <td>{{ v.candidate }}</td>
-                            <td>
-                                <span class="badge bg-{{ 'danger' if v.type == 'face_not_visible' else 'warning' }}">
-                                    {{ v.type }}
-                                </span>
-                            </td>
-                            <td>{{ v.count }}</td>
-                        </tr>
+        <!-- Side Panel -->
+        <div class="col-md-4">
+            <!-- Similarity Pairs -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0">
+                    <h6 class="mb-0"><i class="fas fa-clone me-2 text-warning"></i>Yüksek Benzerlik Çiftleri</h6>
+                </div>
+                <div class="card-body">
+                    {% if similarity_pairs and similarity_pairs|length > 0 %}
+                    <div class="list-group list-group-flush">
+                        {% for pair in similarity_pairs %}
+                        <div class="list-group-item border-0 px-0">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="d-block">{{ pair.candidate1 }}</small>
+                                    <small class="d-block text-muted">vs {{ pair.candidate2 }}</small>
+                                </div>
+                                <span class="badge bg-warning text-dark">%{{ pair.similarity }}</span>
+                            </div>
+                        </div>
                         {% endfor %}
-                    </tbody>
-                </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-check-double fa-2x mb-2 opacity-50"></i>
+                        <p class="mb-0 small">Yüksek benzerlik tespit edilmedi</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Proctoring Violations -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0">
+                    <h6 class="mb-0"><i class="fas fa-video me-2 text-secondary"></i>Proctoring İhlalleri</h6>
+                </div>
+                <div class="card-body">
+                    {% if proctoring_violations and proctoring_violations|length > 0 %}
+                    <div class="list-group list-group-flush">
+                        {% for violation in proctoring_violations %}
+                        <div class="list-group-item border-0 px-0">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong class="d-block">{{ violation.candidate_name }}</strong>
+                                    <small class="text-muted">{{ violation.violation_type }}</small>
+                                </div>
+                                <small class="text-muted">{{ violation.time }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-video-slash fa-2x mb-2 opacity-50"></i>
+                        <p class="mb-0 small">Proctoring ihlali yok</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+    // Filter functionality
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const filter = this.dataset.filter;
+            document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            document.querySelectorAll('tbody tr[data-risk]').forEach(row => {
+                if (filter === 'all' || row.dataset.risk === filter) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    });
+
+    // Case actions
     function clearCase(caseId) {
-        if (!confirm('Bu vaka temiz olarak işaretlensin mi?')) return;
-        fetch(`/api/fraud-cases/${caseId}/clear`, { method: 'POST' })
-            .then(() => location.reload());
+        if (!confirm('Bu vakayı temiz olarak işaretlemek istiyor musunuz?')) return;
+
+        fetch(`/analytics/api/fraud-cases/${caseId}/clear`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    location.reload();
+                } else {
+                    alert('İşlem başarısız: ' + (data.message || 'Bilinmeyen hata'));
+                }
+            })
+            .catch(error => alert('Hata: ' + error));
     }
 
-    function confirmFraud(caseId) {
-        if (!confirm('Bu vaka kopya olarak onaylansın mı? Adayın sınavı geçersiz sayılacak.')) return;
-        fetch(`/api/fraud-cases/${caseId}/confirm`, { method: 'POST' })
-            .then(() => location.reload());
+    function confirmCase(caseId) {
+        if (!confirm('Bu vakayı kopya olarak onaylamak istiyor musunuz? Bu işlem geri alınamaz.')) return;
+
+        fetch(`/analytics/api/fraud-cases/${caseId}/confirm`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    location.reload();
+                } else {
+                    alert('İşlem başarısız: ' + (data.message || 'Bilinmeyen hata'));
+                }
+            })
+            .catch(error => alert('Hata: ' + error));
+    }
+
+    function viewDetails(caseId) {
+        alert('Detay görüntüleme özelliği yakında eklenecek.');
     }
 </script>
 {% endblock %}
