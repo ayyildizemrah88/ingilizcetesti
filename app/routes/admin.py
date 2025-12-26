@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Admin Routes - Dashboard and management
+TAM DOSYA - YENİ ROUTE'LAR DAHİL
 """
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
@@ -9,9 +10,6 @@ from app.extensions import db
 admin_bp = Blueprint('admin', __name__)
 
 # ══════════════════════════════════════════════════════════════
-# DECORATORS
-# ══════════════════════════════════════════════════════════════
-
 def login_required(f):
     """Require admin login"""
     @wraps(f)
@@ -44,11 +42,7 @@ def customer_or_superadmin(f):
         return f(*args, **kwargs)
     return decorated
 
-
 # ══════════════════════════════════════════════════════════════
-# DASHBOARD
-# ══════════════════════════════════════════════════════════════
-
 @admin_bp.route('/')
 @admin_bp.route('/dashboard')
 @login_required
@@ -106,9 +100,6 @@ def dashboard():
 
 
 # ══════════════════════════════════════════════════════════════
-# CANDIDATES (ADAYLAR)
-# ══════════════════════════════════════════════════════════════
-
 @admin_bp.route('/adaylar')
 @login_required
 def adaylar():
@@ -160,7 +151,7 @@ def aday_ekle():
 
         # Determine sirket_id
         sirket_id = session.get('sirket_id')
-        
+
         # Superadmin can select company from form
         if not sirket_id and session.get('rol') == 'superadmin':
             sirket_id = request.form.get('sirket_id', type=int)
@@ -203,7 +194,7 @@ def aday_ekle():
     if session.get('rol') == 'superadmin':
         from app.models import Company
         sirketler = Company.query.filter_by(is_active=True).all()
-    
+
     return render_template('aday_form.html', sirketler=sirketler)
 
 
@@ -253,6 +244,156 @@ def aday_sil(id):
     return redirect(url_for('admin.adaylar'))
 
 
+# ══════════════════════════════════════════════════════════════
+# YENİ EKLENEN ROUTE: SINAV SIFIRLAMA
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/aday/<int:id>/sinav-sifirla', methods=['POST'])
+@login_required
+def aday_sinav_sifirla(id):
+    """
+    Reset candidate's exam - clears answers and allows re-entry
+    ---
+    tags:
+      - Admin
+    parameters:
+      - name: id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Exam reset successful
+    """
+    from app.models import Candidate, ExamAnswer
+    from datetime import datetime
+
+    candidate = Candidate.query.get_or_404(id)
+
+    # Check permissions
+    sirket_id = session.get('sirket_id')
+    rol = session.get('rol')
+
+    if rol not in ['super_admin', 'superadmin']:
+        if sirket_id and candidate.sirket_id != sirket_id:
+            return jsonify({'success': False, 'message': 'Yetkiniz yok'}), 403
+
+    try:
+        # Delete all answers for this candidate
+        ExamAnswer.query.filter_by(aday_id=id).delete()
+
+        # Reset candidate exam status
+        candidate.sinav_durumu = 'beklemede'
+        candidate.puan = None
+        candidate.seviye_sonuc = None
+        candidate.dogru_sayisi = None
+        candidate.yanlis_sayisi = None
+        candidate.baslangic_tarihi = None
+        candidate.bitis_tarihi = None
+        candidate.current_difficulty = 'B1'
+        candidate.p_grammar = None
+        candidate.p_vocabulary = None
+        candidate.p_reading = None
+        candidate.p_listening = None
+        candidate.p_speaking = None
+        candidate.p_writing = None
+
+        db.session.commit()
+
+        # Log action
+        try:
+            from app.models import AuditLog
+            log = AuditLog(
+                user_id=session.get('user_id'),
+                action='exam_reset',
+                details=f"Aday sınavı sıfırlandı: {candidate.ad_soyad} (ID: {id})"
+            )
+            db.session.add(log)
+            db.session.commit()
+        except:
+            pass
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': 'Sınav başarıyla sıfırlandı'})
+
+        flash(f'{candidate.ad_soyad} adayının sınavı sıfırlandı.', 'success')
+        return redirect(url_for('admin.aday_detay', id=id))
+
+    except Exception as e:
+        db.session.rollback()
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': str(e)}), 500
+        flash(f'Hata oluştu: {str(e)}', 'error')
+        return redirect(url_for('admin.aday_detay', id=id))
+
+
+# ══════════════════════════════════════════════════════════════
+# YENİ EKLENEN ROUTE: SÜRE UZATMA
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/aday/<int:id>/sure-uzat', methods=['POST'])
+@login_required
+def aday_sure_uzat(id):
+    """
+    Extend candidate's exam time
+    ---
+    tags:
+      - Admin
+    parameters:
+      - name: id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Time extended successfully
+    """
+    from app.models import Candidate
+
+    candidate = Candidate.query.get_or_404(id)
+
+    # Check permissions
+    sirket_id = session.get('sirket_id')
+    rol = session.get('rol')
+
+    if rol not in ['super_admin', 'superadmin']:
+        if sirket_id and candidate.sirket_id != sirket_id:
+            return jsonify({'success': False, 'message': 'Yetkiniz yok'}), 403
+
+    try:
+        ek_sure = request.form.get('ek_sure', 10, type=int)
+
+        # Add time to exam duration
+        candidate.sinav_suresi = (candidate.sinav_suresi or 30) + ek_sure
+
+        db.session.commit()
+
+        # Log action
+        try:
+            from app.models import AuditLog
+            log = AuditLog(
+                user_id=session.get('user_id'),
+                action='time_extended',
+                details=f"Aday süresi uzatıldı: {candidate.ad_soyad} (+{ek_sure} dk)"
+            )
+            db.session.add(log)
+            db.session.commit()
+        except:
+            pass
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': f'{ek_sure} dakika eklendi'})
+
+        flash(f'{candidate.ad_soyad} adayının süresi {ek_sure} dakika uzatıldı.', 'success')
+        return redirect(url_for('admin.aday_detay', id=id))
+
+    except Exception as e:
+        db.session.rollback()
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'message': str(e)}), 500
+        flash(f'Hata oluştu: {str(e)}', 'error')
+        return redirect(url_for('admin.aday_detay', id=id))
+
+
+# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/bulk-upload', methods=['POST'])
 @login_required
 def bulk_upload():
@@ -324,9 +465,6 @@ def bulk_upload():
 
 
 # ══════════════════════════════════════════════════════════════
-# QUESTIONS (SORULAR)
-# ══════════════════════════════════════════════════════════════
-
 @admin_bp.route('/sorular')
 @login_required
 @superadmin_required
@@ -345,7 +483,7 @@ def sorular():
     page = request.args.get('page', 1, type=int)
 
     query = Question.query.filter_by(is_active=True)
-    
+
     if sirket_id:
         query = query.filter_by(sirket_id=sirket_id)
 
@@ -421,9 +559,6 @@ def soru_sil(id):
 
 
 # ══════════════════════════════════════════════════════════════
-# USERS (KULLANICILAR)
-# ══════════════════════════════════════════════════════════════
-
 @admin_bp.route('/kullanicilar')
 @login_required
 @superadmin_required
@@ -551,9 +686,6 @@ def kullanici_duzenle(id):
 
 
 # ══════════════════════════════════════════════════════════════
-# DEMO CREATION
-# ══════════════════════════════════════════════════════════════
-
 @admin_bp.route('/demo-olustur', methods=['GET', 'POST'])
 @login_required
 @superadmin_required
@@ -617,9 +749,6 @@ def demo_olustur():
 
 
 # ══════════════════════════════════════════════════════════════
-# SETTINGS (AYARLAR)
-# ══════════════════════════════════════════════════════════════
-
 @admin_bp.route('/ayarlar', methods=['GET', 'POST'])
 @login_required
 @superadmin_required
@@ -657,9 +786,6 @@ def ayarlar():
 
 
 # ══════════════════════════════════════════════════════════════
-# EXAM TEMPLATES (SABLONLAR)
-# ══════════════════════════════════════════════════════════════
-
 @admin_bp.route('/sablonlar')
 @login_required
 @superadmin_required
@@ -673,7 +799,7 @@ def sablonlar():
     from app.models import ExamTemplate
 
     sirket_id = session.get('sirket_id')
-    
+
     if sirket_id:
         templates = ExamTemplate.query.filter_by(sirket_id=sirket_id).all()
     else:
@@ -714,9 +840,6 @@ def sablon_ekle():
 
 
 # ══════════════════════════════════════════════════════════════
-# COMPANIES (ŞİRKETLER)
-# ══════════════════════════════════════════════════════════════
-
 @admin_bp.route('/sirketler')
 @login_required
 @superadmin_required
@@ -898,9 +1021,6 @@ def sirket_kredi(id):
 
 
 # ══════════════════════════════════════════════════════════════
-# REPORTS (RAPORLAR)
-# ══════════════════════════════════════════════════════════════
-
 @admin_bp.route('/raporlar')
 @login_required
 def raporlar():
@@ -977,9 +1097,6 @@ def super_rapor():
 
 
 # ══════════════════════════════════════════════════════════════
-# EXPORT
-# ══════════════════════════════════════════════════════════════
-
 @admin_bp.route('/export')
 @login_required
 def export_data():
@@ -1036,9 +1153,6 @@ def export_data():
 
 
 # ══════════════════════════════════════════════════════════════
-# ADMIN LOGS
-# ══════════════════════════════════════════════════════════════
-
 @admin_bp.route('/logs')
 @login_required
 @superadmin_required
@@ -1060,9 +1174,6 @@ def admin_logs():
 
 
 # ══════════════════════════════════════════════════════════════
-# DATA MANAGEMENT
-# ══════════════════════════════════════════════════════════════
-
 @admin_bp.route('/veri-yonetimi')
 @login_required
 @superadmin_required
