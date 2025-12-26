@@ -2,7 +2,7 @@
 """
 Question Import Routes
 Bulk import questions from Excel/CSV
-FIXED: Route URLs updated for /question-import prefix
+FIXED: Session key corrected from 'user_id' to 'kullanici_id'
 """
 import os
 import io
@@ -20,7 +20,8 @@ def superadmin_required(f):
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session or session.get('rol') != 'superadmin':
+        # FIXED: Changed 'user_id' to 'kullanici_id' to match auth.py session
+        if 'kullanici_id' not in session or session.get('rol') != 'superadmin':
             flash('Bu işlem için SuperAdmin yetkisi gereklidir.', 'danger')
             return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
