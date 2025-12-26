@@ -10,8 +10,8 @@
             <p class="text-muted mb-0">{{ aday.ad_soyad if aday else 'Aday' }}</p>
         </div>
         <div class="d-flex gap-2">
-            {% if aday and aday.sinav_durumu == 'tamamlandi' %}
-            <a href="#" onclick="alert('Sertifika özelliği henüz aktif değil'); return false;" class="btn btn-success">
+            {% if aday and aday.sinav_durumu == 'tamamlandi' and aday.certificate_hash %}
+            <a href="{{ url_for('certificate.download_pdf', hash=aday.certificate_hash) }}" class="btn btn-success">
                 <i class="fas fa-certificate me-1"></i> Sertifika İndir
             </a>
             {% endif %}
@@ -100,62 +100,59 @@
                     <h6 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Sınav Bilgileri</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-3">
-                            <div class="text-center p-3 bg-light rounded">
-                                <h3 class="mb-0 text-primary">{{ aday.puan or 0 }}</h3>
+                    <div class="row g-4">
+                        <div class="col-md-3 text-center">
+                            <div class="bg-primary bg-opacity-10 rounded p-3">
+                                <h3 class="mb-0 text-primary">{{ (aday.puan or 0)|round|int }}</h3>
                                 <small class="text-muted">Puan</small>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="text-center p-3 bg-light rounded">
-                                <h3 class="mb-0 
-                                    {% if aday.seviye_sonuc in ['C1', 'C2'] %}text-danger
-                                    {% elif aday.seviye_sonuc in ['B1', 'B2'] %}text-warning
-                                    {% else %}text-success{% endif %}">
-                                    {{ aday.seviye_sonuc or 'N/A' }}
-                                </h3>
+                        <div class="col-md-3 text-center">
+                            <div class="bg-success bg-opacity-10 rounded p-3">
+                                <h3 class="mb-0 text-success">{{ aday.seviye_sonuc or 'N/A' }}</h3>
                                 <small class="text-muted">Seviye</small>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="text-center p-3 bg-light rounded">
-                                <h3 class="mb-0">{{ aday.dogru_sayisi or 0 }}/{{ aday.soru_limiti or 0 }}</h3>
-                                <small class="text-muted">Doğru/Toplam</small>
+                        <div class="col-md-3 text-center">
+                            <div class="bg-info bg-opacity-10 rounded p-3">
+                                <h3 class="mb-0 text-info">{{ aday.soru_limiti or 0 }}</h3>
+                                <small class="text-muted">Soru Sayısı</small>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="text-center p-3 bg-light rounded">
-                                <h3 class="mb-0">{{ aday.sinav_suresi or 30 }} dk</h3>
+                        <div class="col-md-3 text-center">
+                            <div class="bg-warning bg-opacity-10 rounded p-3">
+                                <h3 class="mb-0 text-warning">{{ aday.sinav_suresi or 30 }} dk</h3>
                                 <small class="text-muted">Süre</small>
                             </div>
                         </div>
                     </div>
 
+                    <hr class="my-4">
+
                     <div class="row">
                         <div class="col-md-6">
                             <ul class="list-unstyled">
                                 <li class="mb-2">
-                                    <small class="text-muted">Başlangıç:</small>
-                                    <span class="ms-2">{{ aday.baslangic_tarihi.strftime('%d.%m.%Y %H:%M') if
-                                        aday.baslangic_tarihi else 'Henüz başlamadı' }}</span>
+                                    <strong>Başlangıç:</strong>
+                                    {{ aday.baslama_tarihi.strftime('%d.%m.%Y %H:%M') if aday.baslama_tarihi else 'Henüz
+                                    başlamadı' }}
                                 </li>
                                 <li class="mb-2">
-                                    <small class="text-muted">Bitiş:</small>
-                                    <span class="ms-2">{{ aday.bitis_tarihi.strftime('%d.%m.%Y %H:%M') if
-                                        aday.bitis_tarihi else 'Henüz tamamlanmadı' }}</span>
+                                    <strong>Bitiş:</strong>
+                                    {{ aday.bitis_tarihi.strftime('%d.%m.%Y %H:%M') if aday.bitis_tarihi else 'Henüz
+                                    tamamlanmadı' }}
                                 </li>
                             </ul>
                         </div>
                         <div class="col-md-6">
                             <ul class="list-unstyled">
                                 <li class="mb-2">
-                                    <small class="text-muted">Başlangıç Seviyesi:</small>
-                                    <span class="ms-2 badge bg-secondary">{{ aday.baslangic_seviyesi or 'B1' }}</span>
+                                    <strong>Başlangıç Seviyesi:</strong>
+                                    {{ aday.current_difficulty or 'B1' }}
                                 </li>
                                 <li class="mb-2">
-                                    <small class="text-muted">Final Seviyesi:</small>
-                                    <span class="ms-2 badge bg-primary">{{ aday.seviye_sonuc or 'Belirlenmedi' }}</span>
+                                    <strong>Final Seviyesi:</strong>
+                                    {{ aday.seviye_sonuc or 'Belirlenmedi' }}
                                 </li>
                             </ul>
                         </div>
@@ -163,40 +160,35 @@
                 </div>
             </div>
 
-            <!-- Category Performance -->
+            <!-- Skill Scores Card -->
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0">
                     <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Kategori Performansı</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3">
-                        {% set skills = [
-                        ('Grammar', aday.p_grammar if aday.p_grammar is defined else 0),
-                        ('Vocabulary', aday.p_vocabulary if aday.p_vocabulary is defined else 0),
-                        ('Reading', aday.p_reading if aday.p_reading is defined else 0),
-                        ('Listening', aday.p_listening if aday.p_listening is defined else 0),
-                        ('Speaking', aday.p_speaking if aday.p_speaking is defined else 0),
-                        ('Writing', aday.p_writing if aday.p_writing is defined else 0)
-                        ] %}
-                        {% for skill_name, skill_value in skills %}
-                        <div class="col-md-6">
-                            <div class="d-flex justify-content-between mb-1">
-                                <small>{{ skill_name }}</small>
-                                <small class="text-muted">%{{ skill_value|round|int }}</small>
-                            </div>
-                            <div class="progress" style="height: 8px;">
-                                <div class="progress-bar 
-                                    {% if skill_value >= 70 %}bg-success
-                                    {% elif skill_value >= 40 %}bg-warning
-                                    {% else %}bg-danger{% endif %}" style="width: {{ skill_value }}%"></div>
-                            </div>
+                    {% set skills = [
+                    ('Grammar', aday.p_grammar, 'primary'),
+                    ('Vocabulary', aday.p_vocabulary, 'success'),
+                    ('Reading', aday.p_reading, 'info'),
+                    ('Listening', aday.p_listening, 'warning'),
+                    ('Writing', aday.p_writing, 'danger'),
+                    ('Speaking', aday.p_speaking, 'secondary')
+                    ] %}
+                    {% for skill_name, skill_value, color in skills %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>{{ skill_name }}</span>
+                            <span class="text-muted">%{{ (skill_value or 0)|round|int }}</span>
                         </div>
-                        {% endfor %}
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-{{ color }}" style="width: {{ skill_value or 0 }}%"></div>
+                        </div>
                     </div>
+                    {% endfor %}
                 </div>
             </div>
 
-            <!-- Security Info -->
+            <!-- Security Info Card -->
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0">
                     <h6 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Güvenlik Bilgileri</h6>
@@ -206,30 +198,36 @@
                         <div class="col-md-6">
                             <ul class="list-unstyled">
                                 <li class="mb-2">
-                                    <small class="text-muted">IP Adresi:</small>
-                                    <span class="ms-2">{{ aday.ip_adresi or 'Kaydedilmedi' }}</span>
+                                    <strong>Duraklatıldı mı:</strong>
+                                    {% if aday.is_paused %}
+                                    <span class="badge bg-warning">Evet</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Hayır</span>
+                                    {% endif %}
                                 </li>
                                 <li class="mb-2">
-                                    <small class="text-muted">Tarayıcı:</small>
-                                    <span class="ms-2">{{ aday.tarayici or 'Bilinmiyor' }}</span>
+                                    <strong>Toplam Duraklama:</strong>
+                                    {{ aday.total_paused_seconds or 0 }} saniye
                                 </li>
                             </ul>
                         </div>
                         <div class="col-md-6">
                             <ul class="list-unstyled">
                                 <li class="mb-2">
-                                    <small class="text-muted">Tab Değiştirme:</small>
-                                    <span
-                                        class="ms-2 badge {{ 'bg-danger' if aday.tab_switch_count and aday.tab_switch_count > 3 else 'bg-success' }}">
-                                        {{ aday.tab_switch_count or 0 }} kez
-                                    </span>
+                                    <strong>Sertifika:</strong>
+                                    {% if aday.certificate_hash %}
+                                    <code>{{ aday.certificate_hash }}</code>
+                                    {% else %}
+                                    <span class="text-muted">Henüz oluşturulmadı</span>
+                                    {% endif %}
                                 </li>
                                 <li class="mb-2">
-                                    <small class="text-muted">Fraud Skoru:</small>
-                                    <span
-                                        class="ms-2 badge {{ 'bg-danger' if aday.fraud_score and aday.fraud_score > 50 else 'bg-success' }}">
-                                        {{ aday.fraud_score or 0 }}
-                                    </span>
+                                    <strong>Pratik Mi:</strong>
+                                    {% if aday.is_practice %}
+                                    <span class="badge bg-info">Evet</span>
+                                    {% else %}
+                                    <span class="badge bg-primary">Hayır</span>
+                                    {% endif %}
                                 </li>
                             </ul>
                         </div>
@@ -239,9 +237,8 @@
         </div>
     </div>
     {% else %}
-    <div class="alert alert-warning">
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        Aday bulunamadı.
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle me-2"></i>Aday bulunamadı.
     </div>
     {% endif %}
 </div>
@@ -271,33 +268,6 @@
     </div>
 </div>
 
-<script>
-    document.getElementById('resetExamBtn')?.addEventListener('click', function () {
-        if (confirm('Sınavı sıfırlamak istediğinize emin misiniz?')) {
-            fetch('{{ url_for("admin.aday_sinav_sifirla", id=aday.id) if aday else "#" }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Sınav başarıyla sıfırlandı!');
-                        location.reload();
-                    } else {
-                        alert('Hata: ' + (data.message || 'İşlem başarısız'));
-                    }
-                })
-                .catch(error => {
-                    alert('Sınav sıfırlama özelliği henüz aktif değil veya bir hata oluştu.');
-                    console.error('Error:', error);
-                });
-        }
-    });
-</script>
-
 <!-- Extend Time Modal -->
 <div class="modal fade" id="extendTimeModal" tabindex="-1">
     <div class="modal-dialog">
@@ -306,7 +276,8 @@
                 <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Süre Uzat</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="#" method="POST" onsubmit="alert('Süre uzatma özelliği henüz aktif değil'); return false;">
+            <form id="extendTimeForm" method="POST"
+                action="{{ url_for('admin.aday_sure_uzat', id=aday.id) if aday else '#' }}">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Eklenecek Süre (dakika)</label>
@@ -328,4 +299,37 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.getElementById('resetExamBtn')?.addEventListener('click', function () {
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> İşleniyor...';
+
+        fetch('{{ url_for("admin.aday_sinav_sifirla", id=aday.id) if aday else "#" }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Sınav başarıyla sıfırlandı!');
+                    location.reload();
+                } else {
+                    alert('Hata: ' + (data.message || 'İşlem başarısız'));
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-redo me-1"></i> Sıfırla';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-redo me-1"></i> Sıfırla';
+            });
+    });
+</script>
 {% endblock %}
