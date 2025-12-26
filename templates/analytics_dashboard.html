@@ -19,63 +19,63 @@
         </div>
     </div>
 
-    <!-- Real-time Stats -->
+    <!-- Stats Cards -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm bg-primary text-white h-100">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 class="mb-0">{{ stats.active_exams if stats else 0 }}</h2>
-                            <small class="opacity-75">Aktif Sınav</small>
+                            <h2 class="mb-0 text-primary">{{ stats.active_exams if stats else 0 }}</h2>
+                            <small class="text-muted">Aktif Sınavlar</small>
                         </div>
-                        <div class="opacity-50">
-                            <i class="fas fa-play-circle fa-3x"></i>
+                        <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-play-circle fa-2x text-primary"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm bg-success text-white h-100">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 class="mb-0">{{ stats.today_completed if stats else 0 }}</h2>
-                            <small class="opacity-75">Bugün Tamamlanan</small>
+                            <h2 class="mb-0 text-success">{{ stats.today_completed if stats else 0 }}</h2>
+                            <small class="text-muted">Bugün Tamamlanan</small>
                         </div>
-                        <div class="opacity-50">
-                            <i class="fas fa-check-circle fa-3x"></i>
+                        <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-check-circle fa-2x text-success"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm bg-info text-white h-100">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 class="mb-0">{{ stats.total_candidates if stats else 0 }}</h2>
-                            <small class="opacity-75">Toplam Aday</small>
+                            <h2 class="mb-0 text-info">{{ stats.total_candidates if stats else 0 }}</h2>
+                            <small class="text-muted">Toplam Aday</small>
                         </div>
-                        <div class="opacity-50">
-                            <i class="fas fa-users fa-3x"></i>
+                        <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-users fa-2x text-info"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm bg-warning text-dark h-100">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 class="mb-0">%{{ '%.1f'|format(stats.avg_score if stats else 0) }}</h2>
-                            <small class="opacity-75">Ortalama Puan</small>
+                            <h2 class="mb-0 text-warning">%{{ '%.1f'|format(stats.avg_score if stats else 0) }}</h2>
+                            <small class="text-muted">Ortalama Puan</small>
                         </div>
-                        <div class="opacity-50">
-                            <i class="fas fa-star fa-3x"></i>
+                        <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-star fa-2x text-warning"></i>
                         </div>
                     </div>
                 </div>
@@ -83,19 +83,20 @@
         </div>
     </div>
 
-    <!-- Charts Row 1 -->
+    <!-- Charts Row -->
     <div class="row g-4 mb-4">
         <!-- CEFR Distribution -->
         <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-white border-0">
-                    <h6 class="mb-0"><i class="fas fa-layer-group me-2"></i>CEFR Seviye Dağılımı</h6>
+                    <h6 class="mb-0"><i class="fas fa-chart-pie me-2"></i>CEFR Seviye Dağılımı</h6>
                 </div>
                 <div class="card-body">
                     <canvas id="cefrChart" height="250"></canvas>
                 </div>
             </div>
         </div>
+
         <!-- Weekly Trend -->
         <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100">
@@ -109,7 +110,7 @@
         </div>
     </div>
 
-    <!-- Charts Row 2 -->
+    <!-- Second Charts Row -->
     <div class="row g-4 mb-4">
         <!-- Company Comparison -->
         <div class="col-md-6">
@@ -122,11 +123,12 @@
                 </div>
             </div>
         </div>
+
         <!-- Skill Averages -->
         <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-white border-0">
-                    <h6 class="mb-0"><i class="fas fa-brain me-2"></i>Yetenek Ortalamaları</h6>
+                    <h6 class="mb-0"><i class="fas fa-chart-radar me-2"></i>Yetenek Ortalamaları</h6>
                 </div>
                 <div class="card-body">
                     <canvas id="skillChart" height="250"></canvas>
@@ -135,56 +137,57 @@
         </div>
     </div>
 
-    <!-- Bottom Row -->
+    <!-- Top Performers & Alerts -->
     <div class="row g-4">
         <!-- Top Performers -->
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm h-100">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0">
-                    <h6 class="mb-0"><i class="fas fa-trophy me-2 text-warning"></i>En Yüksek Puanlar (Son 7 Gün)</h6>
+                    <h6 class="mb-0"><i class="fas fa-trophy me-2"></i>En Yüksek Puanlar (Son 7 Gün)</h6>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
-                            <thead class="table-light">
+                            <thead class="bg-light">
                                 <tr>
-                                    <th>Sıra</th>
+                                    <th>#</th>
                                     <th>Aday</th>
+                                    <th>Şirket</th>
                                     <th>Puan</th>
                                     <th>Seviye</th>
+                                    <th>Tarih</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for candidate in top_performers %}
+                                {% if top_performers %}
+                                {% for performer in top_performers %}
                                 <tr>
                                     <td>
                                         {% if loop.index == 1 %}
-                                        <i class="fas fa-medal text-warning"></i>
+                                        <span class="badge bg-warning text-dark">🥇</span>
                                         {% elif loop.index == 2 %}
-                                        <i class="fas fa-medal text-secondary"></i>
+                                        <span class="badge bg-secondary">🥈</span>
                                         {% elif loop.index == 3 %}
-                                        <i class="fas fa-medal" style="color: #cd7f32;"></i>
+                                        <span class="badge bg-danger">🥉</span>
                                         {% else %}
                                         {{ loop.index }}
                                         {% endif %}
                                     </td>
-                                    <td>{{ candidate.ad_soyad }}</td>
-                                    <td><strong>{{ candidate.puan or 0 }}</strong></td>
-                                    <td>
-                                        <span
-                                            class="badge {% if candidate.seviye_sonuc in ['C1', 'C2'] %}bg-danger{% elif candidate.seviye_sonuc in ['B1', 'B2'] %}bg-warning text-dark{% else %}bg-success{% endif %}">
-                                            {{ candidate.seviye_sonuc or 'N/A' }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% else %}
-                                <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>
-                                        Son 7 günde tamamlanan sınav yok
-                                    </td>
+                                    <td>{{ performer.ad_soyad }}</td>
+                                    <td>{{ performer.company.isim if performer.company else 'N/A' }}</td>
+                                    <td><strong>{{ (performer.puan or 0)|round|int }}</strong></td>
+                                    <td><span class="badge bg-success">{{ performer.seviye_sonuc or 'N/A' }}</span></td>
+                                    <td>{{ performer.bitis_tarihi.strftime('%d.%m.%Y') if performer.bitis_tarihi else
+                                        'N/A' }}</td>
                                 </tr>
                                 {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="fas fa-info-circle me-2"></i>Henüz veri yok
+                                    </td>
+                                </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -192,36 +195,26 @@
             </div>
         </div>
 
-        <!-- System Alerts -->
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm h-100">
+        <!-- Alerts -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0">
-                    <h6 class="mb-0"><i class="fas fa-bell me-2 text-danger"></i>Sistem Uyarıları</h6>
+                    <h6 class="mb-0"><i class="fas fa-bell me-2"></i>Sistem Uyarıları</h6>
                 </div>
                 <div class="card-body">
-                    {% if alerts and alerts|length > 0 %}
-                    <div class="list-group list-group-flush">
-                        {% for alert in alerts %}
-                        <div class="list-group-item border-0 px-0">
-                            <div class="d-flex align-items-center">
-                                <div class="flex-shrink-0">
-                                    <span class="badge bg-{{ alert.type }} rounded-circle p-2">
-                                        <i class="fas fa-{{ alert.icon or 'exclamation' }}"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <p class="mb-0">{{ alert.message }}</p>
-                                    <small class="text-muted">{{ alert.time }}</small>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
+                    {% if alerts %}
+                    {% for alert in alerts %}
+                    <div class="alert alert-{{ alert.type }} alert-dismissible fade show" role="alert">
+                        <i
+                            class="fas fa-{{ 'exclamation-triangle' if alert.type == 'warning' else 'info-circle' }} me-2"></i>
+                        {{ alert.message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
+                    {% endfor %}
                     {% else %}
                     <div class="text-center text-muted py-4">
-                        <i class="fas fa-check-circle fa-3x mb-3 text-success opacity-50"></i>
+                        <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
                         <p class="mb-0">Sistem uyarısı yok</p>
-                        <small>Her şey yolunda görünüyor!</small>
                     </div>
                     {% endif %}
                 </div>
@@ -230,46 +223,49 @@
     </div>
 </div>
 
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Chart data from server
-    var cefrData = {{ cefr_distribution| tojson |default ([0, 0, 0, 0, 0, 0]) }};
-    var trendLabels = {{ trend_labels| tojson |default ([]) }};
-    var trendData = {{ trend_data| tojson |default ([]) }};
-    var companyNames = {{ company_names| tojson |default ([]) }};
-    var companyScores = {{ company_scores| tojson |default ([]) }};
-    var skillAverages = {{ skill_averages| tojson |default ([0, 0, 0, 0, 0, 0]) }};
-
-    // CEFR Distribution Chart
-    var cefrCtx = document.getElementById('cefrChart').getContext('2d');
+    document.addEventListener('DOMContentLoaded', function () {
+        // CEFR Distribution Chart
+        const cefrCtx = document.getElementById('cefrChart');
+        if (cefrCtx) {
+            const cefrData = {{ cefr_distribution|default ({}) | tojson
+        }
+    };
     new Chart(cefrCtx, {
         type: 'doughnut',
         data: {
-            labels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+            labels: Object.keys(cefrData).length ? Object.keys(cefrData) : ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
             datasets: [{
-                data: cefrData,
-                backgroundColor: ['#28a745', '#20c997', '#ffc107', '#fd7e14', '#dc3545', '#6f42c1'],
-                borderWidth: 0
+                data: Object.keys(cefrData).length ? Object.values(cefrData) : [0, 0, 0, 0, 0, 0],
+                backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#28a745', '#17a2b8', '#6f42c1']
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'right' } }
+            plugins: {
+                legend: { position: 'right' }
+            }
         }
     });
+    }
 
     // Weekly Trend Chart
-    var trendCtx = document.getElementById('trendChart').getContext('2d');
+    const trendCtx = document.getElementById('trendChart');
+    if (trendCtx) {
+        const trendData = {{ weekly_trend|default ({}) | tojson
+    }};
     new Chart(trendCtx, {
         type: 'line',
         data: {
-            labels: trendLabels,
+            labels: Object.keys(trendData).length ? Object.keys(trendData) : ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'],
             datasets: [{
-                label: 'Tamamlanan Sınav',
-                data: trendData,
-                borderColor: '#0d6efd',
-                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                label: 'Tamamlanan Sınavlar',
+                data: Object.keys(trendData).length ? Object.values(trendData) : [0, 0, 0, 0, 0, 0, 0],
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0,123,255,0.1)',
                 fill: true,
                 tension: 0.4
             }]
@@ -277,50 +273,76 @@
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true } }
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
         }
     });
+    }
 
     // Company Comparison Chart
-    var companyCtx = document.getElementById('companyChart').getContext('2d');
+    const companyCtx = document.getElementById('companyChart');
+    if (companyCtx) {
+        const companyData = {{ company_stats|default ({}) | tojson
+    }};
     new Chart(companyCtx, {
         type: 'bar',
         data: {
-            labels: companyNames,
+            labels: Object.keys(companyData).length ? Object.keys(companyData) : ['Şirket 1', 'Şirket 2', 'Şirket 3'],
             datasets: [{
                 label: 'Ortalama Puan',
-                data: companyScores,
-                backgroundColor: ['rgba(54, 162, 235, 0.7)', 'rgba(255, 99, 132, 0.7)', 'rgba(255, 206, 86, 0.7)', 'rgba(75, 192, 192, 0.7)', 'rgba(153, 102, 255, 0.7)'],
-                borderWidth: 0
+                data: Object.keys(companyData).length ? Object.values(companyData) : [0, 0, 0],
+                backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8']
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true, max: 100 } }
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true, max: 100 }
+            }
         }
     });
+    }
 
     // Skill Averages Chart
-    var skillCtx = document.getElementById('skillChart').getContext('2d');
+    const skillCtx = document.getElementById('skillChart');
+    if (skillCtx) {
+        const skillData = {{ skill_averages|default ({}) | tojson
+    }};
+    const skillLabels = Object.keys(skillData).length ? Object.keys(skillData) : ['Grammar', 'Vocabulary', 'Reading', 'Listening', 'Writing', 'Speaking'];
+    const skillValues = Object.keys(skillData).length ? Object.values(skillData) : [0, 0, 0, 0, 0, 0];
+
     new Chart(skillCtx, {
         type: 'radar',
         data: {
-            labels: ['Grammar', 'Vocabulary', 'Reading', 'Listening', 'Speaking', 'Writing'],
+            labels: skillLabels,
             datasets: [{
-                label: 'Ortalama Puan',
-                data: skillAverages,
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 2,
-                pointBackgroundColor: 'rgba(75, 192, 192, 1)'
+                label: 'Ortalama',
+                data: skillValues,
+                backgroundColor: 'rgba(0,123,255,0.2)',
+                borderColor: '#007bff',
+                pointBackgroundColor: '#007bff'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: { r: { beginAtZero: true, max: 100 } }
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
         }
     });
+    }
+});
 </script>
 {% endblock %}
