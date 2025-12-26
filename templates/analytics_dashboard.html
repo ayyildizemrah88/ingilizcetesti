@@ -230,8 +230,7 @@
         // CEFR Distribution Chart
         const cefrCtx = document.getElementById('cefrChart');
         if (cefrCtx) {
-            const cefrData = {{ cefr_distribution|default ({}) | tojson
-        }
+       const cefrData = {{ cefr_distribution|default([]) | tojson }};
     };
     new Chart(cefrCtx, {
         type: 'doughnut',
