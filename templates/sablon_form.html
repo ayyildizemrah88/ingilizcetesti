@@ -3,92 +3,711 @@
 {% block title %}{{ 'Şablon Düzenle' if sablon else 'Yeni Sınav Şablonu' }}{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <!-- Navigation -->
-    <div class="mb-3">
-        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary me-2">
-            <i class="bi bi-house-fill me-1"></i>Dashboard
-        </a>
-        <a href="{{ url_for('admin.sablonlar') }}" class="btn btn-outline-primary">
-            <i class="bi bi-arrow-left me-1"></i>Şablonlar
-        </a>
-    </div>
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('admin.sablonlar') }}">Şablonlar</a></li>
+            <li class="breadcrumb-item active">{{ 'Düzenle' if sablon else 'Yeni Şablon' }}</li>
+        </ol>
+    </nav>
 
     <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-6">
-
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="material-icons align-middle me-2">{{ 'edit' if sablon else 'post_add' }}</i>
-                        {{ 'Şablon Düzenle' if sablon else 'Yeni Sınav Şablonu' }}
-                    </h5>
-                </div>
-                <div class="card-body">
-
-                    <!-- Flash Messages -->
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="col-lg-10">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <div class="d-flex align-items-center">
+                        <span class="material-icons me-2">{{ 'edit' if sablon else 'post_add' }}</span>
+                        <h5 class="mb-0">{{ 'Şablon Düzenle' if sablon else 'Yeni Sınav Şablonu Oluştur' }}</h5>
                     </div>
-                    {% endfor %}
-                    {% endif %}
-                    {% endwith %}
-
-                    <form method="POST">
-                        <!-- CSRF Token for Security -->
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('admin.sablon_kaydet', id=sablon.id if sablon else None) }}" id="sablonForm">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <!-- Temel Bilgiler -->
+                        <div class="section-block mb-5">
+                            <h6 class="section-title">
+                                <span class="material-icons">info</span>
+                                Temel Bilgiler
+                            </h6>
+                            
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label for="isim" class="form-label fw-bold">Şablon Adı <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control form-control-lg" id="isim" name="isim" 
+                                           value="{{ sablon.isim if sablon else '' }}" required
+                                           placeholder="Örn: Genel İngilizce Sınavı">
+                                </div>
+                                
+                                <div class="col-md-3">
+                                    <label for="baslangic_seviyesi" class="form-label fw-bold">Başlangıç Seviyesi</label>
+                                    <select class="form-select form-select-lg" id="baslangic_seviyesi" name="baslangic_seviyesi">
+                                        {% for level in ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] %}
+                                        <option value="{{ level }}" {{ 'selected' if sablon and sablon.baslangic_seviyesi == level else ('selected' if level == 'B1' else '') }}>
+                                            {{ level }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
 
-                        <!-- Şablon Adı -->
-                        <div class="mb-3">
-                            <label for="isim" class="form-label">Şablon Adı *</label>
-                            <input type="text" class="form-control" id="isim" name="isim"
-                                value="{{ sablon.isim if sablon else '' }}" required
-                                placeholder="Örn: Genel İngilizce Testi">
-                        </div>
-
-                        <!-- Açıklama -->
-                        <div class="mb-3">
-                            <label for="aciklama" class="form-label">Açıklama</label>
-                            <textarea class="form-control" id="aciklama" name="aciklama" rows="2"
-                                placeholder="Şablon hakkında kısa açıklama">{{ sablon.aciklama if sablon else '' }}</textarea>
-                        </div>
-
-                        <div class="row">
-                            <!-- Sınav Süresi -->
-                            <div class="col-md-6 mb-3">
-                                <label for="sinav_suresi" class="form-label">Sınav Süresi (dakika) *</label>
-                                <input type="number" class="form-control" id="sinav_suresi" name="sinav_suresi"
-                                    value="{{ sablon.sinav_suresi if sablon else 30 }}" min="5" max="180" required>
+                                <div class="col-md-3">
+                                    <label for="toplam_sure" class="form-label fw-bold">Toplam Süre (dk)</label>
+                                    <input type="number" class="form-control form-control-lg" id="toplam_sure" name="sinav_suresi"
+                                           value="{{ sablon.sinav_suresi if sablon else 60 }}" min="5" max="300">
+                                    <small class="text-muted">Otomatik hesaplanacak</small>
+                                </div>
                             </div>
+                        </div>
 
-                            <!-- Soru Sayısı -->
-                            <div class="col-md-6 mb-3">
-                                <label for="soru_sayisi" class="form-label">Soru Sayısı *</label>
-                                <input type="number" class="form-control" id="soru_sayisi" name="soru_sayisi"
-                                    value="{{ sablon.soru_sayisi if sablon else 25 }}" min="5" max="100" required>
+                        <!-- Müşteri/Şirket Ataması -->
+                        <div class="section-block mb-5">
+                            <h6 class="section-title">
+                                <span class="material-icons">business</span>
+                                Müşteri Ataması
+                            </h6>
+                            
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label for="sirket_id" class="form-label fw-bold">Şirket/Müşteri</label>
+                                    <select class="form-select form-select-lg" id="sirket_id" name="sirket_id">
+                                        <option value="">-- Genel (Tüm Şirketler) --</option>
+                                        {% for sirket in sirketler %}
+                                        <option value="{{ sirket.id }}" {{ 'selected' if sablon and sablon.sirket_id == sirket.id else '' }}>
+                                            {{ sirket.isim }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="text-muted">Boş bırakırsanız tüm şirketler kullanabilir</small>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Ek Ayarlar</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" id="is_adaptive" name="is_adaptive"
+                                               {{ 'checked' if sablon and sablon.is_adaptive else '' }}>
+                                        <label class="form-check-label" for="is_adaptive">
+                                            Adaptif Test (CAT) Kullan
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="randomize_questions" name="randomize_questions"
+                                               {{ 'checked' if not sablon or sablon.randomize_questions else '' }} checked>
+                                        <label class="form-check-label" for="randomize_questions">
+                                            Soruları Karıştır
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="show_results" name="show_results"
+                                               {{ 'checked' if not sablon or sablon.show_results else '' }} checked>
+                                        <label class="form-check-label" for="show_results">
+                                            Sonuçları Göster
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Submit -->
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="material-icons align-middle me-1">save</i>
-                                {{ 'Güncelle' if sablon else 'Kaydet' }}
-                            </button>
-                            <a href="{{ url_for('admin.sablonlar') }}" class="btn btn-outline-secondary">
-                                <i class="material-icons align-middle me-1">cancel</i>
+                        <!-- Hızlı Şablon Seçimi -->
+                        <div class="section-block mb-5">
+                            <h6 class="section-title">
+                                <span class="material-icons">flash_on</span>
+                                Hazır Şablonlar
+                            </h6>
+                            
+                            <div class="quick-templates">
+                                <button type="button" class="btn btn-outline-primary quick-template-btn" data-template="speaking_only">
+                                    <span class="material-icons">mic</span>
+                                    Sadece Speaking
+                                </button>
+                                <button type="button" class="btn btn-outline-primary quick-template-btn" data-template="writing_only">
+                                    <span class="material-icons">edit_note</span>
+                                    Sadece Writing
+                                </button>
+                                <button type="button" class="btn btn-outline-primary quick-template-btn" data-template="grammar_vocab">
+                                    <span class="material-icons">menu_book</span>
+                                    Grammar + Vocabulary
+                                </button>
+                                <button type="button" class="btn btn-outline-primary quick-template-btn" data-template="reading_listening">
+                                    <span class="material-icons">headphones</span>
+                                    Reading + Listening
+                                </button>
+                                <button type="button" class="btn btn-outline-success quick-template-btn" data-template="full">
+                                    <span class="material-icons">check_circle</span>
+                                    Tam Kapsamlı
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Sınav Bölümleri -->
+                        <div class="section-block mb-5">
+                            <h6 class="section-title">
+                                <span class="material-icons">category</span>
+                                Sınav Bölümleri
+                            </h6>
+                            <p class="text-muted mb-4">Sınavda yer almasını istediğiniz bölümleri seçin ve her biri için ayarları yapın:</p>
+
+                            <div class="sections-container">
+                                
+                                <!-- Grammar -->
+                                <div class="section-card" data-section="grammar">
+                                    <div class="section-header">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input section-toggle" type="checkbox" 
+                                                   id="section_grammar" name="sections[]" value="grammar">
+                                            <label class="form-check-label" for="section_grammar">
+                                                <span class="section-icon">📝</span>
+                                                <strong>Grammar</strong>
+                                                <span class="text-muted">(Dilbilgisi)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="section-config" style="display: none;">
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Soru Sayısı</label>
+                                                <input type="number" class="form-control" name="grammar_question_count" 
+                                                       value="10" min="1" max="50">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Süre (dakika)</label>
+                                                <input type="number" class="form-control" name="grammar_time_limit" 
+                                                       value="10" min="1" max="60">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Sıra</label>
+                                                <input type="number" class="form-control" name="grammar_order" 
+                                                       value="1" min="1" max="10">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Vocabulary -->
+                                <div class="section-card" data-section="vocabulary">
+                                    <div class="section-header">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input section-toggle" type="checkbox" 
+                                                   id="section_vocabulary" name="sections[]" value="vocabulary">
+                                            <label class="form-check-label" for="section_vocabulary">
+                                                <span class="section-icon">📖</span>
+                                                <strong>Vocabulary</strong>
+                                                <span class="text-muted">(Kelime Bilgisi)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="section-config" style="display: none;">
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Soru Sayısı</label>
+                                                <input type="number" class="form-control" name="vocabulary_question_count" 
+                                                       value="10" min="1" max="50">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Süre (dakika)</label>
+                                                <input type="number" class="form-control" name="vocabulary_time_limit" 
+                                                       value="10" min="1" max="60">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Sıra</label>
+                                                <input type="number" class="form-control" name="vocabulary_order" 
+                                                       value="2" min="1" max="10">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Reading -->
+                                <div class="section-card" data-section="reading">
+                                    <div class="section-header">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input section-toggle" type="checkbox" 
+                                                   id="section_reading" name="sections[]" value="reading">
+                                            <label class="form-check-label" for="section_reading">
+                                                <span class="section-icon">📚</span>
+                                                <strong>Reading</strong>
+                                                <span class="text-muted">(Okuma Anlama)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="section-config" style="display: none;">
+                                        <div class="row g-3">
+                                            <div class="col-md-3">
+                                                <label class="form-label">Soru Sayısı</label>
+                                                <input type="number" class="form-control" name="reading_question_count" 
+                                                       value="10" min="1" max="30">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Süre (dakika)</label>
+                                                <input type="number" class="form-control" name="reading_time_limit" 
+                                                       value="20" min="5" max="60">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Parça Sayısı</label>
+                                                <input type="number" class="form-control" name="reading_passage_count" 
+                                                       value="2" min="1" max="5">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Sıra</label>
+                                                <input type="number" class="form-control" name="reading_order" 
+                                                       value="3" min="1" max="10">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Listening -->
+                                <div class="section-card" data-section="listening">
+                                    <div class="section-header">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input section-toggle" type="checkbox" 
+                                                   id="section_listening" name="sections[]" value="listening">
+                                            <label class="form-check-label" for="section_listening">
+                                                <span class="section-icon">🎧</span>
+                                                <strong>Listening</strong>
+                                                <span class="text-muted">(Dinleme)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="section-config" style="display: none;">
+                                        <div class="row g-3">
+                                            <div class="col-md-3">
+                                                <label class="form-label">Soru Sayısı</label>
+                                                <input type="number" class="form-control" name="listening_question_count" 
+                                                       value="10" min="1" max="30">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Süre (dakika)</label>
+                                                <input type="number" class="form-control" name="listening_time_limit" 
+                                                       value="15" min="5" max="60">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Ses Dosyası Sayısı</label>
+                                                <input type="number" class="form-control" name="listening_audio_count" 
+                                                       value="3" min="1" max="10">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Sıra</label>
+                                                <input type="number" class="form-control" name="listening_order" 
+                                                       value="4" min="1" max="10">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Writing -->
+                                <div class="section-card" data-section="writing">
+                                    <div class="section-header">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input section-toggle" type="checkbox" 
+                                                   id="section_writing" name="sections[]" value="writing">
+                                            <label class="form-check-label" for="section_writing">
+                                                <span class="section-icon">✍️</span>
+                                                <strong>Writing</strong>
+                                                <span class="text-muted">(Yazma)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="section-config" style="display: none;">
+                                        <div class="row g-3">
+                                            <div class="col-md-3">
+                                                <label class="form-label">Soru Sayısı</label>
+                                                <input type="number" class="form-control" name="writing_question_count" 
+                                                       value="2" min="1" max="5">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Süre (dakika)</label>
+                                                <input type="number" class="form-control" name="writing_time_limit" 
+                                                       value="30" min="10" max="120">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Min. Kelime</label>
+                                                <input type="number" class="form-control" name="writing_min_words" 
+                                                       value="150" min="50" max="500">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Sıra</label>
+                                                <input type="number" class="form-control" name="writing_order" 
+                                                       value="5" min="1" max="10">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Speaking -->
+                                <div class="section-card" data-section="speaking">
+                                    <div class="section-header">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input section-toggle" type="checkbox" 
+                                                   id="section_speaking" name="sections[]" value="speaking">
+                                            <label class="form-check-label" for="section_speaking">
+                                                <span class="section-icon">🎤</span>
+                                                <strong>Speaking</strong>
+                                                <span class="text-muted">(Konuşma)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="section-config" style="display: none;">
+                                        <div class="row g-3">
+                                            <div class="col-md-2">
+                                                <label class="form-label">Soru Sayısı</label>
+                                                <input type="number" class="form-control" name="speaking_question_count" 
+                                                       value="5" min="1" max="10">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label">Toplam Süre (dk)</label>
+                                                <input type="number" class="form-control" name="speaking_time_limit" 
+                                                       value="15" min="5" max="30">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label">Hazırlık (sn)</label>
+                                                <input type="number" class="form-control" name="speaking_prep_time" 
+                                                       value="30" min="15" max="120">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Cevap Süresi (sn)</label>
+                                                <input type="number" class="form-control" name="speaking_answer_time" 
+                                                       value="60" min="30" max="180">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label">Sıra</label>
+                                                <input type="number" class="form-control" name="speaking_order" 
+                                                       value="6" min="1" max="10">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Özet -->
+                        <div class="section-block mb-4">
+                            <h6 class="section-title">
+                                <span class="material-icons">summarize</span>
+                                Şablon Özeti
+                            </h6>
+                            <div id="templateSummary" class="summary-box">
+                                <p class="text-muted">Lütfen en az bir bölüm seçin...</p>
+                            </div>
+                        </div>
+
+                        <!-- Butonlar -->
+                        <div class="d-flex justify-content-between align-items-center pt-4 border-top">
+                            <a href="{{ url_for('admin.sablonlar') }}" class="btn btn-outline-secondary btn-lg">
+                                <span class="material-icons">close</span>
                                 İptal
                             </a>
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                                <span class="material-icons">save</span>
+                                {{ 'Güncelle' if sablon else 'Şablonu Kaydet' }}
+                            </button>
                         </div>
                     </form>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
+
+<style>
+.section-block {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.section-title .material-icons {
+    color: #3498db;
+}
+
+.quick-templates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.quick-template-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    transition: all 0.3s;
+}
+
+.quick-template-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.section-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    transition: all 0.3s;
+}
+
+.section-card.active {
+    border-color: #3498db;
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+}
+
+.section-header {
+    padding: 1rem 1.25rem;
+}
+
+.section-icon {
+    font-size: 1.5rem;
+    margin-right: 0.5rem;
+}
+
+.section-config {
+    background: #f8f9fa;
+    padding: 1.25rem;
+    border-top: 1px solid #e9ecef;
+    border-radius: 0 0 10px 10px;
+}
+
+.form-check-input:checked {
+    background-color: #3498db;
+    border-color: #3498db;
+}
+
+.summary-box {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.summary-box .badge {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sectionToggles = document.querySelectorAll('.section-toggle');
+    const submitBtn = document.getElementById('submitBtn');
+    const templateSummary = document.getElementById('templateSummary');
+    const totalTimeInput = document.getElementById('toplam_sure');
+
+    // Hazır şablon yapılandırmaları
+    const quickTemplates = {
+        speaking_only: {
+            sections: ['speaking'],
+            speaking_question_count: 5,
+            speaking_time_limit: 15,
+            speaking_prep_time: 30,
+            speaking_answer_time: 60
+        },
+        writing_only: {
+            sections: ['writing'],
+            writing_question_count: 2,
+            writing_time_limit: 45,
+            writing_min_words: 200
+        },
+        grammar_vocab: {
+            sections: ['grammar', 'vocabulary'],
+            grammar_question_count: 15,
+            grammar_time_limit: 15,
+            vocabulary_question_count: 15,
+            vocabulary_time_limit: 15
+        },
+        reading_listening: {
+            sections: ['reading', 'listening'],
+            reading_question_count: 10,
+            reading_time_limit: 20,
+            reading_passage_count: 2,
+            listening_question_count: 10,
+            listening_time_limit: 15,
+            listening_audio_count: 3
+        },
+        full: {
+            sections: ['grammar', 'vocabulary', 'reading', 'listening', 'writing', 'speaking'],
+            grammar_question_count: 10,
+            grammar_time_limit: 10,
+            vocabulary_question_count: 10,
+            vocabulary_time_limit: 10,
+            reading_question_count: 10,
+            reading_time_limit: 20,
+            reading_passage_count: 2,
+            listening_question_count: 10,
+            listening_time_limit: 15,
+            listening_audio_count: 3,
+            writing_question_count: 1,
+            writing_time_limit: 30,
+            writing_min_words: 150,
+            speaking_question_count: 5,
+            speaking_time_limit: 15,
+            speaking_prep_time: 30,
+            speaking_answer_time: 60
+        }
+    };
+
+    // Section toggle event
+    sectionToggles.forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const card = this.closest('.section-card');
+            const config = card.querySelector('.section-config');
+            
+            if (this.checked) {
+                card.classList.add('active');
+                config.style.display = 'block';
+            } else {
+                card.classList.remove('active');
+                config.style.display = 'none';
+            }
+            
+            updateSummary();
+        });
+    });
+
+    // Quick template buttons
+    document.querySelectorAll('.quick-template-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const templateName = this.dataset.template;
+            const template = quickTemplates[templateName];
+            
+            // Önce tüm bölümleri kapat
+            sectionToggles.forEach(toggle => {
+                toggle.checked = false;
+                const card = toggle.closest('.section-card');
+                card.classList.remove('active');
+                card.querySelector('.section-config').style.display = 'none';
+            });
+            
+            // Seçilen bölümleri aç ve değerleri ayarla
+            template.sections.forEach(section => {
+                const toggle = document.getElementById('section_' + section);
+                if (toggle) {
+                    toggle.checked = true;
+                    const card = toggle.closest('.section-card');
+                    card.classList.add('active');
+                    card.querySelector('.section-config').style.display = 'block';
+                }
+            });
+
+            // Değerleri ayarla
+            Object.keys(template).forEach(key => {
+                if (key !== 'sections') {
+                    const input = document.querySelector(`[name="${key}"]`);
+                    if (input) {
+                        input.value = template[key];
+                    }
+                }
+            });
+            
+            updateSummary();
+        });
+    });
+
+    // Update summary function
+    function updateSummary() {
+        const selectedSections = [];
+        let totalTime = 0;
+        let totalQuestions = 0;
+
+        sectionToggles.forEach(toggle => {
+            if (toggle.checked) {
+                const section = toggle.value;
+                const card = toggle.closest('.section-card');
+                const questionCount = parseInt(card.querySelector(`[name="${section}_question_count"]`).value) || 0;
+                const timeLimit = parseInt(card.querySelector(`[name="${section}_time_limit"]`).value) || 0;
+                
+                selectedSections.push({
+                    name: section,
+                    label: toggle.closest('.section-card').querySelector('strong').textContent,
+                    questions: questionCount,
+                    time: timeLimit
+                });
+                
+                totalQuestions += questionCount;
+                totalTime += timeLimit;
+            }
+        });
+
+        if (selectedSections.length === 0) {
+            templateSummary.innerHTML = '<p class="text-muted mb-0">Lütfen en az bir bölüm seçin...</p>';
+            submitBtn.disabled = true;
+        } else {
+            let html = '<div class="d-flex flex-wrap gap-2 mb-3">';
+            selectedSections.forEach(s => {
+                html += `<span class="badge bg-primary">${s.label}: ${s.questions} soru / ${s.time} dk</span>`;
+            });
+            html += '</div>';
+            html += `<div class="d-flex gap-4">
+                <div><strong>Toplam Bölüm:</strong> ${selectedSections.length}</div>
+                <div><strong>Toplam Soru:</strong> ${totalQuestions}</div>
+                <div><strong>Toplam Süre:</strong> ${totalTime} dakika</div>
+            </div>`;
+            
+            templateSummary.innerHTML = html;
+            totalTimeInput.value = totalTime;
+            submitBtn.disabled = false;
+        }
+    }
+
+    // Listen for config changes
+    document.querySelectorAll('.section-config input').forEach(input => {
+        input.addEventListener('change', updateSummary);
+    });
+
+    // Form validation
+    document.getElementById('sablonForm').addEventListener('submit', function(e) {
+        const checkedSections = document.querySelectorAll('.section-toggle:checked');
+        if (checkedSections.length === 0) {
+            e.preventDefault();
+            alert('Lütfen en az bir sınav bölümü seçin!');
+            return false;
+        }
+    });
+
+    {% if sablon %}
+    // Mevcut şablonu yükle
+    try {
+        const sectionsConfig = {{ sablon.sections_config|safe if sablon.sections_config else '{}' }};
+        Object.keys(sectionsConfig).forEach(section => {
+            const toggle = document.getElementById('section_' + section);
+            if (toggle) {
+                toggle.checked = true;
+                const card = toggle.closest('.section-card');
+                card.classList.add('active');
+                card.querySelector('.section-config').style.display = 'block';
+                
+                const config = sectionsConfig[section];
+                if (config.question_count) {
+                    card.querySelector(`[name="${section}_question_count"]`).value = config.question_count;
+                }
+                if (config.time_limit) {
+                    card.querySelector(`[name="${section}_time_limit"]`).value = Math.floor(config.time_limit / 60);
+                }
+            }
+        });
+        updateSummary();
+    } catch(e) {
+        console.log('Sections config parse error:', e);
+    }
+    {% endif %}
+});
+</script>
 {% endblock %}
