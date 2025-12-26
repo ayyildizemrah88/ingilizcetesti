@@ -1,145 +1,245 @@
-{% extends "dashboard.html" %}
-{% block title %}Aday Detay - Skills Test Center{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Aday Detayı - {{ aday.ad_soyad }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3><i class="bi bi-person-lines-fill me-2"></i>Aday Detayı</h3>
-    <div class="btn-group">
-        {% if session.rol in ['super_admin', 'superadmin'] %}
-        <!-- Certificate Download -->
-        {% set durum = aday.durum if aday is mapping else aday[8] %}
-        {% if durum == 'Tamamlandi' or durum == 'tamamlandi' %}
-        <a href="/certificate/download/{{ aday.id if aday is mapping else aday[0] }}" class="btn btn-success">
-            <i class="bi bi-file-earmark-pdf me-1"></i>Sertifika İndir
-        </a>
-        {% endif %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-person-badge me-2"></i>Aday Detayı</h2>
+        <div>
+            {% if aday.sinav_durumu == 'tamamlandi' and aday.puan and aday.puan >= 50 %}
+            <a href="{{ url_for('certificate.download', candidate_id=aday.id) }}" class="btn btn-success me-2">
+                <i class="bi bi-award me-1"></i>Sertifika İndir
+            </a>
+            {% endif %}
+            <a href="{{ url_for('admin.adaylar') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Geri
+            </a>
+        </div>
+    </div>
 
-        <!-- Exam Reset -->
-        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#resetExamModal">
-            <i class="bi bi-arrow-clockwise me-1"></i>Sınavı Sıfırla
-        </button>
-        {% endif %}
+    <div class="row">
+        <!-- Kişi Bilgileri -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person me-2"></i>Kişi Bilgileri</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tr>
+                            <th width="40%">Ad Soyad</th>
+                            <td>{{ aday.ad_soyad or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email</th>
+                            <td>{{ aday.email or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>TC Kimlik</th>
+                            <td>{{ aday.tc_kimlik or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Telefon</th>
+                            <td>{{ aday.cep_no or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Giriş Kodu</th>
+                            <td><code class="text-primary fw-bold">{{ aday.giris_kodu }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>Oluşturma</th>
+                            <td>{{ aday.created_at.strftime('%d/%m/%Y %H:%M') if aday.created_at else '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
 
-        <a href="/admin/adaylar" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Geri</a>
+        <!-- Sınav Bilgileri -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Sınav Bilgileri</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tr>
+                            <th width="40%">Durum</th>
+                            <td>
+                                {% if aday.sinav_durumu == 'tamamlandi' %}
+                                <span class="badge bg-success">Tamamlandı</span>
+                                {% elif aday.sinav_durumu == 'devam_ediyor' %}
+                                <span class="badge bg-warning">Devam Ediyor</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Bekliyor</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Puan</th>
+                            <td>
+                                {% if aday.puan is not none %}
+                                <span
+                                    class="fw-bold {% if aday.puan >= 70 %}text-success{% elif aday.puan >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                                    {{ aday.puan }}%
+                                </span>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Seviye</th>
+                            <td>
+                                {% if aday.seviye_sonuc %}
+                                <span class="badge bg-primary fs-6">{{ aday.seviye_sonuc }}</span>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Sınav Süresi</th>
+                            <td>{{ aday.sinav_suresi or 30 }} dakika</td>
+                        </tr>
+                        <tr>
+                            <th>Başlama</th>
+                            <td>{{ aday.baslama_tarihi.strftime('%d/%m/%Y %H:%M') if aday.baslama_tarihi else '-' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Bitiş</th>
+                            <td>{{ aday.bitis_tarihi.strftime('%d/%m/%Y %H:%M') if aday.bitis_tarihi else '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performans -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Kategori Performansı</h5>
+                </div>
+                <div class="card-body">
+                    {% set skills = [
+                    ('Grammar', aday.p_grammar),
+                    ('Vocabulary', aday.p_vocabulary),
+                    ('Reading', aday.p_reading),
+                    ('Listening', aday.p_listening),
+                    ('Speaking', aday.p_speaking),
+                    ('Writing', aday.p_writing)
+                    ] %}
+                    {% for name, value in skills %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>{{ name }}</span>
+                            <span class="fw-bold">{{ value or 0 }}%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar {% if (value or 0) >= 70 %}bg-success{% elif (value or 0) >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                style="width: {{ value or 0 }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ekstra Bilgiler -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-shield-check me-2"></i>Güvenlik Bilgileri</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tr>
+                            <th width="40%">Trust Score</th>
+                            <td>
+                                {% if aday.trust_score is not none %}
+                                <span
+                                    class="badge {% if aday.trust_score >= 80 %}bg-success{% elif aday.trust_score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ aday.trust_score }}%
+                                </span>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>IP Adresi</th>
+                            <td>{{ aday.ip_adresi or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Tarayıcı</th>
+                            <td>{{ aday.browser_info[:50] if aday.browser_info else '-' }}...</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-gear me-2"></i>İşlemler</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <!-- Sınavı Sıfırla -->
+                        <button type="button" class="btn btn-warning" data-bs-toggle="modal"
+                            data-bs-target="#resetModal">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Sınavı Sıfırla
+                        </button>
+
+                        <!-- E-posta Gönder -->
+                        <a href="mailto:{{ aday.email }}" class="btn btn-info">
+                            <i class="bi bi-envelope me-1"></i>E-posta Gönder
+                        </a>
+
+                        <!-- Sil -->
+                        <form action="{{ url_for('admin.aday_sil', id=aday.id) }}" method="POST"
+                            onsubmit="return confirm('Bu adayı silmek istediğinize emin misiniz?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-danger w-100">
+                                <i class="bi bi-trash me-1"></i>Adayı Sil
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Reset Exam Modal -->
-<div class="modal fade" id="resetExamModal" tabindex="-1">
+<!-- Sınav Sıfırlama Modal -->
+<div class="modal fade" id="resetModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Sınavı Sıfırla</h5>
+            <div class="modal-header">
+                <h5 class="modal-title">Sınavı Sıfırla</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="/admin/candidate/{{ aday.id if aday is mapping else aday[0] }}/reset-exam" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="modal-body">
-                    <p>Bu adayın sınavını sıfırlamak istediğinize emin misiniz?</p>
-                    <p class="text-muted small">Adayın tüm cevapları silinecek ve sınava yeniden girebilecektir.</p>
-                    <div class="mb-3">
-                        <label class="form-label">Sıfırlama Nedeni</label>
-                        <select name="reason" class="form-select">
-                            <option value="Teknik sorun">Teknik sorun</option>
-                            <option value="İnternet kesintisi">İnternet kesintisi</option>
-                            <option value="Yanlış aday kaydı">Yanlış aday kaydı</option>
-                            <option value="Admin kararı">Admin kararı</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-warning">
-                        <i class="bi bi-arrow-clockwise me-1"></i>Sıfırla
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4">
-    <div class="col-md-4">
-        <div class="card border-0 h-100">
-            <div class="card-header bg-white">
-                <h6 class="mb-0">Kişi Bilgileri</h6>
-            </div>
-            <div class="card-body">
-                <p><strong>Ad Soyad:</strong> {{ aday.ad_soyad if aday is mapping else aday[1] }}</p>
-                <p><strong>Email:</strong> {{ aday.email if aday is mapping else aday[4] }}</p>
-                <p><strong>Durum:</strong>
-                    {% set durum = aday.durum if aday is mapping else aday[8] %}
-                    <span
-                        class="badge bg-{{ 'success' if durum == 'Tamamlandi' else 'warning' if durum == 'Devam' else 'secondary' }}">{{
-                        durum }}</span>
+            <div class="modal-body">
+                <p>Bu adayın sınavını sıfırlamak istediğinize emin misiniz?</p>
+                <p class="text-danger">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Adayın tüm cevapları silinecek ve sınava yeniden girebilecektir.
                 </p>
-                <p><strong>Puan:</strong> {{ aday.puan if aday is mapping else aday[7] }}%</p>
-                <p><strong>Seviye:</strong> {{ aday.seviye_sonuc if aday is mapping else aday[24] }}</p>
-                <p><strong>Trust Score:</strong> {{ aday.trust_score if aday is mapping else aday[9] }}</p>
             </div>
-        </div>
-    </div>
-
-    <div class="col-md-8">
-        <div class="card border-0">
-            <div class="card-header bg-white">
-                <h6 class="mb-0">Kategori Bazlı Performans</h6>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <form action="{{ url_for('admin.aday_sifirla', id=aday.id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-warning">Sıfırla</button>
+                </form>
             </div>
-            <div class="card-body">
-                {% for kat, stats in kategori_stats.items() %}
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span>{{ kat }}</span>
-                        <span>{{ stats.dogru }}/{{ stats.toplam }} ({{ ((stats.dogru / stats.toplam) * 100)|int
-                            }}%)</span>
-                    </div>
-                    <div class="progress" style="height: 8px;">
-                        <div class="progress-bar bg-{{ 'success' if (stats.dogru / stats.toplam) > 0.7 else 'warning' if (stats.dogru / stats.toplam) > 0.4 else 'danger' }}"
-                            style="width: {{ ((stats.dogru / stats.toplam) * 100)|int }}%"></div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card border-0 mt-4">
-    <div class="card-header bg-white">
-        <h6 class="mb-0">Cevaplar</h6>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Soru</th>
-                        <th>Kategori</th>
-                        <th>Zorluk</th>
-                        <th>Cevap</th>
-                        <th>Doğru</th>
-                        <th>Sonuç</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for c in cevaplar %}
-                    <tr>
-                        <td>{{ (c.soru_metni if c is mapping else c[5])[:50] }}...</td>
-                        <td><span class="badge bg-info">{{ c.kategori if c is mapping else c[6] }}</span></td>
-                        <td>{{ c.zorluk if c is mapping else c[7] }}</td>
-                        <td><strong>{{ c.verilen_cevap if c is mapping else c[3] }}</strong></td>
-                        <td>{{ c.correct_answer if c is mapping else c[8] }}</td>
-                        <td>
-                            {% if (c.dogru_mu if c is mapping else c[4]) %}
-                            <i class="bi bi-check-circle-fill text-success"></i>
-                            {% else %}
-                            <i class="bi bi-x-circle-fill text-danger"></i>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
     </div>
 </div>
