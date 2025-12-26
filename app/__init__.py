@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Flask Application Factory
-FIXED: Added candidate_auth_bp registration
+FIXED: Added candidate_auth_bp and question_import_bp registration
 """
 import os
 import logging
@@ -194,6 +194,14 @@ def register_blueprints(app):
         app.logger.info("✅ Health check blueprint registered")
     except ImportError as e:
         app.logger.warning(f"Health check blueprint not available: {e}")
+
+    # FIXED: Register question import blueprint
+    try:
+        from app.routes.question_import import question_import_bp
+        app.register_blueprint(question_import_bp, url_prefix='/question-import')
+        app.logger.info("✅ Question Import blueprint registered")
+    except ImportError as e:
+        app.logger.warning(f"Question Import blueprint not available: {e}")
 
     # Initialize i18n (internationalization)
     try:
