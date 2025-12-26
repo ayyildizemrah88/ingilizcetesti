@@ -152,16 +152,14 @@
                 <div class="card-body">
                     <div class="d-flex flex-wrap gap-3 justify-content-center">
                         {% if aday and aday.certificate_hash %}
-                        <a href="{{ url_for('certificate.verify', hash=aday.certificate_hash) }}"
-                            class="btn btn-success btn-lg">
+                        <a href="/certificate/{{ aday.certificate_hash }}" class="btn btn-success btn-lg">
                             <i class="fas fa-certificate me-2"></i>Sertifikayı Görüntüle
                         </a>
-                        <a href="{{ url_for('certificate.download_pdf', hash=aday.certificate_hash) }}"
-                            class="btn btn-outline-primary btn-lg">
+                        <a href="/certificate/{{ aday.certificate_hash }}/pdf" class="btn btn-outline-primary btn-lg">
                             <i class="fas fa-file-pdf me-2"></i>PDF İndir
                         </a>
                         {% endif %}
-                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg">
+                        <a href="/" class="btn btn-outline-secondary btn-lg">
                             <i class="fas fa-home me-2"></i>Ana Sayfa
                         </a>
                     </div>
