@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Authentication Routes - Login, Logout, Password Reset
+Authentication Routes - Login, Logout, Password Reset, Toggle Theme
 Enhanced with security best practices
-
-All model imports are at the top level for better performance and code clarity.
+ADDED: /toggle-theme route for dark/light mode switching
 """
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from app.extensions import db, limiter
@@ -13,14 +12,10 @@ import re
 import jwt
 
 # ══════════════════════════════════════════════════════════════════
-# MODEL IMPORTS - All imports at module level (best practice)
-# ══════════════════════════════════════════════════════════════════
 from app.models import User, Candidate, Company
 
 auth_bp = Blueprint('auth', __name__)
 
-# ══════════════════════════════════════════════════════════════════
-# HELPER FUNCTIONS
 # ══════════════════════════════════════════════════════════════════
 def get_secret_key():
     """Get SECRET_KEY - raises error if not configured."""
@@ -33,15 +28,6 @@ def get_secret_key():
 def validate_password_strength(password):
     """
     Validate password meets security requirements.
-
-    Requirements:
-    - Minimum 8 characters
-    - At least 1 uppercase letter
-    - At least 1 lowercase letter
-    - At least 1 digit
-
-    Returns:
-        tuple: (is_valid, error_message)
     """
     if len(password) < 8:
         return False, "Şifre en az 8 karakter olmalıdır."
@@ -59,18 +45,11 @@ def validate_password_strength(password):
 
 
 def regenerate_session():
-    """
-    Regenerate session ID to prevent session fixation attacks.
-    Preserves session data while changing the session ID.
-    """
-    # Store current session data
+    """Regenerate session ID to prevent session fixation attacks."""
     session_data = dict(session)
     session.clear()
-
-    # Restore data with new session ID
     for key, value in session_data.items():
         session[key] = value
-
     session.modified = True
 
 
@@ -88,8 +67,6 @@ def get_login_tracker():
 
 
 # ══════════════════════════════════════════════════════════════════
-# ROUTES
-# ══════════════════════════════════════════════════════════════════
 @auth_bp.route('/')
 def index():
     """Landing page with login options"""
@@ -99,15 +76,7 @@ def index():
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def login():
-    """
-    Admin panel login with enhanced security
-    ---
-    tags:
-      - Authentication
-    responses:
-      200:
-        description: Login page or redirect to dashboard
-    """
+    """Admin panel login with enhanced security"""
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('sifre', '')
@@ -129,14 +98,11 @@ def login():
 
             # Check if 2FA is enabled
             if hasattr(user, 'totp_verified') and user.totp_verified and user.totp_secret:
-                # Store user ID temporarily for 2FA verification
                 session['pending_2fa_user_id'] = user.id
                 flash("Lütfen doğrulama kodunuzu girin.", "info")
                 return redirect(url_for('twofa.challenge'))
 
-            # ══════════════════════════════════════════════════════════
-            # SESSION REGENERATION - Prevents session fixation attacks
-            # ══════════════════════════════════════════════════════════
+            # Session regeneration
             regenerate_session()
 
             # Set session data
@@ -144,7 +110,7 @@ def login():
             session['kullanici'] = user.email
             session['rol'] = user.rol
             session['sirket_id'] = user.sirket_id
-            session['2fa_verified'] = True  # Mark as verified (no 2FA needed)
+            session['2fa_verified'] = True
 
             # Update last login
             user.last_login = datetime.utcnow()
@@ -153,10 +119,8 @@ def login():
             flash("Giriş başarılı!", "success")
             return redirect(url_for('admin.dashboard'))
         else:
-            # Record failed login
             if tracker:
                 tracker.record_failed_attempt(email, request.remote_addr)
-
             flash("E-posta veya şifre hatalı.", "danger")
 
     return render_template('login.html')
@@ -164,54 +128,54 @@ def login():
 
 @auth_bp.route('/logout')
 def logout():
-    """
-    Logout and clear session
-    ---
-    tags:
-      - Authentication
-    responses:
-      302:
-        description: Redirect to login page
-    """
+    """Logout and clear session"""
     session.clear()
     flash("Çıkış yapıldı.", "info")
     return redirect(url_for('auth.login'))
 
 
 # ══════════════════════════════════════════════════════════════════
-# PASSWORD RESET
+# TOGGLE THEME - Dark/Light mode switching
+# ══════════════════════════════════════════════════════════════════
+@auth_bp.route('/toggle-theme')
+def toggle_theme():
+    """Toggle between dark and light theme"""
+    current_theme = session.get('theme', 'light')
+    new_theme = 'dark' if current_theme == 'light' else 'light'
+    session['theme'] = new_theme
+    
+    # Return to referring page or dashboard
+    referrer = request.referrer
+    if referrer:
+        return redirect(referrer)
+    return redirect(url_for('admin.dashboard'))
+
+
 # ══════════════════════════════════════════════════════════════════
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 @limiter.limit("5 per hour")
 def forgot_password():
-    """
-    Request password reset email
-    ---
-    tags:
-      - Authentication
-    """
+    """Request password reset email"""
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-
         user = User.query.filter_by(email=email).first()
 
         if user:
-            # Generate reset token with secure key
             try:
                 token = jwt.encode(
                     {'user_id': user.id, 'exp': datetime.utcnow() + timedelta(hours=1)},
                     get_secret_key(),
                     algorithm='HS256'
                 )
-
-                # Send email (via Celery task)
-                from app.tasks.email_tasks import send_password_reset_email
-                send_password_reset_email.delay(user.id, token)
-            except RuntimeError as e:
+                try:
+                    from app.tasks.email_tasks import send_password_reset_email
+                    send_password_reset_email.delay(user.id, token)
+                except:
+                    pass
+            except RuntimeError:
                 flash("Sistem hatası. Lütfen yönetici ile iletişime geçin.", "danger")
                 return render_template('forgot_password.html')
 
-        # Always show success to prevent user enumeration
         flash("Şifre sıfırlama linki e-posta adresinize gönderildi.", "success")
         return redirect(url_for('auth.login'))
 
@@ -220,17 +184,7 @@ def forgot_password():
 
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    """
-    Reset password with token and strong password validation
-    ---
-    tags:
-      - Authentication
-    parameters:
-      - name: token
-        in: path
-        type: string
-        required: true
-    """
+    """Reset password with token"""
     try:
         data = jwt.decode(token, get_secret_key(), algorithms=['HS256'])
         user_id = data['user_id']
@@ -248,7 +202,6 @@ def reset_password(token):
         password = request.form.get('sifre', '')
         password_confirm = request.form.get('sifre_tekrar', '')
 
-        # Strong password validation
         is_valid, error_msg = validate_password_strength(password)
         if not is_valid:
             flash(error_msg, "warning")
@@ -266,16 +219,9 @@ def reset_password(token):
 
 
 # ══════════════════════════════════════════════════════════════════
-# CANDIDATE EXAM LOGIN
-# ══════════════════════════════════════════════════════════════════
 @auth_bp.route('/sinav-giris', methods=['GET', 'POST'])
 def sinav_giris():
-    """
-    Candidate exam login with access code and TC Kimlik
-    ---
-    tags:
-      - Exam
-    """
+    """Candidate exam login with access code and TC Kimlik"""
     if request.method == 'POST':
         giris_kodu = request.form.get('giris_kodu', '').strip().upper()
         tc_kimlik = request.form.get('tc_kimlik', '').strip()
@@ -288,7 +234,6 @@ def sinav_giris():
             flash("TC Kimlik numarası gereklidir.", "warning")
             return render_template('sinav_giris.html')
 
-        # Validate TC Kimlik format (11 digits)
         if not tc_kimlik.isdigit() or len(tc_kimlik) != 11:
             flash("Geçersiz TC Kimlik numarası formatı.", "danger")
             return render_template('sinav_giris.html')
@@ -299,35 +244,23 @@ def sinav_giris():
             flash("Geçersiz giriş kodu.", "danger")
             return render_template('sinav_giris.html')
 
-        # Verify TC Kimlik matches
         if candidate.tc_kimlik and candidate.tc_kimlik != tc_kimlik:
             flash("TC Kimlik numarası eşleşmiyor.", "danger")
             return render_template('sinav_giris.html')
 
-        # If candidate has no TC, save it (first login)
         if not candidate.tc_kimlik:
             candidate.tc_kimlik = tc_kimlik
             db.session.commit()
 
-        # Check if exam already completed
         if candidate.sinav_durumu == 'tamamlandi':
             flash("Bu sınav zaten tamamlanmış.", "info")
             return redirect(url_for('exam.sinav_bitti'))
 
-        # ══════════════════════════════════════════════════════════
-        # SESSION REGENERATION for exam candidate
-        # ══════════════════════════════════════════════════════════
         regenerate_session()
-
-        # Set session
         session['aday_id'] = candidate.id
         session['giris_kodu'] = giris_kodu
 
-        # Start exam - DEDUCT CREDIT ON FIRST START
         if not candidate.baslama_tarihi:
-            # ══════════════════════════════════════════════════════════
-            # CREDIT DEDUCTION - Only on first exam start
-            # ══════════════════════════════════════════════════════════
             company = Company.query.get(candidate.sirket_id)
             if company:
                 success = company.deduct_credit(
@@ -346,7 +279,6 @@ def sinav_giris():
             candidate.sinav_durumu = 'devam_ediyor'
             db.session.commit()
 
-        # Calculate remaining time
         elapsed = datetime.utcnow() - candidate.baslama_tarihi
         remaining = (candidate.sinav_suresi * 60) - elapsed.total_seconds()
 
@@ -354,7 +286,6 @@ def sinav_giris():
             return redirect(url_for('exam.sinav_bitti'))
 
         session['kalan_sure'] = int(remaining)
-
         return redirect(url_for('exam.sinav'))
 
     return render_template('sinav_giris.html')
