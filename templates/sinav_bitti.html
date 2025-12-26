@@ -2,108 +2,160 @@
 {% block title %}Sınav Tamamlandı - Skills Test Center{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-lg-8">
-        <div class="card border-0 text-center">
-            <div class="card-body p-5">
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Success Header -->
+            <div class="text-center mb-5">
                 <div class="mb-4">
-                    {% if puan >= 75 %}
-                    <i class="bi bi-trophy-fill text-warning" style="font-size: 5rem;"></i>
-                    <h2 class="mt-3 text-success">Mükemmel!</h2>
-                    {% elif puan >= 60 %}
-                    <i class="bi bi-award-fill text-primary" style="font-size: 5rem;"></i>
-                    <h2 class="mt-3 text-primary">Tebrikler!</h2>
-                    {% elif puan >= 45 %}
-                    <i class="bi bi-emoji-smile text-info" style="font-size: 5rem;"></i>
-                    <h2 class="mt-3 text-info">İyi Bir Başlangıç!</h2>
+                    {% if aday and aday.puan %}
+                    {% if aday.puan >= 80 %}
+                    <div class="display-1 mb-3">🏆</div>
+                    <h1 class="display-5 text-success">Mükemmel!</h1>
+                    {% elif aday.puan >= 60 %}
+                    <div class="display-1 mb-3">🎉</div>
+                    <h1 class="display-5 text-primary">Tebrikler!</h1>
+                    {% elif aday.puan >= 40 %}
+                    <div class="display-1 mb-3">👍</div>
+                    <h1 class="display-5 text-info">İyi Bir Başlangıç!</h1>
                     {% else %}
-                    <i class="bi bi-book text-secondary" style="font-size: 5rem;"></i>
-                    <h2 class="mt-3 text-secondary">Geliştirebilirsiniz!</h2>
+                    <div class="display-1 mb-3">💪</div>
+                    <h1 class="display-5 text-warning">Geliştirebilirsiniz!</h1>
+                    {% endif %}
+                    {% else %}
+                    <div class="display-1 mb-3">✅</div>
+                    <h1 class="display-5 text-success">Tebrikler!</h1>
                     {% endif %}
                 </div>
+                <p class="lead text-muted">Sınavınız başarıyla tamamlandı.</p>
+            </div>
 
-                <p class="lead text-muted mb-4">Sınavınız başarıyla tamamlandı.</p>
-
-                <!-- Score Display Cards -->
-                <div class="row g-3 mb-4">
-                    <!-- 100'lük Puan -->
-                    <div class="col-md-3 col-6">
-                        <div class="bg-primary bg-opacity-10 rounded-3 p-3">
-                            <h2 class="display-5 fw-bold text-primary mb-0">{{ puan }}</h2>
-                            <small class="text-muted">100 Üzerinden</small>
-                        </div>
-                    </div>
-
-                    <!-- IELTS Band -->
-                    <div class="col-md-3 col-6">
-                        <div class="bg-success bg-opacity-10 rounded-3 p-3">
-                            {% set band = ((puan / 100) * 9)|round(1) %}
-                            {% if puan >= 90 %}{% set band = 9 %}
-                            {% elif puan >= 85 %}{% set band = 8.5 %}
-                            {% elif puan >= 80 %}{% set band = 8 %}
-                            {% elif puan >= 75 %}{% set band = 7.5 %}
-                            {% elif puan >= 70 %}{% set band = 7 %}
-                            {% elif puan >= 65 %}{% set band = 6.5 %}
-                            {% elif puan >= 60 %}{% set band = 6 %}
-                            {% elif puan >= 55 %}{% set band = 5.5 %}
-                            {% elif puan >= 50 %}{% set band = 5 %}
-                            {% elif puan >= 45 %}{% set band = 4.5 %}
-                            {% elif puan >= 40 %}{% set band = 4 %}
-                            {% else %}{% set band = 3.5 %}{% endif %}
-                            <h2 class="display-5 fw-bold text-success mb-0">{{ band }}</h2>
-                            <small class="text-muted">IELTS Band</small>
-                        </div>
-                    </div>
-
-                    <!-- CEFR Level -->
-                    <div class="col-md-3 col-6">
-                        <div class="bg-info bg-opacity-10 rounded-3 p-3">
-                            <h2 class="display-5 fw-bold text-info mb-0">{{ seviye }}</h2>
-                            <small class="text-muted">CEFR Seviye</small>
-                        </div>
-                    </div>
-
-                    <!-- Doğru/Toplam -->
-                    <div class="col-md-3 col-6">
-                        <div class="bg-secondary bg-opacity-10 rounded-3 p-3">
-                            <h2 class="display-5 fw-bold text-secondary mb-0">{{ dogru }}/{{ total }}</h2>
-                            <small class="text-muted">Doğru Cevap</small>
+            <!-- Score Cards -->
+            <div class="row g-4 mb-5">
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-center h-100 bg-primary text-white">
+                        <div class="card-body">
+                            <h2 class="display-6 mb-1">{{ aday.puan|default(0)|round|int }}</h2>
+                            <small class="opacity-75">Puan</small>
                         </div>
                     </div>
                 </div>
-
-                <!-- Level Description -->
-                <div class="alert alert-light mb-4">
-                    {% if seviye == 'C2' %}
-                    <strong>Uzman Kullanıcı:</strong> Dili anadil düzeyinde kullanabilirsiniz.
-                    {% elif seviye == 'C1' %}
-                    <strong>İleri Düzey:</strong> Karmaşık konularda akıcı konuşabilirsiniz.
-                    {% elif seviye == 'B2' %}
-                    <strong>Üst Orta:</strong> Soyut konuları rahatlıkla ifade edebilirsiniz.
-                    {% elif seviye == 'B1' %}
-                    <strong>Orta Düzey:</strong> Günlük hayatta rahatlıkla iletişim kurabilirsiniz.
-                    {% elif seviye == 'A2' %}
-                    <strong>Temel:</strong> Basit cümle ve ifadeler kurabilirsiniz.
-                    {% else %}
-                    <strong>Başlangıç:</strong> Temel kelime ve kalıpları anlayabilirsiniz.
-                    {% endif %}
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-center h-100 bg-success text-white">
+                        <div class="card-body">
+                            <h2 class="display-6 mb-1">{{ aday.seviye_sonuc|default('N/A') }}</h2>
+                            <small class="opacity-75">CEFR Seviye</small>
+                        </div>
+                    </div>
                 </div>
-
-                <div class="alert alert-info">
-                    <i class="bi bi-shield-check me-2"></i>
-                    Sertifika Doğrulama Kodu: <strong>{{ cert_hash }}</strong>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-center h-100 bg-info text-white">
+                        <div class="card-body">
+                            <h2 class="display-6 mb-1">{{ aday.dogru_sayisi|default(0) }}/{{
+                                aday.soru_limiti|default(25) }}</h2>
+                            <small class="opacity-75">Doğru/Toplam</small>
+                        </div>
+                    </div>
                 </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-center h-100 bg-warning text-dark">
+                        <div class="card-body">
+                            <h2 class="display-6 mb-1">%{{ ((aday.dogru_sayisi|default(0) / aday.soru_limiti|default(1))
+                                * 100)|round|int }}</h2>
+                            <small class="opacity-75">Başarı Oranı</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                <div class="d-grid gap-2 col-md-6 mx-auto">
-                    <a href="/cert/verify/{{ cert_hash }}" class="btn btn-primary btn-lg">
-                        <i class="bi bi-patch-check me-2"></i>Sertifikayı Görüntüle
-                    </a>
-                    <a href="/cert/pdf/{{ cert_hash }}" class="btn btn-outline-success">
-                        <i class="bi bi-file-earmark-pdf me-2"></i>PDF İndir
-                    </a>
-                    <a href="/" class="btn btn-outline-secondary">
-                        <i class="bi bi-house me-1"></i>Ana Sayfa
-                    </a>
+            <!-- Category Performance -->
+            {% if category_scores %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Kategori Performansı</h5>
+                </div>
+                <div class="card-body">
+                    {% for cat, scores in category_scores.items() %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-capitalize">{{ cat }}</span>
+                            <span class="text-muted">{{ scores.correct }}/{{ scores.total }} (%{{ ((scores.correct /
+                                scores.total) * 100)|round|int if scores.total > 0 else 0 }})</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            {% set pct = ((scores.correct / scores.total) * 100) if scores.total > 0 else 0 %}
+                            <div class="progress-bar {% if pct >= 70 %}bg-success{% elif pct >= 40 %}bg-warning{% else %}bg-danger{% endif %}"
+                                style="width: {{ pct }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Candidate Info -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0">
+                    <h5 class="mb-0"><i class="fas fa-user me-2"></i>Aday Bilgileri</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Ad Soyad:</strong> {{ aday.ad_soyad|default('N/A') }}</p>
+                            <p class="mb-2"><strong>Giriş Kodu:</strong>
+                                <code>{{ aday.giris_kodu|default('N/A') }}</code></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Sınav Tarihi:</strong> {{ aday.bitis_tarihi.strftime('%d.%m.%Y
+                                %H:%M') if aday.bitis_tarihi else 'N/A' }}</p>
+                            <p class="mb-2"><strong>Süre:</strong> {{ aday.sinav_suresi|default(30) }} dakika</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-3 justify-content-center">
+                        {% if aday and aday.certificate_hash %}
+                        <a href="{{ url_for('certificate.verify', hash=aday.certificate_hash) if 'certificate.verify' in url_for.__globals__ else '#' }}"
+                            class="btn btn-success btn-lg"
+                            onclick="{% if not aday.certificate_hash %}alert('Sertifika henüz hazır değil'); return false;{% endif %}">
+                            <i class="fas fa-certificate me-2"></i>Sertifikayı Görüntüle
+                        </a>
+                        <a href="{{ url_for('certificate.download_pdf', hash=aday.certificate_hash) if 'certificate.download_pdf' in url_for.__globals__ else '#' }}"
+                            class="btn btn-outline-primary btn-lg"
+                            onclick="{% if not aday.certificate_hash %}alert('PDF henüz hazır değil'); return false;{% endif %}">
+                            <i class="fas fa-file-pdf me-2"></i>PDF İndir
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-home me-2"></i>Ana Sayfa
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CEFR Level Explanation -->
+            <div class="card border-0 bg-light mt-4">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-info-circle me-2"></i>CEFR Seviye Açıklaması</h6>
+                    <p class="card-text small text-muted mb-0">
+                        {% if aday.seviye_sonuc == 'C2' %}
+                        <strong>C2 - Ustaca:</strong> Dili neredeyse anadil seviyesinde kullanabilirsiniz.
+                        {% elif aday.seviye_sonuc == 'C1' %}
+                        <strong>C1 - İleri:</strong> Karmaşık konularda akıcı ve spontan iletişim kurabilirsiniz.
+                        {% elif aday.seviye_sonuc == 'B2' %}
+                        <strong>B2 - Üst Orta:</strong> Kendi uzmanlık alanınızda teknik tartışmalara katılabilirsiniz.
+                        {% elif aday.seviye_sonuc == 'B1' %}
+                        <strong>B1 - Orta:</strong> Günlük konularda kendinizi ifade edebilirsiniz.
+                        {% elif aday.seviye_sonuc == 'A2' %}
+                        <strong>A2 - Temel:</strong> Basit cümlelerle iletişim kurabilirsiniz.
+                        {% else %}
+                        <strong>A1 - Başlangıç:</strong> Temel seviyede kelime ve ifadeler kullanabilirsiniz.
+                        {% endif %}
+                    </p>
                 </div>
             </div>
         </div>
