@@ -171,10 +171,8 @@
                                     <td>{{ candidate.ad_soyad }}</td>
                                     <td><strong>{{ candidate.puan or 0 }}</strong></td>
                                     <td>
-                                        <span class="badge 
-                                            {% if candidate.seviye_sonuc in ['C1', 'C2'] %}bg-danger
-                                            {% elif candidate.seviye_sonuc in ['B1', 'B2'] %}bg-warning text-dark
-                                            {% else %}bg-success{% endif %}">
+                                        <span
+                                            class="badge {% if candidate.seviye_sonuc in ['C1', 'C2'] %}bg-danger{% elif candidate.seviye_sonuc in ['B1', 'B2'] %}bg-warning text-dark{% else %}bg-success{% endif %}">
                                             {{ candidate.seviye_sonuc or 'N/A' }}
                                         </span>
                                     </td>
@@ -234,120 +232,95 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    // Chart data from server
+    var cefrData = {{ cefr_distribution| tojson |default ([0, 0, 0, 0, 0, 0]) }};
+    var trendLabels = {{ trend_labels| tojson |default ([]) }};
+    var trendData = {{ trend_data| tojson |default ([]) }};
+    var companyNames = {{ company_names| tojson |default ([]) }};
+    var companyScores = {{ company_scores| tojson |default ([]) }};
+    var skillAverages = {{ skill_averages| tojson |default ([0, 0, 0, 0, 0, 0]) }};
+
     // CEFR Distribution Chart
-    const cefrCtx = document.getElementById('cefrChart').getContext('2d');
+    var cefrCtx = document.getElementById('cefrChart').getContext('2d');
     new Chart(cefrCtx, {
         type: 'doughnut',
         data: {
             labels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
             datasets: [{
-                data: {{ cefr_distribution| tojson }
-    },
-        backgroundColor: [
-        '#28a745',
-        '#20c997',
-        '#ffc107',
-        '#fd7e14',
-        '#dc3545',
-        '#6f42c1'
-    ],
-        borderWidth: 0
-        }]
-    },
+                data: cefrData,
+                backgroundColor: ['#28a745', '#20c997', '#ffc107', '#fd7e14', '#dc3545', '#6f42c1'],
+                borderWidth: 0
+            }]
+        },
         options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'right'
-            }
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right' } }
         }
-    }
-});
+    });
 
     // Weekly Trend Chart
-    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    var trendCtx = document.getElementById('trendChart').getContext('2d');
     new Chart(trendCtx, {
         type: 'line',
         data: {
-            labels: {{ trend_labels| tojson }},
-        datasets: [{
-            label: 'Tamamlanan Sınav',
-            data: {{ trend_data| tojson }},
-        borderColor: '#0d6efd',
-        backgroundColor: 'rgba(13, 110, 253, 0.1)',
-        fill: true,
-        tension: 0.4
-        }]
-    },
+            labels: trendLabels,
+            datasets: [{
+                label: 'Tamamlanan Sınav',
+                data: trendData,
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
         options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true
-            }
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } }
         }
-    }
-});
+    });
 
     // Company Comparison Chart
-    const companyCtx = document.getElementById('companyChart').getContext('2d');
+    var companyCtx = document.getElementById('companyChart').getContext('2d');
     new Chart(companyCtx, {
         type: 'bar',
         data: {
-            labels: {{ company_names| tojson }},
-        datasets: [{
-            label: 'Ortalama Puan',
-            data: {{ company_scores| tojson }},
-        backgroundColor: [
-            'rgba(54, 162, 235, 0.7)',
-            'rgba(255, 99, 132, 0.7)',
-            'rgba(255, 206, 86, 0.7)',
-            'rgba(75, 192, 192, 0.7)',
-            'rgba(153, 102, 255, 0.7)'
-        ],
-        borderWidth: 0
-        }]
-    },
+            labels: companyNames,
+            datasets: [{
+                label: 'Ortalama Puan',
+                data: companyScores,
+                backgroundColor: ['rgba(54, 162, 235, 0.7)', 'rgba(255, 99, 132, 0.7)', 'rgba(255, 206, 86, 0.7)', 'rgba(75, 192, 192, 0.7)', 'rgba(153, 102, 255, 0.7)'],
+                borderWidth: 0
+            }]
+        },
         options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true,
-                max: 100
-            }
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, max: 100 } }
         }
-    }
-});
+    });
 
     // Skill Averages Chart
-    const skillCtx = document.getElementById('skillChart').getContext('2d');
+    var skillCtx = document.getElementById('skillChart').getContext('2d');
     new Chart(skillCtx, {
         type: 'radar',
         data: {
             labels: ['Grammar', 'Vocabulary', 'Reading', 'Listening', 'Speaking', 'Writing'],
             datasets: [{
                 label: 'Ortalama Puan',
-                data: {{ skill_averages| tojson }
-    },
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 2,
-        pointBackgroundColor: 'rgba(75, 192, 192, 1)'
-        }]
-    },
+                data: skillAverages,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                pointBackgroundColor: 'rgba(75, 192, 192, 1)'
+            }]
+        },
         options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            r: {
-                beginAtZero: true,
-                max: 100
-            }
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { r: { beginAtZero: true, max: 100 } }
         }
-    }
-});
+    });
 </script>
 {% endblock %}
