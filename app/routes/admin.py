@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Admin Routes - Dashboard and management
-TAM DOSYA - YENİ ROUTE'LAR DAHİL
+TAM DOSYA - TÜM ROUTE'LAR DAHİL
+GitHub: app/routes/admin.py
 """
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
@@ -47,21 +48,12 @@ def customer_or_superadmin(f):
 @admin_bp.route('/dashboard')
 @login_required
 def dashboard():
-    """
-    Admin dashboard with statistics
-    ---
-    tags:
-      - Admin
-    responses:
-      200:
-        description: Dashboard page
-    """
+    """Admin dashboard with statistics"""
     from app.models import Candidate, Question, Company, User
     from datetime import datetime, timedelta
 
     sirket_id = session.get('sirket_id')
 
-    # Statistics - with error handling
     try:
         aday_sayisi = Candidate.query.filter_by(sirket_id=sirket_id, is_deleted=False).count() if sirket_id else Candidate.query.filter_by(is_deleted=False).count()
     except:
@@ -77,7 +69,6 @@ def dashboard():
     except:
         sirket_sayisi = 0
 
-    # Recent candidates
     try:
         recent_candidates = Candidate.query.filter_by(
             sirket_id=sirket_id, is_deleted=False
@@ -85,7 +76,6 @@ def dashboard():
     except:
         recent_candidates = []
 
-    # Company info
     try:
         company = Company.query.get(sirket_id) if sirket_id else None
     except:
@@ -100,15 +90,12 @@ def dashboard():
 
 
 # ══════════════════════════════════════════════════════════════
+# ADAY YÖNETİMİ
+# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/adaylar')
 @login_required
 def adaylar():
-    """
-    List all candidates
-    ---
-    tags:
-      - Admin
-    """
+    """List all candidates"""
     from app.models import Candidate
 
     sirket_id = session.get('sirket_id')
@@ -120,7 +107,6 @@ def adaylar():
             sirket_id=sirket_id, is_deleted=False
         ).order_by(Candidate.created_at.desc()).paginate(page=page, per_page=per_page)
     else:
-        # Superadmin sees all candidates
         candidates = Candidate.query.filter_by(
             is_deleted=False
         ).order_by(Candidate.created_at.desc()).paginate(page=page, per_page=per_page)
@@ -131,12 +117,7 @@ def adaylar():
 @admin_bp.route('/aday/ekle', methods=['GET', 'POST'])
 @login_required
 def aday_ekle():
-    """
-    Add new candidate
-    ---
-    tags:
-      - Admin
-    """
+    """Add new candidate"""
     from app.models import Candidate, Company
     import string
     import random
@@ -149,10 +130,8 @@ def aday_ekle():
         sinav_suresi = int(request.form.get('sinav_suresi', 30))
         soru_limiti = int(request.form.get('soru_limiti', 25))
 
-        # Determine sirket_id
         sirket_id = session.get('sirket_id')
 
-        # Superadmin can select company from form
         if not sirket_id and session.get('rol') == 'superadmin':
             sirket_id = request.form.get('sirket_id', type=int)
             if not sirket_id:
@@ -160,7 +139,6 @@ def aday_ekle():
                 companies = Company.query.filter_by(is_active=True).all()
                 return render_template('aday_form.html', sirketler=companies)
 
-        # Generate unique code
         giris_kodu = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
         candidate = Candidate(
@@ -177,19 +155,16 @@ def aday_ekle():
         db.session.add(candidate)
         db.session.commit()
 
-        # Send invitation email via Celery
         if email:
             try:
                 from app.tasks.email_tasks import send_exam_invitation
                 send_exam_invitation.delay(candidate.id)
             except:
-                pass  # Email task not available
+                pass
 
         flash(f"Aday eklendi. Giriş Kodu: {giris_kodu}", "success")
         return redirect(url_for('admin.adaylar'))
 
-    # GET request - show form
-    # For superadmin, provide company list
     sirketler = None
     if session.get('rol') == 'superadmin':
         from app.models import Company
@@ -201,17 +176,11 @@ def aday_ekle():
 @admin_bp.route('/aday/<int:id>/detay')
 @login_required
 def aday_detay(id):
-    """
-    Candidate detail view
-    ---
-    tags:
-      - Admin
-    """
+    """Candidate detail view"""
     from app.models import Candidate
 
     candidate = Candidate.query.get_or_404(id)
 
-    # Check company access
     if candidate.sirket_id != session.get('sirket_id') and session.get('rol') != 'superadmin':
         flash("Bu adaya erişim yetkiniz yok.", "danger")
         return redirect(url_for('admin.adaylar'))
@@ -222,17 +191,11 @@ def aday_detay(id):
 @admin_bp.route('/aday/<int:id>/sil', methods=['POST'])
 @login_required
 def aday_sil(id):
-    """
-    Delete candidate (soft delete)
-    ---
-    tags:
-      - Admin
-    """
+    """Delete candidate (soft delete)"""
     from app.models import Candidate
 
     candidate = Candidate.query.get_or_404(id)
 
-    # Check company access
     if candidate.sirket_id != session.get('sirket_id') and session.get('rol') != 'superadmin':
         flash("Bu adaya erişim yetkiniz yok.", "danger")
         return redirect(url_for('admin.adaylar'))
@@ -245,31 +208,16 @@ def aday_sil(id):
 
 
 # ══════════════════════════════════════════════════════════════
-# YENİ EKLENEN ROUTE: SINAV SIFIRLAMA
+# SINAV SIFIRLAMA VE SÜRE UZATMA
 # ══════════════════════════════════════════════════════════════
 @admin_bp.route('/aday/<int:id>/sinav-sifirla', methods=['POST'])
 @login_required
 def aday_sinav_sifirla(id):
-    """
-    Reset candidate's exam - clears answers and allows re-entry
-    ---
-    tags:
-      - Admin
-    parameters:
-      - name: id
-        in: path
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Exam reset successful
-    """
+    """Reset candidate's exam - clears answers and allows re-entry"""
     from app.models import Candidate, ExamAnswer
-    from datetime import datetime
 
     candidate = Candidate.query.get_or_404(id)
 
-    # Check permissions
     sirket_id = session.get('sirket_id')
     rol = session.get('rol')
 
@@ -281,13 +229,11 @@ def aday_sinav_sifirla(id):
         # Delete all answers for this candidate
         ExamAnswer.query.filter_by(aday_id=id).delete()
 
-        # Reset candidate exam status
+        # Reset candidate exam status - DOĞRU ALAN ADLARI
         candidate.sinav_durumu = 'beklemede'
         candidate.puan = None
         candidate.seviye_sonuc = None
-        candidate.dogru_sayisi = None
-        candidate.yanlis_sayisi = None
-        candidate.baslangic_tarihi = None
+        candidate.baslama_tarihi = None  # DOĞRU: baslama_tarihi
         candidate.bitis_tarihi = None
         candidate.current_difficulty = 'B1'
         candidate.p_grammar = None
@@ -296,6 +242,7 @@ def aday_sinav_sifirla(id):
         candidate.p_listening = None
         candidate.p_speaking = None
         candidate.p_writing = None
+        candidate.certificate_hash = None
 
         db.session.commit()
 
@@ -303,7 +250,7 @@ def aday_sinav_sifirla(id):
         try:
             from app.models import AuditLog
             log = AuditLog(
-                user_id=session.get('user_id'),
+                user_id=session.get('kullanici_id'),
                 action='exam_reset',
                 details=f"Aday sınavı sıfırlandı: {candidate.ad_soyad} (ID: {id})"
             )
@@ -326,31 +273,14 @@ def aday_sinav_sifirla(id):
         return redirect(url_for('admin.aday_detay', id=id))
 
 
-# ══════════════════════════════════════════════════════════════
-# YENİ EKLENEN ROUTE: SÜRE UZATMA
-# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/aday/<int:id>/sure-uzat', methods=['POST'])
 @login_required
 def aday_sure_uzat(id):
-    """
-    Extend candidate's exam time
-    ---
-    tags:
-      - Admin
-    parameters:
-      - name: id
-        in: path
-        type: integer
-        required: true
-    responses:
-      200:
-        description: Time extended successfully
-    """
+    """Extend candidate's exam time"""
     from app.models import Candidate
 
     candidate = Candidate.query.get_or_404(id)
 
-    # Check permissions
     sirket_id = session.get('sirket_id')
     rol = session.get('rol')
 
@@ -360,17 +290,14 @@ def aday_sure_uzat(id):
 
     try:
         ek_sure = request.form.get('ek_sure', 10, type=int)
-
-        # Add time to exam duration
         candidate.sinav_suresi = (candidate.sinav_suresi or 30) + ek_sure
 
         db.session.commit()
 
-        # Log action
         try:
             from app.models import AuditLog
             log = AuditLog(
-                user_id=session.get('user_id'),
+                user_id=session.get('kullanici_id'),
                 action='time_extended',
                 details=f"Aday süresi uzatıldı: {candidate.ad_soyad} (+{ek_sure} dk)"
             )
@@ -394,15 +321,12 @@ def aday_sure_uzat(id):
 
 
 # ══════════════════════════════════════════════════════════════
+# TOPLU YÜKLEME
+# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/bulk-upload', methods=['POST'])
 @login_required
 def bulk_upload():
-    """
-    Bulk upload candidates from Excel file
-    ---
-    tags:
-      - Admin
-    """
+    """Bulk upload candidates from Excel file"""
     from app.models import Candidate
     import pandas as pd
     import string
@@ -424,10 +348,8 @@ def bulk_upload():
         return redirect(url_for('admin.adaylar'))
 
     try:
-        # Read Excel file
         df = pd.read_excel(io.BytesIO(file.read()))
 
-        # Check required column
         if 'ad_soyad' not in df.columns:
             flash("Excel dosyasında 'ad_soyad' kolonu bulunamadı.", "danger")
             return redirect(url_for('admin.adaylar'))
@@ -440,7 +362,6 @@ def bulk_upload():
             if not ad_soyad or ad_soyad == 'nan':
                 continue
 
-            # Generate unique code
             giris_kodu = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
             candidate = Candidate(
@@ -465,16 +386,13 @@ def bulk_upload():
 
 
 # ══════════════════════════════════════════════════════════════
+# SORU YÖNETİMİ
+# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/sorular')
 @login_required
 @superadmin_required
 def sorular():
-    """
-    Question bank management
-    ---
-    tags:
-      - Admin
-    """
+    """Question bank management"""
     from app.models import Question
 
     sirket_id = session.get('sirket_id')
@@ -501,12 +419,7 @@ def sorular():
 @login_required
 @superadmin_required
 def soru_ekle():
-    """
-    Add new question
-    ---
-    tags:
-      - Admin
-    """
+    """Add new question"""
     if request.method == 'POST':
         from app.models import Question
 
@@ -536,17 +449,11 @@ def soru_ekle():
 @login_required
 @superadmin_required
 def soru_sil(id):
-    """
-    Delete question (soft delete)
-    ---
-    tags:
-      - Admin
-    """
+    """Delete question (soft delete)"""
     from app.models import Question
 
     question = Question.query.get_or_404(id)
 
-    # Check company access
     if question.sirket_id != session.get('sirket_id') and session.get('rol') != 'superadmin':
         flash("Bu soruya erişim yetkiniz yok.", "danger")
         return redirect(url_for('admin.sorular'))
@@ -559,16 +466,13 @@ def soru_sil(id):
 
 
 # ══════════════════════════════════════════════════════════════
+# KULLANICI YÖNETİMİ
+# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/kullanicilar')
 @login_required
 @superadmin_required
 def kullanicilar():
-    """
-    User management
-    ---
-    tags:
-      - Admin
-    """
+    """User management"""
     from app.models import User
 
     sirket_id = session.get('sirket_id')
@@ -585,12 +489,7 @@ def kullanicilar():
 @login_required
 @superadmin_required
 def kullanici_ekle():
-    """
-    Add new user
-    ---
-    tags:
-      - Admin
-    """
+    """Add new user"""
     from app.models import User, Company
     from werkzeug.security import generate_password_hash
     import string
@@ -608,7 +507,6 @@ def kullanici_ekle():
             companies = Company.query.filter_by(is_active=True).all()
             return render_template('kullanici_form.html', sirketler=companies)
 
-        # Check if email exists
         if User.query.filter_by(email=email).first():
             flash("Bu email adresi zaten kayıtlı.", "danger")
             companies = Company.query.filter_by(is_active=True).all()
@@ -640,12 +538,7 @@ def kullanici_ekle():
 @login_required
 @superadmin_required
 def kullanici_sil(id):
-    """
-    Delete user (soft delete)
-    ---
-    tags:
-      - Admin
-    """
+    """Delete user (soft delete)"""
     from app.models import User
 
     user = User.query.get_or_404(id)
@@ -660,12 +553,7 @@ def kullanici_sil(id):
 @login_required
 @superadmin_required
 def kullanici_duzenle(id):
-    """
-    Edit user
-    ---
-    tags:
-      - Admin
-    """
+    """Edit user"""
     from app.models import User, Company
 
     user = User.query.get_or_404(id)
@@ -686,16 +574,13 @@ def kullanici_duzenle(id):
 
 
 # ══════════════════════════════════════════════════════════════
+# DEMO VE AYARLAR
+# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/demo-olustur', methods=['GET', 'POST'])
 @login_required
 @superadmin_required
 def demo_olustur():
-    """
-    Create demo company with test data
-    ---
-    tags:
-      - Admin
-    """
+    """Create demo company with test data"""
     from app.models import Company, User, Candidate
     from werkzeug.security import generate_password_hash
     import string
@@ -704,10 +589,9 @@ def demo_olustur():
     if request.method == 'POST':
         demo_name = request.form.get('demo_name', 'Demo Şirket')
 
-        # Create demo company
         company = Company(
             isim=demo_name,
-            ad=demo_name,  # Fallback
+            ad=demo_name,
             email=f"demo_{random.randint(1000,9999)}@skillstestcenter.com",
             kredi=100,
             is_active=True
@@ -715,7 +599,6 @@ def demo_olustur():
         db.session.add(company)
         db.session.flush()
 
-        # Create demo admin
         demo_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
         demo_email = f"demo{company.id}@skillstestcenter.com"
 
@@ -729,7 +612,6 @@ def demo_olustur():
         )
         db.session.add(admin)
 
-        # Create some demo candidates
         for i in range(5):
             giris_kodu = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
             candidate = Candidate(
@@ -748,17 +630,11 @@ def demo_olustur():
     return render_template('demo_olustur.html')
 
 
-# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/ayarlar', methods=['GET', 'POST'])
 @login_required
 @superadmin_required
 def ayarlar():
-    """
-    Company settings
-    ---
-    tags:
-      - Admin
-    """
+    """Company settings"""
     from app.models import Company
 
     company = Company.query.get(session.get('sirket_id'))
@@ -771,7 +647,6 @@ def ayarlar():
         company.primary_color = request.form.get('primary_color')
         company.webhook_url = request.form.get('webhook_url')
 
-        # SMTP settings
         company.smtp_host = request.form.get('smtp_host')
         company.smtp_port = int(request.form.get('smtp_port', 587))
         company.smtp_user = request.form.get('smtp_user')
@@ -786,16 +661,13 @@ def ayarlar():
 
 
 # ══════════════════════════════════════════════════════════════
+# ŞABLONLAR
+# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/sablonlar')
 @login_required
 @superadmin_required
 def sablonlar():
-    """
-    Exam templates list
-    ---
-    tags:
-      - Admin
-    """
+    """Exam templates list"""
     from app.models import ExamTemplate
 
     sirket_id = session.get('sirket_id')
@@ -812,12 +684,7 @@ def sablonlar():
 @login_required
 @superadmin_required
 def sablon_ekle():
-    """
-    Add new exam template
-    ---
-    tags:
-      - Admin
-    """
+    """Add new exam template"""
     if request.method == 'POST':
         from app.models import ExamTemplate
 
@@ -840,16 +707,13 @@ def sablon_ekle():
 
 
 # ══════════════════════════════════════════════════════════════
+# ŞİRKET YÖNETİMİ
+# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/sirketler')
 @login_required
 @superadmin_required
 def sirketler():
-    """
-    Company management page
-    ---
-    tags:
-      - Admin
-    """
+    """Company management page"""
     from app.models import Company
 
     companies = Company.query.order_by(Company.id.desc()).all()
@@ -860,12 +724,7 @@ def sirketler():
 @login_required
 @superadmin_required
 def sirket_ekle():
-    """
-    Add new company
-    ---
-    tags:
-      - Admin
-    """
+    """Add new company"""
     from app.models import Company, User
     import string
     import random
@@ -877,7 +736,6 @@ def sirket_ekle():
         telefon = request.form.get('telefon', '').strip()
         adres = request.form.get('adres', '').strip()
 
-        # Admin user details - FIXED: using correct field names from form
         admin_email = request.form.get('admin_email', '').strip().lower()
         admin_ad_soyad = request.form.get('admin_ad_soyad', '').strip()
         admin_password = request.form.get('admin_password', '')
@@ -886,21 +744,19 @@ def sirket_ekle():
             flash("Şirket adı ve admin email zorunludur.", "danger")
             return render_template('sirket_form.html')
 
-        # Create company
         company = Company(
             isim=isim,
-            ad=isim,  # Fallback
+            ad=isim,
             email=email,
             telefon=telefon,
             adres=adres,
-            kredi=10,  # Default credits
+            kredi=10,
             is_active=True
         )
 
         db.session.add(company)
-        db.session.flush()  # Get the ID
+        db.session.flush()
 
-        # Create admin user for the company
         if not admin_password:
             admin_password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
 
@@ -926,12 +782,7 @@ def sirket_ekle():
 @login_required
 @superadmin_required
 def sirket_duzenle(id):
-    """
-    Edit company
-    ---
-    tags:
-      - Admin
-    """
+    """Edit company"""
     from app.models import Company
 
     company = Company.query.get_or_404(id)
@@ -955,12 +806,7 @@ def sirket_duzenle(id):
 @login_required
 @superadmin_required
 def sirket_sil(id):
-    """
-    Delete company (soft delete)
-    ---
-    tags:
-      - Admin
-    """
+    """Delete company (soft delete)"""
     from app.models import Company
 
     company = Company.query.get_or_404(id)
@@ -975,12 +821,7 @@ def sirket_sil(id):
 @login_required
 @superadmin_required
 def sirket_kredi_yukle(id):
-    """
-    Add credits to company
-    ---
-    tags:
-      - Admin
-    """
+    """Add credits to company"""
     from app.models import Company
 
     company = Company.query.get_or_404(id)
@@ -1000,12 +841,7 @@ def sirket_kredi_yukle(id):
 @login_required
 @superadmin_required
 def sirket_kredi(id):
-    """
-    Company credit management page (alias for templates)
-    ---
-    tags:
-      - Admin
-    """
+    """Company credit management page"""
     from app.models import Company
 
     company = Company.query.get_or_404(id)
@@ -1021,34 +857,28 @@ def sirket_kredi(id):
 
 
 # ══════════════════════════════════════════════════════════════
+# RAPORLAR
+# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/raporlar')
 @login_required
 def raporlar():
-    """
-    Reports page
-    ---
-    tags:
-      - Admin
-    """
+    """Reports page"""
     from app.models import Candidate
     from datetime import datetime, timedelta
 
     sirket_id = session.get('sirket_id')
 
-    # Base query
     if sirket_id:
         base_query = Candidate.query.filter_by(sirket_id=sirket_id, is_deleted=False)
     else:
         base_query = Candidate.query.filter_by(is_deleted=False)
 
-    # Stats for template
     stats = {
         'total': base_query.count(),
         'completed': base_query.filter_by(sinav_durumu='tamamlandi').count(),
         'pending': base_query.filter_by(sinav_durumu='beklemede').count()
     }
 
-    # Get completed exams
     if sirket_id:
         completed = Candidate.query.filter_by(
             sirket_id=sirket_id, 
@@ -1068,17 +898,11 @@ def raporlar():
 @login_required
 @superadmin_required
 def super_rapor():
-    """
-    Platform-wide report for superadmin
-    ---
-    tags:
-      - Admin
-    """
+    """Platform-wide report for superadmin"""
     from app.models import Candidate, Company, Question, User
     from sqlalchemy import func
     from datetime import datetime, timedelta
 
-    # Platform statistics
     stats = {
         'total_companies': Company.query.count(),
         'active_companies': Company.query.filter_by(is_active=True).count(),
@@ -1088,7 +912,6 @@ def super_rapor():
         'total_users': User.query.filter_by(is_active=True).count()
     }
 
-    # Recent activity
     recent_candidates = Candidate.query.filter_by(is_deleted=False).order_by(
         Candidate.created_at.desc()
     ).limit(10).all()
@@ -1097,15 +920,12 @@ def super_rapor():
 
 
 # ══════════════════════════════════════════════════════════════
+# EXPORT VE LOGLAR
+# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/export')
 @login_required
 def export_data():
-    """
-    Export data as Excel
-    ---
-    tags:
-      - Admin
-    """
+    """Export data as Excel"""
     from app.models import Candidate
     import pandas as pd
     from flask import Response
@@ -1152,17 +972,11 @@ def export_data():
         )
 
 
-# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/logs')
 @login_required
 @superadmin_required
 def admin_logs():
-    """
-    View audit logs
-    ---
-    tags:
-      - Admin
-    """
+    """View audit logs"""
     from app.models import AuditLog
 
     page = request.args.get('page', 1, type=int)
@@ -1173,30 +987,22 @@ def admin_logs():
     return render_template('admin_logs.html', logs=logs)
 
 
-# ══════════════════════════════════════════════════════════════
 @admin_bp.route('/veri-yonetimi')
 @login_required
 @superadmin_required
 def veri_yonetimi():
-    """
-    Data management page
-    ---
-    tags:
-      - Admin
-    """
+    """Data management page"""
     from app.models import Candidate, Question, AuditLog
 
-    # Get statistics
     stats = {
         'total_candidates': Candidate.query.filter_by(is_deleted=False).count(),
         'total_questions': Question.query.filter_by(is_active=True).count(),
-        'total_answers': 0,  # ExamAnswer model if exists
-        'speaking_recordings': 0,  # SpeakingRecording model if exists
+        'total_answers': 0,
+        'speaking_recordings': 0,
         'audit_logs': AuditLog.query.count() if AuditLog else 0,
-        'db_size_mb': 0  # Would need DB query to calculate
+        'db_size_mb': 0
     }
 
-    # Empty lists for placeholders (these features may not be implemented yet)
     backups = []
     deletion_requests = []
 
@@ -1210,10 +1016,5 @@ def veri_yonetimi():
 @login_required
 @superadmin_required
 def fraud_heatmap():
-    """
-    Fraud detection heatmap
-    ---
-    tags:
-      - Admin
-    """
+    """Fraud detection heatmap"""
     return render_template('fraud_heatmap.html')
