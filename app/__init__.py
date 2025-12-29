@@ -203,6 +203,14 @@ def register_blueprints(app):
     except ImportError as e:
         app.logger.warning(f"Question Import blueprint not available: {e}")
 
+        # Register certificate blueprint for /sertifika/* routes
+    try:
+        from app.routes.certificate import certificate_bp
+        app.register_blueprint(certificate_bp)
+        app.logger.info("✅ Certificate blueprint registered")
+    except ImportError as e:
+        app.logger.warning(f"Certificate blueprint not available: {e}")
+        
     # NEW: Register data management blueprint for /data/* routes
     try:
         from app.routes.data_management import data_bp
