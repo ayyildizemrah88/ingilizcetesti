@@ -4,77 +4,82 @@
 {% block content %}
 <style>
     .hero-section {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        /* DEĞİŞTİRİLDİ: Açık sarı arka plan */
+        background: linear-gradient(135deg, #FFFACD 0%, #FFF8DC 100%);
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 2rem;
     }
-    
+
     .hero-container {
         max-width: 1200px;
         width: 100%;
     }
-    
+
     .hero-title {
-        color: white;
+        /* DEĞİŞTİRİLDİ: Siyah yazı */
+        color: #333333;
         font-size: 3rem;
         font-weight: 700;
         text-align: center;
         margin-bottom: 1rem;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        text-shadow: none;
     }
-    
+
     .hero-subtitle {
-        color: rgba(255,255,255,0.9);
+        /* DEĞİŞTİRİLDİ: Siyah yazı */
+        color: #333333;
         font-size: 1.3rem;
         text-align: center;
         margin-bottom: 3rem;
     }
-    
+
     .login-cards {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 2rem;
         margin-top: 2rem;
     }
-    
+
     .login-card {
         background: white;
         border-radius: 20px;
         padding: 2.5rem;
         text-align: center;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
         transition: transform 0.3s ease, box-shadow 0.3s ease;
         text-decoration: none;
         color: inherit;
         display: block;
     }
-    
+
     .login-card:hover {
         transform: translateY(-10px);
-        box-shadow: 0 30px 80px rgba(0,0,0,0.2);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.2);
     }
-    
+
     .login-card-icon {
         font-size: 4rem;
         margin-bottom: 1.5rem;
     }
-    
+
     .login-card-title {
         font-size: 1.5rem;
         font-weight: 600;
-        color: #333;
+        /* DEĞİŞTİRİLDİ: Siyah yazı */
+        color: #333333;
         margin-bottom: 0.5rem;
     }
-    
+
     .login-card-desc {
-        color: #666;
+        /* DEĞİŞTİRİLDİ: Koyu gri yazı */
+        color: #444444;
         font-size: 0.95rem;
         margin-bottom: 1.5rem;
     }
-    
+
     .login-card-btn {
         display: inline-block;
         padding: 0.8rem 2rem;
@@ -85,26 +90,26 @@
         font-size: 0.85rem;
         transition: all 0.3s ease;
     }
-    
+
     .btn-admin {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
     }
-    
+
     .btn-customer {
         background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
         color: white;
     }
-    
+
     .btn-candidate {
         background: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
         color: white;
     }
-    
+
     .login-card:hover .login-card-btn {
         transform: scale(1.05);
     }
-    
+
     .features-badge {
         display: flex;
         justify-content: center;
@@ -112,22 +117,28 @@
         margin-top: 3rem;
         flex-wrap: wrap;
     }
-    
+
     .feature-item {
-        color: rgba(255,255,255,0.9);
+        /* DEĞİŞTİRİLDİ: Siyah yazı */
+        color: #333333;
         display: flex;
         align-items: center;
         gap: 0.5rem;
         font-size: 0.9rem;
     }
-    
+
     .feature-item i {
         color: #38ef7d;
     }
-    
+
     @media (max-width: 768px) {
-        .hero-title { font-size: 2rem; }
-        .hero-subtitle { font-size: 1rem; }
+        .hero-title {
+            font-size: 2rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1rem;
+        }
     }
 </style>
 
@@ -135,7 +146,7 @@
     <div class="hero-container">
         <h1 class="hero-title">🎓 Skills Test Center</h1>
         <p class="hero-subtitle">Uluslararası İngilizce Yeterlilik Değerlendirme Platformu</p>
-        
+
         <div class="login-cards">
             <a href="{{ url_for('auth.login') }}" class="login-card">
                 <div class="login-card-icon">👨‍💼</div>
@@ -143,14 +154,14 @@
                 <p class="login-card-desc">Sistem yönetimi, şirket ve kullanıcı yönetimi, tüm raporlar</p>
                 <span class="login-card-btn btn-admin">Giriş Yap</span>
             </a>
-            
+
             <a href="{{ url_for('auth.login') }}" class="login-card">
                 <div class="login-card-icon">🏢</div>
                 <h3 class="login-card-title">Kurumsal Müşteri</h3>
                 <p class="login-card-desc">Şirket dashboard, aday yönetimi, sınav raporları</p>
                 <span class="login-card-btn btn-customer">Giriş Yap</span>
             </a>
-            
+
             <a href="{{ url_for('auth.sinav_giris') }}" class="login-card">
                 <div class="login-card-icon">📝</div>
                 <h3 class="login-card-title">Sınav Adayı</h3>
@@ -158,7 +169,7 @@
                 <span class="login-card-btn btn-candidate">Sınava Gir</span>
             </a>
         </div>
-        
+
         <div class="features-badge">
             <div class="feature-item"><i>✓</i> CEFR Uyumlu</div>
             <div class="feature-item"><i>✓</i> AI Değerlendirme</div>
