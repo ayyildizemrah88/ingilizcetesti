@@ -4,259 +4,106 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="mb-1">
-                <span class="material-icons text-primary align-middle">article</span>
-                Sınav Şablonları
-            </h4>
-            <p class="text-muted mb-0">Müşterileriniz için özelleştirilmiş sınav şablonları oluşturun</p>
-        </div>
-        <a href="{{ url_for('admin.sablon_yeni') }}" class="btn btn-primary btn-lg">
-            <span class="material-icons">add</span>
-            Yeni Şablon
-        </a>
-    </div>
-
-    <!-- Şablon Kartları -->
-    <div class="row g-4">
-        {% for sablon in sablonlar %}
-        <div class="col-lg-4 col-md-6">
-            <div class="card h-100 shadow-sm border-0 template-card">
-                <div class="card-header bg-gradient-primary text-white py-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h5 class="mb-1">{{ sablon.isim }}</h5>
-                            <small class="opacity-75">
-                                {% if sablon.sirket_id %}
-                                <span class="material-icons align-middle" style="font-size:14px">business</span>
-                                Özel Şablon
-                                {% else %}
-                                <span class="material-icons align-middle" style="font-size:14px">public</span>
-                                Genel Şablon
-                                {% endif %}
-                            </small>
-                        </div>
-                        <span class="badge bg-light text-dark">{{ sablon.baslangic_seviyesi }}</span>
-                    </div>
-                </div>
-
-                <div class="card-body">
-                    <!-- Bölümler -->
-                    <div class="mb-3">
-                        <small class="text-muted d-block mb-2">Sınav Bölümleri:</small>
-                        <div class="d-flex flex-wrap gap-1">
-                            {% set sections = sablon.sections_config | default('{}') | safe %}
-                            {% if 'grammar' in sections %}
-                            <span class="badge bg-info-subtle text-info">📝 Grammar</span>
-                            {% endif %}
-                            {% if 'vocabulary' in sections %}
-                            <span class="badge bg-info-subtle text-info">📖 Vocabulary</span>
-                            {% endif %}
-                            {% if 'reading' in sections %}
-                            <span class="badge bg-success-subtle text-success">📚 Reading</span>
-                            {% endif %}
-                            {% if 'listening' in sections %}
-                            <span class="badge bg-warning-subtle text-warning">🎧 Listening</span>
-                            {% endif %}
-                            {% if 'writing' in sections %}
-                            <span class="badge bg-primary-subtle text-primary">✍️ Writing</span>
-                            {% endif %}
-                            {% if 'speaking' in sections %}
-                            <span class="badge bg-danger-subtle text-danger">🎤 Speaking</span>
-                            {% endif %}
-                            {% if sections == '{}' or sections == '' %}
-                            <span class="badge bg-secondary">Yapılandırılmamış</span>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- İstatistikler -->
-                    <div class="row text-center g-2 mb-3">
-                        <div class="col-4">
-                            <div class="stat-box">
-                                <span class="material-icons text-primary">timer</span>
-                                <div class="stat-value">{{ sablon.sinav_suresi }}</div>
-                                <small class="text-muted">Dakika</small>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="stat-box">
-                                <span class="material-icons text-success">quiz</span>
-                                <div class="stat-value">{{ sablon.soru_limiti or '-' }}</div>
-                                <small class="text-muted">Soru</small>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="stat-box">
-                                {% if sablon.is_adaptive %}
-                                <span class="material-icons text-info">psychology</span>
-                                <div class="stat-value">CAT</div>
-                                {% else %}
-                                <span class="material-icons text-secondary">linear_scale</span>
-                                <div class="stat-value">Klasik</div>
-                                {% endif %}
-                                <small class="text-muted">Mod</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Özellikler -->
-                    <div class="features mb-3">
-                        {% if sablon.randomize_questions %}
-                        <span class="feature-badge">
-                            <span class="material-icons">shuffle</span> Karışık
-                        </span>
-                        {% endif %}
-                        {% if sablon.show_results %}
-                        <span class="feature-badge">
-                            <span class="material-icons">visibility</span> Sonuç Göster
-                        </span>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="card-footer bg-light border-0">
-                    <div class="d-flex gap-2">
-                        <a href="{{ url_for('admin.sablon_duzenle', id=sablon.id) }}"
-                            class="btn btn-outline-primary btn-sm flex-fill">
-                            <span class="material-icons">edit</span> Düzenle
-                        </a>
-                        <form action="{{ url_for('admin.sablon_kopyala', id=sablon.id) }}" method="POST"
-                            class="d-inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                <span class="material-icons">content_copy</span>
-                            </button>
-                        </form>
-                        <button type="button" class="btn btn-outline-danger btn-sm"
-                            onclick="confirmDelete({{ sablon.id }}, '{{ sablon.isim }}')">
-                            <span class="material-icons">delete</span>
-                        </button>
-                    </div>
-                </div>
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="card-title mb-1">
+                    <span class="material-icons-outlined me-2">article</span>
+                    Sınav Şablonları
+                </h4>
+                <p class="text-muted mb-0">Müşterileriniz için özelleştirilmiş sınav şablonları oluşturun</p>
             </div>
+            <a href="{{ url_for('admin.sablon_yeni') }}" class="btn btn-primary">
+                <span class="material-icons-outlined me-1">add</span>
+                Yeni Şablon
+            </a>
         </div>
-        {% else %}
-        <!-- DÜZELTİLDİ: {% empty %} yerine {% else %} kullanıldı (Jinja2 syntax) -->
-        <div class="col-12">
+        
+        <div class="card-body">
+            {% if sablonlar and sablonlar|length > 0 %}
+            <div class="row">
+                {% for sablon in sablonlar %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 border shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ sablon.isim }}</h5>
+                            <div class="mb-3">
+                                <span class="badge bg-primary me-1">{{ sablon.sinav_suresi }} dk</span>
+                                <span class="badge bg-secondary me-1">{{ sablon.soru_limiti or 25 }} soru</span>
+                                <span class="badge bg-info">{{ sablon.baslangic_seviyesi or 'B1' }}</span>
+                            </div>
+                            
+                            <div class="small text-muted mb-2">
+                                {% if sablon.is_adaptive %}
+                                <span class="me-2"><i class="bi bi-check-circle text-success"></i> Adaptif</span>
+                                {% endif %}
+                                {% if sablon.randomize_questions %}
+                                <span class="me-2"><i class="bi bi-shuffle"></i> Rastgele</span>
+                                {% endif %}
+                            </div>
+                            
+                            {% if sablon.sections_config %}
+                            <div class="small text-muted mb-3">
+                                <strong>Bölümler:</strong>
+                                <span class="text-info">Yapılandırıldı</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer bg-transparent border-top-0">
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('admin.sablon_duzenle', id=sablon.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <span class="material-icons-outlined" style="font-size: 16px;">edit</span>
+                                    Düzenle
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#deleteModal{{ sablon.id }}">
+                                    <span class="material-icons-outlined" style="font-size: 16px;">delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Delete Modal -->
+                <div class="modal fade" id="deleteModal{{ sablon.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <span class="material-icons-outlined text-warning me-2">warning</span>
+                                    Şablonu Sil
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p><strong>{{ sablon.isim }}</strong> şablonunu silmek istediğinize emin misiniz?</p>
+                                <p class="text-muted small">Bu işlem geri alınamaz.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                                <form action="{{ url_for('admin.sablon_sil', id=sablon.id) }}" method="POST" style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+                                    <button type="submit" class="btn btn-danger">Sil</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
             <div class="text-center py-5">
-                <span class="material-icons display-1 text-muted">folder_open</span>
-                <h5 class="mt-3">Henüz şablon oluşturulmamış</h5>
+                <span class="material-icons-outlined text-muted" style="font-size: 64px;">article</span>
+                <h5 class="mt-3 text-muted">Henüz şablon oluşturulmamış</h5>
                 <p class="text-muted">İlk sınav şablonunuzu oluşturarak başlayın</p>
-                <a href="{{ url_for('admin.sablon_yeni') }}" class="btn btn-primary btn-lg mt-2">
-                    <span class="material-icons">add</span>
+                <a href="{{ url_for('admin.sablon_yeni') }}" class="btn btn-primary mt-2">
+                    <span class="material-icons-outlined me-1">add</span>
                     İlk Şablonu Oluştur
                 </a>
             </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
-<!-- Delete Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h5 class="modal-title">
-                    <span class="material-icons text-danger align-middle">warning</span>
-                    Şablonu Sil
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p><strong id="deleteTemplateName"></strong> şablonunu silmek istediğinize emin misiniz?</p>
-                <p class="text-muted small">Bu işlem geri alınamaz.</p>
-            </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                <form id="deleteForm" method="POST">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-danger">Sil</button>
-                </form>
-            </div>
+            {% endif %}
         </div>
     </div>
 </div>
-
-<style>
-    .template-card {
-        transition: all 0.3s ease;
-        border-radius: 12px;
-        overflow: hidden;
-    }
-
-    .template-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12) !important;
-    }
-
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-
-    .stat-box {
-        padding: 0.5rem;
-        background: #f8f9fa;
-        border-radius: 8px;
-    }
-
-    .stat-box .material-icons {
-        font-size: 1.2rem;
-    }
-
-    .stat-value {
-        font-weight: 600;
-        font-size: 1.1rem;
-    }
-
-    .feature-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 0.75rem;
-        padding: 4px 8px;
-        background: #e9ecef;
-        border-radius: 20px;
-        margin-right: 4px;
-    }
-
-    .feature-badge .material-icons {
-        font-size: 14px;
-    }
-
-    .btn-sm .material-icons {
-        font-size: 18px;
-    }
-
-    .bg-info-subtle {
-        background-color: rgba(13, 202, 240, 0.1) !important;
-    }
-
-    .bg-success-subtle {
-        background-color: rgba(25, 135, 84, 0.1) !important;
-    }
-
-    .bg-warning-subtle {
-        background-color: rgba(255, 193, 7, 0.1) !important;
-    }
-
-    .bg-primary-subtle {
-        background-color: rgba(13, 110, 253, 0.1) !important;
-    }
-
-    .bg-danger-subtle {
-        background-color: rgba(220, 53, 69, 0.1) !important;
-    }
-</style>
-
-<script>
-    function confirmDelete(id, name) {
-        document.getElementById('deleteTemplateName').textContent = name;
-        document.getElementById('deleteForm').action = "{{ url_for('admin.sablon_sil', id=0) }}".replace('0', id);
-        new bootstrap.Modal(document.getElementById('deleteModal')).show();
-    }
-</script>
 {% endblock %}
