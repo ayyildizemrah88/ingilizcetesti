@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}KVKK / GDPR{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header"><h4>KVKK / GDPR Uyumlulugu</h4></div>
+        <div class="card-body">
+            <p>Silinmeyi bekleyen aday sayisi: {{ pending_deletions|length }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
