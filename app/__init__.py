@@ -203,6 +203,14 @@ def register_blueprints(app):
     except ImportError as e:
         app.logger.warning(f"Question Import blueprint not available: {e}")
 
+    # NEW: Register data management blueprint for /data/* routes
+    try:
+        from app.routes.data_management import data_bp
+        app.register_blueprint(data_bp)
+        app.logger.info("✅ Data Management blueprint registered")
+    except ImportError as e:
+        app.logger.warning(f"Data Management blueprint not available: {e}")
+
     # Initialize i18n (internationalization)
     try:
         from app.i18n import init_i18n
