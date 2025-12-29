@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Veri Temizligi{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header"><h4>Veri Temizligi</h4></div>
+        <div class="card-body">
+            <p>Eski log kayitlari: {{ stats.old_logs }}</p>
+            <p>Eski adaylar (90+ gun): {{ stats.old_candidates }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
