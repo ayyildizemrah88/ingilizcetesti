@@ -2,9 +2,52 @@
 {% block title %}500 - Sunucu Hatası{% endblock %}
 
 {% block content %}
-<div class="text-center text-white mt-5">
-    <h1 class="display-1">500</h1>
-    <p class="lead">Bir hata oluştu. Lütfen daha sonra tekrar deneyin.</p>
-    <a href="/" class="btn btn-light btn-lg mt-3"><i class="bi bi-house me-2"></i>Ana Sayfa</a>
+<style>
+    .error-page {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    /* DEĞİŞTİRİLDİ: Siyah yazı */
+    .error-code {
+        font-size: 8rem;
+        font-weight: 700;
+        color: #333333;
+        margin-bottom: 1rem;
+        line-height: 1;
+    }
+
+    .error-message {
+        font-size: 1.2rem;
+        color: #555555;
+        margin-bottom: 2rem;
+    }
+
+    .error-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem 2rem;
+        background: #333333;
+        color: white;
+        text-decoration: none;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .error-btn:hover {
+        background: #555555;
+        transform: translateY(-2px);
+    }
+</style>
+
+<div class="error-page">
+    <h1 class="error-code">500</h1>
+    <p class="error-message">Bir hata oluştu. Lütfen daha sonra tekrar deneyin.</p>
+    <a href="/" class="error-btn">
+        <i class="bi bi-house"></i>
+        Ana Sayfa
+    </a>
 </div>
 {% endblock %}
