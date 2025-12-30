@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-Credits Management Routes - Handle credit operations for companies
-"""
-from functools import wraps
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-
 from app.extensions import db
 
+
 credits_bp = Blueprint('credits', __name__, url_prefix='/credits')
+
+
 
 
 def login_required(f):
@@ -21,6 +18,8 @@ def login_required(f):
     return decorated
 
 
+
+
 def superadmin_required(f):
     """Only superadmin can access"""
     @wraps(f)
@@ -30,6 +29,14 @@ def superadmin_required(f):
             return redirect(url_for('admin.dashboard'))
         return f(*args, **kwargs)
     return decorated
+
+
+
+
+@credits_bp.route('/')
+def index():
+    """Redirect to manage page"""
+    return redirect(url_for('credits.manage'))
 
 
 @credits_bp.route('/manage')
@@ -42,6 +49,8 @@ def manage():
     sirketler = Company.query.filter_by(is_active=True).order_by(Company.isim).all()
     
     return render_template('credits_manage.html', sirketler=sirketler)
+
+
 
 
 @credits_bp.route('/add', methods=['POST'])
@@ -82,24 +91,3 @@ def add_credits():
             db.session.add(log)
         except:
             pass  # AuditLog might not exist
-        
-        db.session.commit()
-        flash(f"{sirket.isim} şirketine {miktar} kredi başarıyla yüklendi.", "success")
-        
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Kredi yüklenirken hata oluştu: {str(e)}", "danger")
-    
-    return redirect(url_for('credits.manage'))
-
-
-@credits_bp.route('/history')
-@login_required
-@superadmin_required
-def history():
-    """Credit transaction history"""
-    from app.models import Company
-    
-    sirketler = Company.query.order_by(Company.isim).all()
-    
-    return render_template('credits_history.html', sirketler=sirketler)
