@@ -1,247 +1,92 @@
 {% extends "base.html" %}
 
-{% block title %}Toplu Soru İçe Aktarma - Skills Test Center{% endblock %}
+{% block title %}Soru İçe Aktarma{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
     <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="mb-0">
-                    <a href="{{ url_for('admin.sorular') }}" class="text-decoration-none text-muted">← Sorular</a>
-                    / Toplu İçe Aktarma
-                </h4>
-                <a href="{{ url_for('question_import.download_template') }}" class="btn btn-success">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                        class="bi bi-download me-1" viewBox="0 0 16 16">
-                        <path
-                            d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
-                        <path
-                            d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z" />
-                    </svg>
-                    Excel Şablonu İndir
-                </a>
-            </div>
-
-            <!-- Info Card -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h5 class="card-title">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
-                                    class="bi bi-file-earmark-spreadsheet me-2" viewBox="0 0 16 16">
-                                    <path
-                                        d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V9H3V2a1 1 0 0 1 1-1h5.5v2zM3 12v-2h2v2H3zm0 1h2v2H4a1 1 0 0 1-1-1v-1zm3 2v-2h3v2H6zm4 0v-2h3v1a1 1 0 0 1-1 1h-2zm3-3h-3v-2h3v2zm-7 0v-2h3v2H6z" />
-                                </svg>
-                                Excel veya CSV dosyasından soru yükleyin
-                            </h5>
-                            <p class="text-muted mb-0">
-                                Soru havuzunuzu hızla büyütmek için bir Excel veya CSV dosyası yükleyin.
-                                Şablonu indirip doldurduktan sonra yükleyebilirsiniz.
-                            </p>
-                        </div>
-                        <div class="col-md-4 text-center">
-                            <div class="display-4 text-primary">📥</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Upload Form -->
-            <div class="card shadow-sm mb-4">
+        <div class="col-md-8">
+            <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Dosya Yükle</h5>
+                    <h4 class="card-title mb-1">
+                        <span class="material-icons-outlined me-2">upload_file</span>
+                        Soru İçe Aktarma
+                    </h4>
+                    <p class="text-muted mb-0">Excel veya CSV dosyasından toplu soru yükleyin</p>
                 </div>
+
                 <div class="card-body">
-                    <form method="POST" enctype="multipart/form-data" id="importForm">
+                    <form action="{{ url_for('question_import.upload') }}" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token"
+                            value="{{ csrf_token() if csrf_token is defined else '' }}">
+
                         <div class="mb-4">
-                            <div class="upload-area p-5 text-center rounded-3" id="dropZone"
-                                style="border: 2px dashed #dee2e6; cursor: pointer;">
-                                <input type="file" name="file" id="fileInput" accept=".xlsx,.xls,.csv" class="d-none">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor"
-                                    class="bi bi-cloud-arrow-up text-muted mb-3" viewBox="0 0 16 16">
-                                    <path fill-rule="evenodd"
-                                        d="M7.646 5.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708l2-2z" />
-                                    <path
-                                        d="M4.406 3.342A5.53 5.53 0 0 1 8 2c2.69 0 4.923 2 5.166 4.579C14.758 6.804 16 8.137 16 9.773 16 11.569 14.502 13 12.687 13H3.781C1.708 13 0 11.366 0 9.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383zm.653.757c-.757.653-1.153 1.44-1.153 2.056v.448l-.445.049C2.064 6.805 1 7.952 1 9.318 1 10.785 2.23 12 3.781 12h8.906C13.98 12 15 10.988 15 9.773c0-1.216-1.02-2.228-2.313-2.228h-.5v-.5C12.188 4.825 10.328 3 8 3a4.53 4.53 0 0 0-2.941 1.1z" />
-                                </svg>
-                                <p class="mb-1" id="dropText">
-                                    <strong>Dosyayı buraya sürükleyin</strong> veya <strong
-                                        class="text-primary">tıklayarak seçin</strong>
-                                </p>
-                                <p class="text-muted small mb-0">.xlsx, .xls veya .csv formatları desteklenir</p>
-                            </div>
-                            <div id="fileInfo" class="mt-3 d-none">
-                                <div class="alert alert-info d-flex align-items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
-                                        class="bi bi-file-earmark-check me-2" viewBox="0 0 16 16">
-                                        <path
-                                            d="M10.854 7.854a.5.5 0 0 0-.708-.708L7.5 9.793 6.354 8.646a.5.5 0 1 0-.708.708l1.5 1.5a.5.5 0 0 0 .708 0l3-3z" />
-                                        <path
-                                            d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z" />
-                                    </svg>
-                                    <span id="fileName"></span>
-                                    <button type="button" class="btn-close ms-auto" onclick="clearFile()"></button>
-                                </div>
-                            </div>
+                            <label class="form-label">Dosya Seçin</label>
+                            <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
+                            <small class="text-muted">Desteklenen formatlar: .xlsx, .xls, .csv</small>
                         </div>
 
-                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
-                            <span class="spinner-border spinner-border-sm d-none me-2" id="spinner"></span>
-                            Soruları İçe Aktar
+                        <div class="mb-4">
+                            <label class="form-label">Kategori</label>
+                            <select name="category" class="form-select" required>
+                                <option value="grammar">Grammar</option>
+                                <option value="vocabulary">Vocabulary</option>
+                                <option value="reading">Reading</option>
+                                <option value="listening">Listening</option>
+                                <option value="writing">Writing</option>
+                                <option value="speaking">Speaking</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Varsayılan Seviye</label>
+                            <select name="level" class="form-select">
+                                <option value="A1">A1 - Başlangıç</option>
+                                <option value="A2">A2 - Temel</option>
+                                <option value="B1" selected>B1 - Orta Altı</option>
+                                <option value="B2">B2 - Orta Üstü</option>
+                                <option value="C1">C1 - İleri</option>
+                                <option value="C2">C2 - Ustalaşmış</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <span class="material-icons-outlined me-1">cloud_upload</span>
+                            Yükle ve İçe Aktar
                         </button>
                     </form>
                 </div>
             </div>
+        </div>
 
-            <!-- Template Info -->
-            <div class="card shadow-sm">
+        <div class="col-md-4">
+            <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Şablon Yapısı</h5>
+                    <h5 class="card-title mb-0">
+                        <span class="material-icons-outlined me-2">help_outline</span>
+                        Dosya Formatı
+                    </h5>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Sütun</th>
-                                    <th>Açıklama</th>
-                                    <th>Zorunlu</th>
-                                    <th>Örnek</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>soru_metni</code></td>
-                                    <td>Sorunun tam metni</td>
-                                    <td><span class="badge bg-danger">Zorunlu</span></td>
-                                    <td>She ___ to work every day.</td>
-                                </tr>
-                                <tr>
-                                    <td><code>kategori</code></td>
-                                    <td>Soru kategorisi</td>
-                                    <td><span class="badge bg-danger">Zorunlu</span></td>
-                                    <td>grammar, vocabulary, reading, listening, writing, speaking</td>
-                                </tr>
-                                <tr>
-                                    <td><code>seviye</code></td>
-                                    <td>CEFR seviyesi</td>
-                                    <td><span class="badge bg-danger">Zorunlu</span></td>
-                                    <td>A1, A2, B1, B2, C1, C2</td>
-                                </tr>
-                                <tr>
-                                    <td><code>sik_a</code> - <code>sik_d</code></td>
-                                    <td>Çoktan seçmeli şıklar</td>
-                                    <td><span class="badge bg-secondary">Opsiyonel</span></td>
-                                    <td>go, goes, going, gone</td>
-                                </tr>
-                                <tr>
-                                    <td><code>dogru_cevap</code></td>
-                                    <td>Doğru şık (A, B, C veya D)</td>
-                                    <td><span class="badge bg-secondary">Opsiyonel</span></td>
-                                    <td>B</td>
-                                </tr>
-                                <tr>
-                                    <td><code>aciklama</code></td>
-                                    <td>Cevap açıklaması</td>
-                                    <td><span class="badge bg-secondary">Opsiyonel</span></td>
-                                    <td>Third person singular requires -s</td>
-                                </tr>
-                                <tr>
-                                    <td><code>tags</code></td>
-                                    <td>Etiketler (virgülle ayrılmış)</td>
-                                    <td><span class="badge bg-secondary">Opsiyonel</span></td>
-                                    <td>verbs, present simple</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="alert alert-warning mt-3 mb-0">
-                        <strong>💡 İpucu:</strong> Şablonu indirip örnek satırları inceleyerek başlayın.
-                        Örnek satırları silip kendi sorularınızı ekleyebilirsiniz.
-                    </div>
+                    <p class="small">Excel dosyanız şu sütunları içermelidir:</p>
+                    <ul class="small">
+                        <li><strong>soru</strong> - Soru metni</li>
+                        <li><strong>a</strong> - A şıkkı</li>
+                        <li><strong>b</strong> - B şıkkı</li>
+                        <li><strong>c</strong> - C şıkkı</li>
+                        <li><strong>d</strong> - D şıkkı</li>
+                        <li><strong>dogru_cevap</strong> - Doğru şık (a/b/c/d)</li>
+                        <li><strong>seviye</strong> - CEFR seviyesi (opsiyonel)</li>
+                    </ul>
+                    <hr>
+                    <a href="{{ url_for('question_import.download_template') }}"
+                        class="btn btn-outline-secondary btn-sm">
+                        <span class="material-icons-outlined me-1" style="font-size: 16px;">download</span>
+                        Örnek Şablon İndir
+                    </a>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
-
-<style>
-    .upload-area {
-        transition: all 0.3s ease;
-    }
-
-    .upload-area:hover {
-        border-color: #667eea !important;
-        background: #f8f9ff;
-    }
-
-    .upload-area.drag-over {
-        border-color: #667eea !important;
-        background: #e8ecff;
-    }
-</style>
-
-<script>
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
-    const fileInfo = document.getElementById('fileInfo');
-    const fileName = document.getElementById('fileName');
-    const submitBtn = document.getElementById('submitBtn');
-    const importForm = document.getElementById('importForm');
-
-    // Click to select
-    dropZone.addEventListener('click', () => fileInput.click());
-
-    // Drag and drop
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('drag-over');
-    });
-
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('drag-over');
-    });
-
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('drag-over');
-
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            fileInput.files = files;
-            showFileInfo(files[0]);
-        }
-    });
-
-    // File input change
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            showFileInfo(e.target.files[0]);
-        }
-    });
-
-    function showFileInfo(file) {
-        fileName.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-        fileInfo.classList.remove('d-none');
-        dropZone.classList.add('d-none');
-        submitBtn.disabled = false;
-    }
-
-    function clearFile() {
-        fileInput.value = '';
-        fileInfo.classList.add('d-none');
-        dropZone.classList.remove('d-none');
-        submitBtn.disabled = true;
-    }
-
-    // Form submit
-    importForm.addEventListener('submit', () => {
-        submitBtn.disabled = true;
-        document.getElementById('spinner').classList.remove('d-none');
-    });
-</script>
 {% endblock %}
