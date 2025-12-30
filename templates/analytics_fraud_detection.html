@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Kopya Tespiti{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header">
+            <h4 class="card-title mb-1">
+                <span class="material-icons-outlined me-2">security</span>
+                Kopya / Usulsüzlük Tespiti
+            </h4>
+            <p class="text-muted mb-0">Şüpheli sınav davranışlarını tespit edin</p>
+        </div>
+
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ high_risk_count or 0 }}</h3>
+                            <p class="mb-0">Yüksek Risk</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body text-center">
+                            <h3>{{ medium_risk_count or 0 }}</h3>
+                            <p class="mb-0">Orta Risk</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ low_risk_count or 0 }}</h3>
+                            <p class="mb-0">Düşük Risk</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h3>{{ normal_count or 0 }}</h3>
+                            <p class="mb-0">Normal</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if suspicious_candidates and suspicious_candidates|length > 0 %}
+            <h5>Şüpheli Aktiviteler</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Aday</th>
+                            <th>Şirket</th>
+                            <th>Risk Skoru</th>
+                            <th>Sebep</th>
+                            <th>Tarih</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in suspicious_candidates %}
+                        <tr>
+                            <td>{{ c.ad_soyad }}</td>
+                            <td>{{ c.company.isim if c.company else '-' }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if c.risk_score >= 80 %}bg-danger
+                                    {% elif c.risk_score >= 50 %}bg-warning
+                                    {% else %}bg-info{% endif %}">
+                                    {{ c.risk_score }}%
+                                </span>
+                            </td>
+                            <td>{{ c.risk_reason or 'Çoklu faktör' }}</td>
+                            <td>{{ c.sinav_bitis.strftime('%d.%m.%Y') if c.sinav_bitis else '-' }}</td>
+                            <td>
+                                <a href="{{ url_for('admin.aday_detay', id=c.id) }}"
+                                    class="btn btn-sm btn-outline-primary">
+                                    İncele
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <span class="material-icons-outlined text-success" style="font-size: 64px;">verified_user</span>
+                <h5 class="mt-3 text-success">Şüpheli aktivite tespit edilmedi</h5>
+                <p class="text-muted">Tüm sınavlar normal görünüyor</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
