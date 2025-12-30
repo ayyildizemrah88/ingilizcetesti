@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Soru Performans Analizi{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header">
+            <h4 class="card-title mb-1">
+                <span class="material-icons-outlined me-2">analytics</span>
+                Soru Performans Analizi
+            </h4>
+            <p class="text-muted mb-0">Soruların zorluk ve ayırt edicilik istatistikleri</p>
+        </div>
+
+        <div class="card-body">
+            {% if questions and questions|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Soru Özeti</th>
+                            <th>Kategori</th>
+                            <th>Seviye</th>
+                            <th>Cevaplanma</th>
+                            <th>Doğru %</th>
+                            <th>Zorluk</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for q in questions %}
+                        <tr>
+                            <td>{{ q.id }}</td>
+                            <td>{{ q.soru_metni[:50] }}...</td>
+                            <td><span class="badge bg-info">{{ q.kategori }}</span></td>
+                            <td><span class="badge bg-secondary">{{ q.seviye }}</span></td>
+                            <td>{{ q.answer_count or 0 }}</td>
+                            <td>
+                                <div class="progress" style="width: 100px;">
+                                    <div class="progress-bar 
+                                        {% if q.correct_rate >= 70 %}bg-success
+                                        {% elif q.correct_rate >= 40 %}bg-warning
+                                        {% else %}bg-danger{% endif %}" style="width: {{ q.correct_rate or 0 }}%">
+                                        {{ (q.correct_rate or 0)|round(1) }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if q.correct_rate >= 80 %}
+                                <span class="badge bg-success">Kolay</span>
+                                {% elif q.correct_rate >= 50 %}
+                                <span class="badge bg-warning">Orta</span>
+                                {% else %}
+                                <span class="badge bg-danger">Zor</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <span class="material-icons-outlined text-muted" style="font-size: 64px;">quiz</span>
+                <h5 class="mt-3 text-muted">Henüz yeterli veri yok</h5>
+                <p class="text-muted">Soru performans analizi için sınav verisi gereklidir</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
