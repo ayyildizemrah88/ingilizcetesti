@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Kredi Yönetimi{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header">
+            <h4 class="card-title mb-1">
+                <span class="material-icons-outlined me-2">account_balance_wallet</span>
+                Kredi Yönetimi
+            </h4>
+            <p class="text-muted mb-0">Şirketlere kredi yükleyin ve geçmişi görüntüleyin</p>
+        </div>
+
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Kredi Yükle</h5>
+                        </div>
+                        <div class="card-body">
+                            <form action="{{ url_for('credits.add_credits') }}" method="POST">
+                                <input type="hidden" name="csrf_token"
+                                    value="{{ csrf_token() if csrf_token is defined else '' }}">
+
+                                <div class="mb-3">
+                                    <label class="form-label">Şirket Seçin</label>
+                                    <select name="sirket_id" class="form-select" required>
+                                        <option value="">-- Şirket Seçin --</option>
+                                        {% for sirket in sirketler %}
+                                        <option value="{{ sirket.id }}">{{ sirket.isim }} (Mevcut: {{ sirket.kredi or 0
+                                            }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Kredi Miktarı</label>
+                                    <input type="number" name="miktar" class="form-control" min="1" required
+                                        placeholder="Örn: 100">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Açıklama (Opsiyonel)</label>
+                                    <input type="text" name="aciklama" class="form-control"
+                                        placeholder="Örn: Ocak ayı paketi">
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="material-icons-outlined me-1">add_card</span>
+                                    Kredi Yükle
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Şirket Kredileri</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if sirketler and sirketler|length > 0 %}
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Şirket</th>
+                                            <th>Kredi</th>
+                                            <th>Durum</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sirket in sirketler %}
+                                        <tr>
+                                            <td>{{ sirket.isim }}</td>
+                                            <td>
+                                                <span
+                                                    class="badge {% if sirket.kredi > 10 %}bg-success{% elif sirket.kredi > 0 %}bg-warning{% else %}bg-danger{% endif %}">
+                                                    {{ sirket.kredi or 0 }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if sirket.kredi > 10 %}
+                                                <span class="text-success">İyi</span>
+                                                {% elif sirket.kredi > 0 %}
+                                                <span class="text-warning">Az</span>
+                                                {% else %}
+                                                <span class="text-danger">Bitti</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <p class="text-muted">Henüz şirket bulunmuyor.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
