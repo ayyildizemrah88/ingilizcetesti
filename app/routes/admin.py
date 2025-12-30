@@ -1306,3 +1306,25 @@ def veri_yonetimi():
 def fraud_heatmap():
     """Fraud detection heatmap"""
     return render_template('fraud_heatmap.html')
+
+
+
+# 
+# ══════════════════════════════════════════════════════════════
+# LOGLAR
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/loglar')
+@login_required
+@superadmin_required
+def loglar():
+    from app.models import AuditLog
+    page = request.args.get('page', 1, type=int)
+    logs = []
+    pagination = None
+    try:
+        query = AuditLog.query.order_by(AuditLog.created_at.desc())
+        pagination = query.paginate(page=page, per_page=50, error_out=False)
+        logs = pagination.items
+    except:
+        pass
+    return render_template('admin_logs.html', logs=logs, pagination=pagination)
