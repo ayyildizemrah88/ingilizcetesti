@@ -1,96 +1,104 @@
-{% extends "dashboard.html" %}
-{% block title %}Aktivite Logları - Skills Test Center{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Sistem Logları{% endblock %}
 
 {% block content %}
-<!-- Header with white background -->
-<div class="card shadow-sm mb-4">
-    <div class="card-body d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center">
-            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary me-3" title="Dashboard">
-                <i class="bi bi-house-fill"></i>
-            </a>
-            <h4 class="mb-0 text-dark">
-                <i class="bi bi-activity me-2"></i>Aktivite Logları
-            </h4>
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="card-title mb-1">
+                    <span class="material-icons-outlined me-2">history</span>
+                    Sistem Logları
+                </h4>
+                <p class="text-muted mb-0">Tüm sistem aktivitelerini görüntüleyin</p>
+            </div>
+            <div>
+                <select class="form-select form-select-sm" id="logFilter" onchange="filterLogs()">
+                    <option value="">Tüm Eylemler</option>
+                    <option value="login">Giriş</option>
+                    <option value="logout">Çıkış</option>
+                    <option value="create">Oluşturma</option>
+                    <option value="update">Güncelleme</option>
+                    <option value="delete">Silme</option>
+                </select>
+            </div>
         </div>
-    </div>
-</div>
 
-<div class="card">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Tarih</th>
-                        <th>Kullanıcı</th>
-                        <th>İşlem</th>
-                        <th>Detay</th>
-                        <th>IP</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if logs and logs.items %}
-                    {% for log in logs.items %}
-                    <tr>
-                        <td>{{ log.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
-                        <td>{{ log.kullanici_email or '-' }}</td>
-                        <td>
-                            {% if log.islem_tipi == 'login' %}
-                            <span class="badge bg-success">Giriş</span>
-                            {% elif log.islem_tipi == 'logout' %}
-                            <span class="badge bg-secondary">Çıkış</span>
-                            {% elif log.islem_tipi == 'create' %}
-                            <span class="badge bg-primary">Oluşturma</span>
-                            {% elif log.islem_tipi == 'update' %}
-                            <span class="badge bg-warning text-dark">Güncelleme</span>
-                            {% elif log.islem_tipi == 'delete' %}
-                            <span class="badge bg-danger">Silme</span>
-                            {% else %}
-                            <span class="badge bg-info">{{ log.islem_tipi }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ log.detay[:100] if log.detay else '-' }}...</td>
-                        <td><code>{{ log.ip_adresi or '-' }}</code></td>
-                    </tr>
-                    {% endfor %}
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted">Henüz log kaydı yok.</td>
-                    </tr>
+        <div class="card-body">
+            {% if logs and logs|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>Kullanıcı</th>
+                            <th>Eylem</th>
+                            <th>Detay</th>
+                            <th>IP Adresi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.created_at.strftime('%d.%m.%Y %H:%M') if log.created_at else '-' }}</td>
+                            <td>{{ log.kullanici_adi or log.user_email or '-' }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if log.eylem == 'login' %}bg-success
+                                    {% elif log.eylem == 'logout' %}bg-secondary
+                                    {% elif log.eylem == 'create' %}bg-primary
+                                    {% elif log.eylem == 'update' %}bg-warning
+                                    {% elif log.eylem == 'delete' %}bg-danger
+                                    {% else %}bg-info{% endif %}">
+                                    {{ log.eylem or log.action or '-' }}
+                                </span>
+                            </td>
+                            <td>{{ log.detay or log.details or '-' }}</td>
+                            <td><small class="text-muted">{{ log.ip_adresi or log.ip_address or '-' }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if pagination %}
+            <nav aria-label="Log pagination">
+                <ul class="pagination justify-content-center">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.loglar', page=pagination.prev_num) }}">Önceki</a>
+                    </li>
                     {% endif %}
-                </tbody>
-            </table>
+
+                    <li class="page-item disabled">
+                        <span class="page-link">Sayfa {{ pagination.page }} / {{ pagination.pages }}</span>
+                    </li>
+
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.loglar', page=pagination.next_num) }}">Sonraki</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <span class="material-icons-outlined text-muted" style="font-size: 64px;">history</span>
+                <h5 class="mt-3 text-muted">Henüz log kaydı bulunmuyor</h5>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
-<!-- Pagination -->
-{% if logs and logs.pages > 1 %}
-<nav class="mt-4">
-    <ul class="pagination justify-content-center">
-        {% if logs.has_prev %}
-        <li class="page-item">
-            <a class="page-link" href="{{ url_for('admin.admin_logs', page=logs.prev_num) }}">Önceki</a>
-        </li>
-        {% endif %}
-
-        {% for p in logs.iter_pages() %}
-        {% if p %}
-        <li class="page-item {{ 'active' if p == logs.page else '' }}">
-            <a class="page-link" href="{{ url_for('admin.admin_logs', page=p) }}">{{ p }}</a>
-        </li>
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">...</span></li>
-        {% endif %}
-        {% endfor %}
-
-        {% if logs.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="{{ url_for('admin.admin_logs', page=logs.next_num) }}">Sonraki</a>
-        </li>
-        {% endif %}
-    </ul>
-</nav>
-{% endif %}
+<script>
+    function filterLogs() {
+        const filter = document.getElementById('logFilter').value;
+        window.location.href = '{{ url_for("admin.loglar") }}?action=' + filter;
+    }
+</script>
 {% endblock %}
