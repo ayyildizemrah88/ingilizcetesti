@@ -43,18 +43,14 @@ def download_certificate(candidate_id):
             }
         }
 
-
         base_url = os.getenv('APP_BASE_URL', 'https://skillstestcenter.com')
         filepath, cert_hash = generator.create_certificate(candidate_data, base_url)
-
 
         if not candidate.certificate_hash:
             candidate.certificate_hash = cert_hash
             db.session.commit()
 
-
         filename = f"Certificate_{candidate.ad_soyad.replace(' ', '_')}_{cert_hash}.pdf"
-
 
         return send_file(
             filepath,
@@ -63,17 +59,12 @@ def download_certificate(candidate_id):
             download_name=filename
         )
 
-
     except ImportError as e:
         current_app.logger.error(f"Certificate generation dependencies missing: {e}")
         return jsonify({'error': 'pip install reportlab qrcode pillow'}), 500
     except Exception as e:
         current_app.logger.error(f"Certificate generation error: {e}")
         return jsonify({'error': str(e)}), 500
-
-
-
-
 
 
 @certificate_bp.route('/verify', methods=['GET', 'POST'])
@@ -86,15 +77,14 @@ def verify_form():
         flash("Lütfen sertifika kodunu girin.", "warning")
     return render_template('cert_verify_form.html')
 
+
 @certificate_bp.route('/verify/<cert_hash>')
 def verify_certificate(cert_hash):
     """Verify a certificate by its hash."""
     candidate = Candidate.query.filter_by(certificate_hash=cert_hash).first()
 
-
     if not candidate:
         return render_template('cert_verify.html', valid=False, cert_hash=cert_hash)
-
 
     return render_template('cert_verify.html', 
         valid=True,
@@ -107,26 +97,20 @@ def verify_certificate(cert_hash):
     )
 
 
-
-
 @certificate_bp.route('/api/generate/<int:candidate_id>', methods=['POST'])
 def api_generate_certificate(candidate_id):
     """API endpoint to generate certificate."""
     candidate = Candidate.query.get_or_404(candidate_id)
-
 
     # Check exam status
     exam_status = getattr(candidate, 'durum', None) or getattr(candidate, 'sinav_durumu', None)
     if exam_status != 'tamamlandi':
         return jsonify({'error': 'Sinav tamamlanmamis'}), 400
 
-
     try:
         from app.utils.certificate_generator import CertificateGenerator
 
-
         generator = CertificateGenerator()
-
 
         candidate_data = {
             'id': candidate.id,
@@ -135,3 +119,32 @@ def api_generate_certificate(candidate_id):
             'cefr_seviye': candidate.cefr_seviye or candidate.seviye_sonuc or 'B1',
             'sinav_bitis': candidate.sinav_bitis or candidate.bitis_tarihi,
             'skills': {
+                'grammar': getattr(candidate, 'grammar_puan', 0) or getattr(candidate, 'p_grammar', 0) or 0,
+                'vocabulary': getattr(candidate, 'vocabulary_puan', 0) or getattr(candidate, 'p_vocabulary', 0) or 0,
+                'reading': getattr(candidate, 'reading_puan', 0) or getattr(candidate, 'p_reading', 0) or 0,
+                'listening': getattr(candidate, 'listening_puan', 0) or getattr(candidate, 'p_listening', 0) or 0,
+                'writing': getattr(candidate, 'writing_puan', 0) or getattr(candidate, 'p_writing', 0) or 0,
+                'speaking': getattr(candidate, 'speaking_puan', 0) or getattr(candidate, 'p_speaking', 0) or 0
+            }
+        }
+
+        base_url = os.getenv('APP_BASE_URL', 'https://skillstestcenter.com')
+        filepath, cert_hash = generator.create_certificate(candidate_data, base_url)
+
+        if not candidate.certificate_hash:
+            candidate.certificate_hash = cert_hash
+            db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'certificate_hash': cert_hash,
+            'download_url': url_for('certificate.download_certificate', candidate_id=candidate_id, _external=True),
+            'verify_url': url_for('certificate.verify_certificate', cert_hash=cert_hash, _external=True)
+        })
+
+    except ImportError as e:
+        current_app.logger.error(f"Certificate generation dependencies missing: {e}")
+        return jsonify({'error': 'Gerekli paketler eksik: pip install reportlab qrcode pillow'}), 500
+    except Exception as e:
+        current_app.logger.error(f"Certificate generation error: {e}")
+        return jsonify({'error': str(e)}), 500
