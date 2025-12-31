@@ -438,7 +438,7 @@ def soru_ekle():
         db.session.add(question)
         db.session.commit()
 
-        flash("Soru eklendi.", "success")f
+        flash("Soru eklendi.", "success")
         return redirect(url_for('admin.sorular'))
 
     return render_template('soru_form.html')
