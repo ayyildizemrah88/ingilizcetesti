@@ -993,7 +993,6 @@ def sablon_ekle_eski():
     """Redirect old route to new template form"""
     return redirect(url_for('admin.sablon_yeni'))
 
-
 # ══════════════════════════════════════════════════════════════
 # ŞİRKET YÖNETİMİ
 # ══════════════════════════════════════════════════════════════
@@ -1006,7 +1005,6 @@ def sirketler():
 
     companies = Company.query.order_by(Company.id.desc()).all()
     return render_template('sirketler.html', sirketler=companies)
-
 
 @admin_bp.route('/sirket-ekle', methods=['GET', 'POST'])
 @login_required
@@ -1065,7 +1063,6 @@ def sirket_ekle():
 
     return render_template('sirket_form.html')
 
-
 @admin_bp.route('/sirket/<int:id>/duzenle', methods=['GET', 'POST'])
 @login_required
 @superadmin_required
@@ -1088,7 +1085,6 @@ def sirket_duzenle(id):
         return redirect(url_for('admin.sirketler'))
 
     return render_template('sirket_form.html', sirket=company)
-
 
 @admin_bp.route('/sirket/<int:id>/sil', methods=['POST'])
 @login_required
@@ -1124,7 +1120,6 @@ def sirket_kredi_yukle(id):
 
     return redirect(url_for('admin.sirketler'))
 
-
 @admin_bp.route('/sirket/<int:id>/kredi', methods=['GET', 'POST'])
 @login_required
 @superadmin_required
@@ -1142,7 +1137,6 @@ def sirket_kredi(id):
             flash(f"{miktar} kredi yüklendi.", "success")
 
     return render_template('kredi_yukle.html', sirket=company)
-
 
 # ══════════════════════════════════════════════════════════════
 # RAPORLAR
@@ -1181,7 +1175,6 @@ def raporlar():
 
     return render_template('raporlar.html', completed=completed, stats=stats)
 
-
 @admin_bp.route('/super-rapor')
 @login_required
 @superadmin_required
@@ -1205,7 +1198,6 @@ def super_rapor():
     ).limit(10).all()
 
     return render_template('super_rapor.html', stats=stats, recent_candidates=recent_candidates)
-
 
 # ══════════════════════════════════════════════════════════════
 # VERİ YÖNETİMİ VE EXPORT
@@ -1258,8 +1250,7 @@ def export_data():
             mimetype='text/csv',
             headers={'Content-Disposition': 'attachment;filename=adaylar.csv'}
         )
-
-
+        
 @admin_bp.route('/logs')
 @login_required
 @superadmin_required
@@ -1268,19 +1259,14 @@ def admin_logs():
     from app.models import AuditLog
 
     page = request.args.get('page', 1, type=int)
-    per_page = 50
-
     logs = []
     pagination = None
-
     try:
-        pagination = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        pagination = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(page=page, per_page=50, error_out=False)
         logs = pagination.items
     except:
         pass
-
     return render_template('admin_logs.html', logs=logs, pagination=pagination)
-
 
 @admin_bp.route('/veri-yonetimi')
 @login_required
