@@ -27,6 +27,18 @@ def health_check():
     }), 200
 
 
+@health_bp.route('/api/health', methods=['GET'])
+def api_health_check():
+        """
+            API health check endpoint for /api/health route.
+                Alias for main health check.
+                    """
+        return jsonify({
+                    'status': 'ok',
+                    'timestamp': datetime.utcnow().isoformat(),
+                    'service': 'skills-test-center'
+        }), 200
+    
 @health_bp.route('/health/detailed', methods=['GET'])
 def detailed_health_check():
     """
