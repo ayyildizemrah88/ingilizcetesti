@@ -438,7 +438,7 @@ def soru_ekle():
         db.session.add(question)
         db.session.commit()
 
-        flash("Soru eklendi.", "success")
+        flash("Soru eklendi.", "success")f
         return redirect(url_for('admin.sorular'))
 
     return render_template('soru_form.html')
@@ -1270,9 +1270,16 @@ def admin_logs():
     page = request.args.get('page', 1, type=int)
     per_page = 50
 
-    logs = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(page=page, per_page=per_page)
+    logs = []
+    pagination = None
 
-    return render_template('admin_logs.html', logs=logs)
+    try:
+        pagination = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        logs = pagination.items
+    except:
+        pass
+
+    return render_template('admin_logs.html', logs=logs, pagination=pagination)
 
 
 @admin_bp.route('/veri-yonetimi')
