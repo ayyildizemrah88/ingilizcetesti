@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Sertifika Doğrulama{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-certificate me-2"></i>Sertifika Doğrulama</h4>
+                </div>
+                <div class="card-body p-4">
+                    <p class="text-muted mb-4">
+                        Sertifikanızın geçerliliğini doğrulamak için sertifika kodunu girin.
+                    </p>
+                    
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form method="POST" action="{{ url_for('certificate.verify_form') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label for="cert_hash" class="form-label">Sertifika Kodu</label>
+                            <input type="text" class="form-control form-control-lg" id="cert_hash" name="cert_hash" 
+                                   placeholder="Ornek: abc123xyz..." required>
+                            <div class="form-text">
+                                Sertifika kodunu sertifikanızın alt kısmında veya QR kodunun yanında bulabilirsiniz.
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-search me-2"></i>Doğrula
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
