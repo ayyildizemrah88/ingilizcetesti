@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Kredi Yükleme - Skills Test Center{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-coins me-2"></i>Kredi Yükleme</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('credits.load') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label for="sirket_id" class="form-label">Şirket Seçin</label>
+                            <select name="sirket_id" id="sirket_id" class="form-select" required>
+                                <option value="">-- Şirket Seçin --</option>
+                                {% for sirket in sirketler %}
+                                <option value="{{ sirket.id }}">
+                                    {{ sirket.isim }} (Mevcut: {{ sirket.kredi or 0 }} kredi)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="miktar" class="form-label">Yüklenecek Kredi Miktarı</label>
+                            <input type="number" name="miktar" id="miktar" class="form-control" min="1" max="10000"
+                                required placeholder="Örn: 100">
+                            <div class="form-text">1 ile 10.000 arasında bir değer girin</div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('credits.manage') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>Geri
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus-circle me-1"></i>Kredi Yükle
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <!-- Info Card -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5><i class="fas fa-info-circle text-info me-2"></i>Bilgi</h5>
+                    <ul class="mb-0">
+                        <li>Kredi yükleme işlemi anında gerçekleşir</li>
+                        <li>Yüklenen krediler şirketin mevcut bakiyesine eklenir</li>
+                        <li>Her sınav girişi 1 kredi tüketir</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
