@@ -83,6 +83,7 @@
                                     <form method="POST" action="{{ url_for('admin.kullanici_sil', id=kullanici.id) }}"
                                         class="d-inline"
                                         onsubmit="return confirm('Bu kullanıcıyı pasife almak istediğinizden emin misiniz?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-outline-warning" title="Pasife Al">
                                             <i class="fas fa-user-slash"></i>
                                         </button>
@@ -91,6 +92,7 @@
                                     <!-- Aktifleştir -->
                                     <form method="POST" action="{{ url_for('admin.kullanici_aktif', id=kullanici.id) }}"
                                         class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-outline-success" title="Aktifleştir">
                                             <i class="fas fa-user-check"></i>
                                         </button>
@@ -132,6 +134,7 @@
                                                 <form method="POST"
                                                     action="{{ url_for('admin.kullanici_kalici_sil', id=kullanici.id) }}"
                                                     class="d-inline">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                     <button type="submit" class="btn btn-danger">
                                                         <i class="fas fa-trash-alt me-1"></i>Evet, Kalıcı Sil
                                                     </button>
