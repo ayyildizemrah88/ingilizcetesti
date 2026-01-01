@@ -22,12 +22,13 @@ from app.routes.credits import credits_bp
 from app.routes.question_import import question_import_bp
 from app.routes.data_management import data_bp
 # ══════════════════════════════════════════════════════════════
-# YENİ EKLENEN BLUEPRINT'LER (EKSİK OLAN)
+# YENİ EKLENEN BLUEPRINT'LER
 # ══════════════════════════════════════════════════════════════
 from app.routes.two_factor import twofa_bp
 from app.routes.candidate import candidate_bp
 from app.routes.candidate_auth import candidate_auth_bp
 from app.routes.email_verification import email_verification_bp
+from app.routes.proctoring import proctoring_bp
 # ══════════════════════════════════════════════════════════════
 # TÜM BLUEPRINT LİSTESİ
 # ══════════════════════════════════════════════════════════════
@@ -52,4 +53,5 @@ __all__ = [
     'candidate_bp',
     'candidate_auth_bp',
     'email_verification_bp',
+    'proctoring_bp',
 ]
