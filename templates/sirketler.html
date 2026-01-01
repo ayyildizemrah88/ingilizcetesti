@@ -109,6 +109,7 @@
                                     <form method="POST" action="{{ url_for('admin.sirket_sil', id=sirket.id) }}"
                                         class="d-inline"
                                         onsubmit="return confirm('Bu şirketi pasife almak istediğinizden emin misiniz?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-outline-warning" title="Pasife Al">
                                             <i class="fas fa-pause"></i>
                                         </button>
@@ -117,6 +118,7 @@
                                     <!-- Aktifleştir -->
                                     <form method="POST" action="{{ url_for('admin.sirket_aktif', id=sirket.id) }}"
                                         class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-outline-success" title="Aktifleştir">
                                             <i class="fas fa-play"></i>
                                         </button>
@@ -164,6 +166,7 @@
                                                 <form method="POST"
                                                     action="{{ url_for('admin.sirket_kalici_sil', id=sirket.id) }}"
                                                     class="d-inline">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                     <button type="submit" class="btn btn-danger">
                                                         <i class="fas fa-trash-alt me-1"></i>Evet, Kalıcı Olarak Sil
                                                     </button>
@@ -219,6 +222,13 @@
         </div>
     </div>
 </div>
+<!-- Toplu İşlem Formları (CSRF token ile) -->
+<form id="bulkDeactivateForm" method="POST" action="{{ url_for('admin.toplu_sirket_pasif') }}" style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+<form id="bulkActivateForm" method="POST" action="{{ url_for('admin.toplu_sirket_aktif') }}" style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
 <script>
     // Toplu seçim işlemleri
     let selectedIds = [];
@@ -245,9 +255,9 @@
     function bulkDeactivate() {
         if (selectedIds.length === 0) return;
         if (!confirm(`${selectedIds.length} şirketi pasife almak istediğinizden emin misiniz?`)) return;
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ url_for("admin.toplu_sirket_pasif") }}';
+        const form = document.getElementById('bulkDeactivateForm');
+        // Eski inputları temizle
+        form.querySelectorAll('input[name="sirket_ids[]"]').forEach(i => i.remove());
         selectedIds.forEach(id => {
             const input = document.createElement('input');
             input.type = 'hidden';
@@ -255,15 +265,14 @@
             input.value = id;
             form.appendChild(input);
         });
-        document.body.appendChild(form);
         form.submit();
     }
     function bulkActivate() {
         if (selectedIds.length === 0) return;
         if (!confirm(`${selectedIds.length} şirketi aktifleştirmek istediğinizden emin misiniz?`)) return;
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ url_for("admin.toplu_sirket_aktif") }}';
+        const form = document.getElementById('bulkActivateForm');
+        // Eski inputları temizle
+        form.querySelectorAll('input[name="sirket_ids[]"]').forEach(i => i.remove());
         selectedIds.forEach(id => {
             const input = document.createElement('input');
             input.type = 'hidden';
@@ -271,7 +280,6 @@
             input.value = id;
             form.appendChild(input);
         });
-        document.body.appendChild(form);
         form.submit();
     }
 </script>
