@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}Aday Detayı - {{ aday.ad_soyad if aday else 'Aday' }}{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-user-graduate me-2"></i>{{ aday.ad_soyad if aday else 'Aday' }}</h2>
+        <div>
+            {% if aday.certificate_hash %}
+            <a href="{{ url_for('certificate.download_pdf', hash=aday.certificate_hash) }}"
+                class="btn btn-success me-2">
+                <i class="fas fa-download me-1"></i>Sertifika İndir
+            </a>
+            {% endif %}
+            <a href="{{ url_for('admin.adaylar') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Geri
+            </a>
+        </div>
+    </div>
+    <div class="row">
+        <!-- Left Column: Candidate Info -->
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Kişi Bilgileri</h5>
+                </div>
+                <div class="card-body">
+                    <h4>{{ aday.ad_soyad }}</h4>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <strong>E-posta:</strong>
+                            <a href="mailto:{{ aday.email }}">{{ aday.email or 'Belirtilmemiş' }}</a>
+                        </li>
+                        <li class="mb-2"><strong>Telefon:</strong> {{ aday.cep_no or 'Belirtilmemiş' }}</li>
+                        <li class="mb-2"><strong>TC Kimlik:</strong> {{ aday.tc_kimlik or 'Belirtilmemiş' }}</li>
+                        <li class="mb-2">
+                            <strong>Giriş Kodu:</strong>
+                            <code class="bg-light px-2 py-1 rounded">{{ aday.giris_kodu }}</code>
+                        </li>
+                        <li><strong>Kayıt:</strong> {{ aday.created_at.strftime('%d.%m.%Y %H:%M') if aday.created_at
+                            else 'N/A' }}</li>
+                    </ul>
+                </div>
+            </div>
+            <!-- Exam Info Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Sınav Bilgileri</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-6">
+                            <h2 class="text-primary">{{ (aday.puan or 0)|round|int }}</h2>
+                            <small class="text-muted">Puan</small>
+                        </div>
+                        <div class="col-6">
+                            <h2 class="text-success">{{ aday.seviye_sonuc or 'N/A' }}</h2>
+                            <small class="text-muted">Seviye</small>
+                        </div>
+                    </div>
+                    <ul class="list-unstyled small">
+                        <li><strong>Soru Sayısı:</strong> {{ aday.soru_limiti or 0 }}</li>
+                        <li><strong>Süre:</strong> {{ aday.sinav_suresi or 30 }} dk</li>
+                        <li><strong>Başlangıç:</strong> {{ aday.baslama_tarihi.strftime('%d.%m.%Y %H:%M') if
+                            aday.baslama_tarihi else 'Henüz başlamadı' }}</li>
+                        <li><strong>Bitiş:</strong> {{ aday.bitis_tarihi.strftime('%d.%m.%Y %H:%M') if aday.bitis_tarihi
+                            else 'Henüz tamamlanmadı' }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <!-- Right Column: Proctoring & Actions -->
+        <div class="col-lg-8">
+            <!-- PROCTORING PHOTOS SECTION -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-camera me-2"></i>Sınav Görüntüleri (Proctoring)</h5>
+                    <span class="badge bg-dark" id="proctoring-count">Yükleniyor...</span>
+                </div>
+                <div class="card-body">
+                    <div id="proctoring-gallery" class="row g-2">
+                        <div class="col-12 text-center py-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Yükleniyor...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- GDPR Delete Option (SuperAdmin Only) -->
+                    {% if session.get('rol') == 'superadmin' %}
+                    <hr>
+                    <form method="POST" action="{{ url_for('proctoring.delete_snapshots', aday_id=aday.id) }}"
+                        onsubmit="return confirm('Tüm sınav görüntüleri silinecek. Bu işlem geri alınamaz!')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="fas fa-trash me-1"></i>KVKK: Görüntüleri Sil
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            <!-- Actions Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>İşlemler</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <form method="POST" action="{{ url_for('admin.sinav_sifirla', aday_id=aday.id) }}"
+                                onsubmit="return confirm('Sınavı sıfırlamak istediğinize emin misiniz?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-warning w-100">
+                                    <i class="fas fa-redo me-1"></i>Sınavı Sıfırla
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="mailto:{{ aday.email }}" class="btn btn-info w-100">
+                                <i class="fas fa-envelope me-1"></i>E-posta Gönder
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Security Info -->
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Güvenlik Bilgileri</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <ul class="list-unstyled small">
+                                <li><strong>Duraklatıldı:</strong> {% if aday.is_paused %}<span
+                                        class="text-danger">Evet</span>{% else %}Hayır{% endif %}</li>
+                                <li><strong>Toplam Duraklama:</strong> {{ aday.total_paused_seconds or 0 }} sn</li>
+                            </ul>
+                        </div>
+                        <div class="col-6">
+                            <ul class="list-unstyled small">
+                                <li><strong>Pratik Mi:</strong> {% if aday.is_practice %}Evet{% else %}Hayır{% endif %}
+                                </li>
+                                <li><strong>Sertifika:</strong>
+                                    {% if aday.certificate_hash %}
+                                    <code class="small">{{ aday.certificate_hash[:12] }}...</code>
+                                    {% else %}
+                                    <span class="text-muted">Yok</span>
+                                    {% endif %}
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Proctoring Photo Modal -->
+<div class="modal fade" id="photoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sınav Görüntüsü</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modal-photo" src="" class="img-fluid rounded" alt="Proctoring Photo">
+                <p id="modal-timestamp" class="text-muted mt-2"></p>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    // Load proctoring photos
+    document.addEventListener('DOMContentLoaded', function () {
+        const adayId = {{ aday.id }
+    };
+    const gallery = document.getElementById('proctoring-gallery');
+    const countBadge = document.getElementById('proctoring-count');
+    fetch(`/api/proctoring/snapshots/${adayId}`)
+        .then(response => response.json())
+        .then(data => {
+            countBadge.textContent = data.count + ' fotoğraf';
+            if (data.count === 0) {
+                gallery.innerHTML = `
+                    <div class="col-12 text-center py-4 text-muted">
+                        <i class="fas fa-camera-slash fa-3x mb-3"></i>
+                        <p>Henüz fotoğraf çekilmemiş veya aday sınava girmemiş.</p>
+                    </div>
+                `;
+                return;
+            }
+            gallery.innerHTML = '';
+            data.snapshots.forEach((snap, index) => {
+                const timestamp = new Date(snap.timestamp).toLocaleString('tr-TR');
+                const col = document.createElement('div');
+                col.className = 'col-4 col-md-3';
+                col.innerHTML = `
+                    <div class="card h-100" style="cursor:pointer" 
+                         onclick="showPhoto('${snap.url}', '${timestamp}')">
+                        <img src="${snap.url}" class="card-img-top" alt="Snapshot ${index + 1}"
+                             style="height:100px; object-fit:cover;">
+                        <div class="card-body p-1 text-center">
+                            <small class="text-muted">${timestamp.split(' ')[1]}</small>
+                        </div>
+                    </div>
+                `;
+                gallery.appendChild(col);
+            });
+        })
+        .catch(error => {
+            gallery.innerHTML = `
+                <div class="col-12 text-center text-danger py-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Yüklenemedi
+                </div>
+            `;
+            console.error('Proctoring load error:', error);
+        });
+});
+    function showPhoto(url, timestamp) {
+        document.getElementById('modal-photo').src = url;
+        document.getElementById('modal-timestamp').textContent = timestamp;
+        new bootstrap.Modal(document.getElementById('photoModal')).show();
+    }
+</script>
+{% endblock %}
