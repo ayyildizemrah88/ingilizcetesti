@@ -1,25 +1,19 @@
 <!DOCTYPE html>
 <html lang="{{ session.get('lang', 'tr') }}"
     class="{% if accessibility.high_contrast %}high-contrast{% endif %} {% if accessibility.large_text %}large-text{% endif %} {% if accessibility.reduced_motion %}reduced-motion{% endif %} {% if accessibility.dyslexia_friendly %}dyslexia-friendly{% endif %} {% if accessibility.colorblind_mode %}colorblind-{{ accessibility.colorblind_mode }}{% endif %}">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Skills Test Center - International English Proficiency Assessment">
     <title>{% block title %}Skills Test Center{% endblock %}</title>
-
     <!-- Preconnect for performance -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
-
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-
     <!-- Accessibility CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
-
     <meta name="csrf-token" content="{{ csrf_token() }}">
-
     <style>
         :root {
             --primary-color: #0d6efd;
@@ -27,62 +21,115 @@
             --warning-color: #ffc107;
             --danger-color: #dc3545;
         }
-
         body {
             /* DEĞİŞTİRİLDİ: Açık sarı arka plan rengi */
             background: linear-gradient(135deg, #FFFACD 0%, #FFF8DC 100%);
             min-height: 100vh;
         }
-
         .card {
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
         }
-
         .navbar {
             box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
         }
-
         .btn {
             border-radius: 10px;
             padding: 10px 25px;
         }
-
         .form-control,
         .form-select {
             border-radius: 10px;
         }
-
         .table {
             border-radius: 10px;
             overflow: hidden;
         }
-
         .badge {
             border-radius: 20px;
         }
-
         /* Dark mode */
         .dark-mode body {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
         }
-
         .dark-mode .card {
             background: #1e1e2d;
             color: #fff;
         }
-
         .dark-mode .table {
             color: #fff;
+        }
+        /* ========================================
+           ANA SAYFA BUTONU - YENİ EKLENDİ
+           ======================================== */
+        .home-button-fixed {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1050;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        .home-button-fixed:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+            color: white;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+        .home-button-fixed:focus {
+            outline: 3px solid #c4b5fd;
+            outline-offset: 2px;
+        }
+        .home-button-tooltip {
+            position: absolute;
+            left: 60px;
+            background: #1f2937;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .home-button-fixed:hover .home-button-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+        /* Dark mode için */
+        .dark-mode .home-button-fixed {
+            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+        }
+        /* Accessibility toolbar'ın solunda görünsün */
+        .accessibility-toggle {
+            right: 20px !important;
+            left: auto !important;
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
-
 <body class="{% if session.get('theme') == 'dark' %}dark-mode{% endif %}">
     <!-- Skip Link for Screen Readers -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
-
+    <!-- ========================================
+         ANA SAYFA BUTONU - SABİT FLOATING
+         ======================================== -->
+    <a href="{{ url_for('main.index') }}" class="home-button-fixed" title="Ana Sayfaya Dön" aria-label="Ana Sayfaya Dön">
+        <i class="bi bi-house-door-fill" aria-hidden="true"></i>
+        <span class="home-button-tooltip">🏠 Ana Sayfa</span>
+    </a>
     <!-- Top Bar with Language Selector -->
     <div class="bg-dark text-white py-1">
         <div class="container d-flex justify-content-end align-items-center">
@@ -115,9 +162,7 @@
             </div>
         </div>
     </div>
-
     {% block navbar %}{% endblock %}
-
     <main id="main-content" role="main" class="container py-4">
         <!-- Flash Messages with ARIA -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -136,10 +181,8 @@
         </div>
         {% endif %}
         {% endwith %}
-
         {% block content %}{% endblock %}
     </main>
-
     <!-- Accessibility Toolbar -->
     <div id="accessibility-toolbar" class="accessibility-toolbar" role="toolbar" aria-label="Accessibility options"
         style="display: none;">
@@ -160,16 +203,13 @@
             <i class="bi bi-type" aria-hidden="true"></i>
         </button>
     </div>
-
     <button type="button" id="accessibility-toggle" class="accessibility-toggle"
         onclick="document.getElementById('accessibility-toolbar').style.display = document.getElementById('accessibility-toolbar').style.display === 'none' ? 'flex' : 'none'"
         aria-label="Toggle accessibility options" title="Accessibility Options">
         <i class="bi bi-universal-access" aria-hidden="true"></i>
     </button>
-
     <!-- Puter.js for Free AI (Gemini) -->
     <script src="https://js.puter.com/v2/"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Accessibility toggle function
@@ -192,16 +232,18 @@
                     console.error('Accessibility toggle error:', error);
                 });
         }
-
         // Keyboard navigation enhancement
         document.addEventListener('keydown', function (e) {
             // Alt + A to open accessibility toolbar
             if (e.altKey && e.key === 'a') {
                 document.getElementById('accessibility-toggle').click();
             }
+            // Alt + H to go home - YENİ EKLENDİ
+            if (e.altKey && e.key === 'h') {
+                window.location.href = '/';
+            }
         });
     </script>
     {% block extra_js %}{% endblock %}
 </body>
-
 </html>
