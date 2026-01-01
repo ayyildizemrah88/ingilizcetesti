@@ -549,6 +549,15 @@ def aday_kalici_sil(id):
         except Exception:
             pass  # Tablo yoksa devam et
         
+        # 0b. Adayın yazılı cevaplarını sil (Foreign Key constraint için)
+        try:
+            db.session.execute(
+                db.text("DELETE FROM yazili_cevaplar WHERE aday_id = :aday_id"),
+                {"aday_id": id}
+            )
+        except Exception:
+            pass  # Tablo yoksa devam et
+        
         # 1. Adayın sınav cevaplarını sil
         ExamAnswer.query.filter_by(aday_id=id).delete(synchronize_session=False)
         
@@ -654,6 +663,15 @@ def toplu_aday_kalici_sil():
                     )
                 except Exception:
                     pass  # Tablo yoksa devam et
+                
+                # Yazılı cevapları sil
+                try:
+                    db.session.execute(
+                        db.text("DELETE FROM yazili_cevaplar WHERE aday_id = :aday_id"),
+                        {"aday_id": int(aday_id)}
+                    )
+                except Exception:
+                    pass
                 
                 # Sınav cevaplarını sil
                 ExamAnswer.query.filter_by(aday_id=int(aday_id)).delete(synchronize_session=False)
