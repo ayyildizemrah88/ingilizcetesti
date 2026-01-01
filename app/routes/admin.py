@@ -540,6 +540,15 @@ def aday_kalici_sil(id):
         return redirect(url_for('admin.adaylar'))
     candidate_name = candidate.ad_soyad
     try:
+        # 0. Adayın kredi hareketlerini sil (Foreign Key constraint için)
+        try:
+            db.session.execute(
+                db.text("DELETE FROM kredi_hareketleri WHERE aday_id = :aday_id"),
+                {"aday_id": id}
+            )
+        except Exception:
+            pass  # Tablo yoksa devam et
+        
         # 1. Adayın sınav cevaplarını sil
         ExamAnswer.query.filter_by(aday_id=id).delete(synchronize_session=False)
         
@@ -636,6 +645,15 @@ def toplu_aday_kalici_sil():
                 # Yetki kontrolü
                 if sirket_id and candidate.sirket_id != sirket_id and session.get('rol') != 'superadmin':
                     continue
+                
+                # Önce kredi hareketlerini sil (Foreign Key constraint için)
+                try:
+                    db.session.execute(
+                        db.text("DELETE FROM kredi_hareketleri WHERE aday_id = :aday_id"),
+                        {"aday_id": int(aday_id)}
+                    )
+                except Exception:
+                    pass  # Tablo yoksa devam et
                 
                 # Sınav cevaplarını sil
                 ExamAnswer.query.filter_by(aday_id=int(aday_id)).delete(synchronize_session=False)
