@@ -1,70 +1,278 @@
-{% extends "dashboard.html" %}
+{% extends "base.html" %}
 {% block title %}Şirketler - Skills Test Center{% endblock %}
-
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3><i class="bi bi-building me-2"></i>Şirketler</h3>
-    <div>
-        <a href="{{ url_for('admin.demo_olustur') }}" class="btn btn-success me-2"><i
-                class="bi bi-rocket-takeoff me-1"></i>Hızlı Demo</a>
-        <a href="{{ url_for('admin.sirket_ekle') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Yeni
-            Şirket</a>
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="fas fa-building me-2"></i>Şirket Yönetimi</h2>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('admin.demo_olustur') }}" class="btn btn-outline-primary me-2">
+                <i class="fas fa-magic me-1"></i> Hızlı Demo
+            </a>
+            <a href="{{ url_for('admin.sirket_ekle') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i> Yeni Şirket
+            </a>
+        </div>
     </div>
-</div>
-
-<div class="card border-0">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>ID</th>
-                        <th>İsim</th>
-                        <th>Kredi</th>
-                        <th>Durum</th>
-                        <th>İşlemler</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in sirketler %}
-                    <tr>
-                        <td>{{ s.id }}</td>
-                        <td><strong>{{ s.isim or s.ad or '-' }}</strong></td>
-                        <td>
-                            {% set kredi = s.kredi or 0 %}
-                            <span
-                                class="badge bg-{{ 'success' if kredi > 50 else 'warning' if kredi > 10 else 'danger' }}">
-                                {{ kredi }}
-                            </span>
-                        </td>
-                        <td>
-                            {% if s.is_active %}
-                            <span class="badge bg-success">Aktif</span>
-                            {% else %}
-                            <span class="badge bg-secondary">Pasif</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <div class="btn-group btn-group-sm">
-                                <a href="{{ url_for('admin.sirket_duzenle', id=s.id) }}" class="btn btn-outline-primary"
-                                    title="Düzenle"><i class="bi bi-pencil"></i></a>
-                                <a href="{{ url_for('admin.sirket_kredi', id=s.id) }}" class="btn btn-outline-warning"
-                                    title="Kredi Yükle"><i class="bi bi-coin"></i></a>
-                                <form action="{{ url_for('admin.sirket_sil', id=s.id) }}" method="POST"
-                                    style="display:inline;">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Sil"
-                                        onclick="return confirm('Bu şirket ve TÜM VERİLERİ kalıcı olarak silinecek! Emin misiniz?')">
-                                        <i class="bi bi-trash"></i>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+    <!-- Toplu İşlem Toolbar -->
+    <div class="card shadow-sm mb-3" id="bulkActionToolbar" style="display: none;">
+        <div class="card-body py-2">
+            <div class="d-flex align-items-center">
+                <span class="me-3"><strong id="selectedCount">0</strong> şirket seçildi</span>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="bulkDeactivate()">
+                        <i class="fas fa-pause me-1"></i> Toplu Pasife Al
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="bulkActivate()">
+                        <i class="fas fa-play me-1"></i> Toplu Aktifleştir
+                    </button>
+                </div>
+                <button type="button" class="btn btn-sm btn-link text-muted ms-auto" onclick="clearSelection()">
+                    <i class="fas fa-times"></i> Seçimi Temizle
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40">
+                                <input type="checkbox" class="form-check-input" id="selectAll"
+                                    onchange="toggleSelectAll()">
+                            </th>
+                            <th>ID</th>
+                            <th>Şirket Adı</th>
+                            <th>Email</th>
+                            <th>Telefon</th>
+                            <th>Kredi</th>
+                            <th>Durum</th>
+                            <th class="text-center">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sirket in sirketler %}
+                        <tr class="{{ 'table-secondary' if not sirket.is_active else '' }}">
+                            <td>
+                                <input type="checkbox" class="form-check-input sirket-checkbox" value="{{ sirket.id }}"
+                                    onchange="updateSelection()">
+                            </td>
+                            <td>{{ sirket.id }}</td>
+                            <td>
+                                <strong>{{ sirket.isim or sirket.ad }}</strong>
+                                {% if not sirket.is_active %}
+                                <span class="badge bg-secondary ms-1">Pasif</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ sirket.email or '-' }}</td>
+                            <td>{{ sirket.telefon or '-' }}</td>
+                            <td>
+                                <span
+                                    class="badge bg-{{ 'success' if sirket.kredi and sirket.kredi > 10 else 'warning' if sirket.kredi and sirket.kredi > 0 else 'danger' }}">
+                                    {{ sirket.kredi or 0 }} Kredi
+                                </span>
+                            </td>
+                            <td>
+                                {% if sirket.is_active %}
+                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Aktif</span>
+                                {% else %}
+                                <span class="badge bg-secondary"><i class="fas fa-pause-circle me-1"></i>Pasif</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <!-- Düzenle -->
+                                    <a href="{{ url_for('admin.sirket_duzenle', id=sirket.id) }}"
+                                        class="btn btn-outline-primary" title="Düzenle">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <!-- Kredi Yükle -->
+                                    <a href="{{ url_for('admin.sirket_kredi', id=sirket.id) }}"
+                                        class="btn btn-outline-success" title="Kredi Yükle">
+                                        <i class="fas fa-coins"></i>
+                                    </a>
+                                    {% if sirket.is_active %}
+                                    <!-- Pasife Al -->
+                                    <form method="POST" action="{{ url_for('admin.sirket_sil', id=sirket.id) }}"
+                                        class="d-inline"
+                                        onsubmit="return confirm('Bu şirketi pasife almak istediğinizden emin misiniz?');">
+                                        <button type="submit" class="btn btn-outline-warning" title="Pasife Al">
+                                            <i class="fas fa-pause"></i>
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <!-- Aktifleştir -->
+                                    <form method="POST" action="{{ url_for('admin.sirket_aktif', id=sirket.id) }}"
+                                        class="d-inline">
+                                        <button type="submit" class="btn btn-outline-success" title="Aktifleştir">
+                                            <i class="fas fa-play"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    <!-- Kalıcı Sil -->
+                                    <button type="button" class="btn btn-outline-danger" title="Kalıcı Sil"
+                                        data-bs-toggle="modal" data-bs-target="#deleteModal{{ sirket.id }}">
+                                        <i class="fas fa-trash-alt"></i>
                                     </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                                </div>
+                                <!-- Kalıcı Silme Onay Modal -->
+                                <div class="modal fade" id="deleteModal{{ sirket.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>Kalıcı Silme Onayı
+                                                </h5>
+                                                <button type="button" class="btn-close btn-close-white"
+                                                    data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-danger">
+                                                    <strong><i
+                                                            class="fas fa-exclamation-circle me-2"></i>DİKKAT!</strong><br>
+                                                    Bu işlem geri alınamaz!
+                                                </div>
+                                                <p><strong>"{{ sirket.isim or sirket.ad }}"</strong> şirketini kalıcı
+                                                    olarak silmek üzeresiniz.</p>
+                                                <p class="mb-0">Silinecek veriler:</p>
+                                                <ul class="mb-3">
+                                                    <li>Tüm adaylar ve sınav cevapları</li>
+                                                    <li>Tüm kullanıcılar</li>
+                                                    <li>Tüm sorular</li>
+                                                    <li>Tüm sınav şablonları</li>
+                                                    <li>Şirket kaydı</li>
+                                                </ul>
+                                                <p class="text-danger fw-bold">Bu işlemi onaylıyor musunuz?</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    <i class="fas fa-times me-1"></i>İptal
+                                                </button>
+                                                <form method="POST"
+                                                    action="{{ url_for('admin.sirket_kalici_sil', id=sirket.id) }}"
+                                                    class="d-inline">
+                                                    <button type="submit" class="btn btn-danger">
+                                                        <i class="fas fa-trash-alt me-1"></i>Evet, Kalıcı Olarak Sil
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="fas fa-building fa-3x mb-3 d-block"></i>
+                                Henüz şirket bulunmuyor.
+                                <br>
+                                <a href="{{ url_for('admin.sirket_ekle') }}" class="btn btn-primary mt-3">
+                                    <i class="fas fa-plus me-1"></i> İlk Şirketi Ekle
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- Özet Bilgiler -->
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title"><i class="fas fa-building me-2"></i>Toplam Şirket</h5>
+                    <h2 class="mb-0">{{ sirketler|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title"><i class="fas fa-check-circle me-2"></i>Aktif Şirket</h5>
+                    <h2 class="mb-0">{{ sirketler|selectattr('is_active')|list|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-secondary text-white">
+                <div class="card-body text-center">
+                    <h5 class="card-title"><i class="fas fa-pause-circle me-2"></i>Pasif Şirket</h5>
+                    <h2 class="mb-0">{{ sirketler|rejectattr('is_active')|list|length }}</h2>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+<script>
+    // Toplu seçim işlemleri
+    let selectedIds = [];
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.sirket-checkbox');
+        checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        updateSelection();
+    }
+    function updateSelection() {
+        const checkboxes = document.querySelectorAll('.sirket-checkbox:checked');
+        selectedIds = Array.from(checkboxes).map(cb => cb.value);
+        document.getElementById('selectedCount').textContent = selectedIds.length;
+        document.getElementById('bulkActionToolbar').style.display = selectedIds.length > 0 ? 'block' : 'none';
+        // Select All checkbox durumunu güncelle
+        const allCheckboxes = document.querySelectorAll('.sirket-checkbox');
+        document.getElementById('selectAll').checked = allCheckboxes.length > 0 && selectedIds.length === allCheckboxes.length;
+    }
+    function clearSelection() {
+        document.getElementById('selectAll').checked = false;
+        document.querySelectorAll('.sirket-checkbox').forEach(cb => cb.checked = false);
+        updateSelection();
+    }
+    function bulkDeactivate() {
+        if (selectedIds.length === 0) return;
+        if (!confirm(`${selectedIds.length} şirketi pasife almak istediğinizden emin misiniz?`)) return;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("admin.toplu_sirket_pasif") }}';
+        selectedIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'sirket_ids[]';
+            input.value = id;
+            form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+    }
+    function bulkActivate() {
+        if (selectedIds.length === 0) return;
+        if (!confirm(`${selectedIds.length} şirketi aktifleştirmek istediğinizden emin misiniz?`)) return;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("admin.toplu_sirket_aktif") }}';
+        selectedIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'sirket_ids[]';
+            input.value = id;
+            form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+    }
+</script>
 {% endblock %}
