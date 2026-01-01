@@ -80,6 +80,7 @@
         <div class="card-body py-2">
             <form method="POST" action="{{ url_for('admin.bulk_upload') }}" enctype="multipart/form-data"
                 class="row g-2 align-items-center">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="col-auto">
                     <span class="text-muted"><i class="fas fa-file-excel me-1"></i> Excel ile Toplu Yükleme:</span>
                 </div>
@@ -178,6 +179,7 @@
                                     <form method="POST" action="{{ url_for('admin.aday_sinav_sifirla', id=aday.id) }}"
                                         class="d-inline"
                                         onsubmit="return confirm('Sınavı sıfırlamak istediğinizden emin misiniz?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-outline-warning" title="Sınav Sıfırla">
                                             <i class="fas fa-redo"></i>
                                         </button>
@@ -186,6 +188,7 @@
                                     <!-- Aktifleştir -->
                                     <form method="POST" action="{{ url_for('admin.aday_aktif', id=aday.id) }}"
                                         class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-outline-success" title="Aktifleştir">
                                             <i class="fas fa-user-check"></i>
                                         </button>
@@ -195,6 +198,7 @@
                                     <form method="POST" action="{{ url_for('admin.aday_sil', id=aday.id) }}"
                                         class="d-inline"
                                         onsubmit="return confirm('Bu adayı pasife almak istediğinizden emin misiniz?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-outline-secondary" title="Pasife Al">
                                             <i class="fas fa-user-slash"></i>
                                         </button>
@@ -239,6 +243,7 @@
                                                 <form method="POST"
                                                     action="{{ url_for('admin.aday_kalici_sil', id=aday.id) }}"
                                                     class="d-inline">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                     <button type="submit" class="btn btn-danger">
                                                         <i class="fas fa-trash-alt me-1"></i>Evet, Kalıcı Sil
                                                     </button>
@@ -332,6 +337,17 @@
         </div>
     </div>
 </div>
+<!-- Toplu İşlem Formları (CSRF token ile) -->
+<form id="bulkSoftDeleteForm" method="POST" action="{{ url_for('admin.toplu_aday_sil') }}" style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+<form id="bulkActivateForm" method="POST" action="{{ url_for('admin.toplu_aday_aktif') }}" style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+<form id="bulkPermanentDeleteForm" method="POST" action="{{ url_for('admin.toplu_aday_kalici_sil') }}"
+    style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
 <!-- Toplu Silme Onay Modal -->
 <div class="modal fade" id="bulkDeleteModal" tabindex="-1">
     <div class="modal-dialog">
@@ -407,9 +423,9 @@
     function bulkSoftDelete() {
         if (selectedIds.length === 0) return;
         if (!confirm(`${selectedIds.length} adayı pasife almak istediğinizden emin misiniz?`)) return;
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ url_for("admin.toplu_aday_sil") }}';
+        const form = document.getElementById('bulkSoftDeleteForm');
+        // Eski inputları temizle
+        form.querySelectorAll('input[name="aday_ids[]"]').forEach(i => i.remove());
         selectedIds.forEach(id => {
             const input = document.createElement('input');
             input.type = 'hidden';
@@ -417,15 +433,14 @@
             input.value = id;
             form.appendChild(input);
         });
-        document.body.appendChild(form);
         form.submit();
     }
     function bulkActivate() {
         if (selectedIds.length === 0) return;
         if (!confirm(`${selectedIds.length} adayı aktifleştirmek istediğinizden emin misiniz?`)) return;
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ url_for("admin.toplu_aday_aktif") }}';
+        const form = document.getElementById('bulkActivateForm');
+        // Eski inputları temizle
+        form.querySelectorAll('input[name="aday_ids[]"]').forEach(i => i.remove());
         selectedIds.forEach(id => {
             const input = document.createElement('input');
             input.type = 'hidden';
@@ -433,7 +448,6 @@
             input.value = id;
             form.appendChild(input);
         });
-        document.body.appendChild(form);
         form.submit();
     }
     function bulkPermanentDelete() {
@@ -442,9 +456,9 @@
         new bootstrap.Modal(document.getElementById('bulkDeleteModal')).show();
     }
     function confirmBulkPermanentDelete() {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ url_for("admin.toplu_aday_kalici_sil") }}';
+        const form = document.getElementById('bulkPermanentDeleteForm');
+        // Eski inputları temizle
+        form.querySelectorAll('input[name="aday_ids[]"]').forEach(i => i.remove());
         selectedIds.forEach(id => {
             const input = document.createElement('input');
             input.type = 'hidden';
@@ -452,7 +466,6 @@
             input.value = id;
             form.appendChild(input);
         });
-        document.body.appendChild(form);
         form.submit();
     }
 </script>
