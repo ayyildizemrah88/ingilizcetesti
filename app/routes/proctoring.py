@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+# -*- coding: utf-8 -*-
 {% block title %}Aday Detayı - {{ aday.ad_soyad if aday else 'Aday' }}{% endblock %}
 {% block content %}
 <div class="container py-4">
