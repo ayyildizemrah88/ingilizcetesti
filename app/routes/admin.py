@@ -1165,6 +1165,13 @@ def api_sablon_detay(id):
 def sablon_ekle_eski():
     """Redirect old route to new template form"""
     return redirect(url_for('admin.sablon_yeni'))
+    
+# /sablon/ekle URL'sini sablon_yeni'ye yonlendir (404 fix)
+@admin_bp.route('/sablon/ekle', methods=['GET', 'POST'])
+@login_required
+def sablon_ekle():
+    """Redirect /sablon/ekle to new template form - fixes 404"""
+    return redirect(url_for('admin.sablon_yeni'))
 # ══════════════════════════════════════════════════════════════
 # ŞİRKET YÖNETİMİ - GÜNCELLENMIŞ (KALICI SİLME VE AKTİFLEŞTİRME DAHİL)
 # ══════════════════════════════════════════════════════════════
