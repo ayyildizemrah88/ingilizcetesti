@@ -1307,8 +1307,28 @@ def sirket_kalici_sil(id):
         # 1. Şirketin adaylarının sınav cevaplarını sil
         candidate_ids = [c.id for c in Candidate.query.filter_by(sirket_id=id).all()]
         if candidate_ids:
-                                    
-            ExamAnswer
+            
+                        # 0a. Önce kredi hareketlerini sil (Foreign Key constraint için)
+            try:
+                db.session.execute(
+                    db.text("DELETE FROM kredi_hareketleri WHERE aday_id IN :ids"),
+                    {"ids": tuple(candidate_ids)}
+                )
+            except Exception:
+                pass  # Tablo yoksa devam et
+            
+            # 0b. Yazılı cevapları sil (Foreign Key constraint için)
+            try:
+                db.session.execute(
+                    db.text("DELETE FROM yazili_cevaplar WHERE aday_id IN :ids"),
+                    {"ids": tuple(candidate_ids)}
+                )
+            except Exception:
+                pass  # Tablo yoksa devam et
+            
+            # 1. Şirketin adaylarının sınav cevaplarını sil
+            ExamAnswer.query.filter(ExamAnswer.aday_id.in_(candidate_ids)).delete(synchronize_session=False)                        
+            
         
         # 2. Şirketin adaylarını sil
         Candidate.query.filter_by(sirket_id=id).delete(synchronize_session=False)
