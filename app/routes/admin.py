@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-f
 """
 Admin Routes - Dashboard and management
 TAM DOSYA - TÜM ROUTE'LAR DAHİL (GÜNCEL ŞABLON SİSTEMİ İLE)
@@ -1307,7 +1307,8 @@ def sirket_kalici_sil(id):
         # 1. Şirketin adaylarının sınav cevaplarını sil
         candidate_ids = [c.id for c in Candidate.query.filter_by(sirket_id=id).all()]
         if candidate_ids:
-            ExamAnswer.query.filter(ExamAnswer.aday_id.in_(candidate_ids)).delete(synchronize_session=False)
+                                    
+            ExamAnswer
         
         # 2. Şirketin adaylarını sil
         Candidate.query.filter_by(sirket_id=id).delete(synchronize_session=False)
