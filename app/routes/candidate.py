@@ -2,8 +2,9 @@
 """
 Candidate Routes - Candidate-facing features
 FIXED: Field names aligned with Candidate model
+FIXED: Dashboard error handling improved
 """
-from flask import Blueprint, render_template, jsonify, request, session
+from flask import Blueprint, render_template, jsonify, request, session, redirect, url_for, flash, current_app
 from app.extensions import db
 from datetime import datetime
 
@@ -20,12 +21,17 @@ def score_history():
     if not email:
         return render_template('score_history.html', exams=[], avg_score=0, best_level='N/A', improvement=0)
 
-    # Get all exams for this email - FIXED: using puan and seviye_sonuc
-    exams = Candidate.query.filter_by(
-        email=email,
-        sinav_durumu='tamamlandi',
-        is_practice=False
-    ).order_by(Candidate.bitis_tarihi.desc()).all()
+    try:
+        # Get all exams for this email - FIXED: using puan and seviye_sonuc
+        exams = Candidate.query.filter_by(
+            email=email,
+            sinav_durumu='tamamlandi',
+            is_practice=False
+        ).order_by(Candidate.bitis_tarihi.desc()).all()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Score history query failed: {e}")
+        exams = []
 
     # Calculate stats - FIXED: using puan instead of score
     avg_score = sum(e.puan or 0 for e in exams) / len(exams) if exams else 0
@@ -63,11 +69,16 @@ def progress():
                               skill_data={'grammar': [], 'vocabulary': [], 'reading': [], 'listening': [], 'speaking': [], 'writing': []},
                               current_level='B1')
 
-    exams = Candidate.query.filter_by(
-        email=email,
-        sinav_durumu='tamamlandi',
-        is_practice=False
-    ).order_by(Candidate.bitis_tarihi.asc()).all()
+    try:
+        exams = Candidate.query.filter_by(
+            email=email,
+            sinav_durumu='tamamlandi',
+            is_practice=False
+        ).order_by(Candidate.bitis_tarihi.asc()).all()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Progress query failed: {e}")
+        exams = []
 
     exam_dates = [e.bitis_tarihi.strftime('%d/%m') if e.bitis_tarihi else '' for e in exams]
     overall_scores = [e.puan or 0 for e in exams]
@@ -96,7 +107,12 @@ def study_plan(giris_kodu):
     from app.models import Candidate
     import json
 
-    candidate = Candidate.query.filter_by(giris_kodu=giris_kodu).first_or_404()
+    try:
+        candidate = Candidate.query.filter_by(giris_kodu=giris_kodu).first_or_404()
+    except Exception as e:
+        db.session.rollback()
+        flash("Çalışma planı bulunamadı.", "danger")
+        return redirect(url_for('auth.index'))
 
     # Check if study plan already exists
     plan = None
@@ -137,21 +153,48 @@ def tutorial():
     return render_template('tutorial.html')
 
 
+# ══════════════════════════════════════════════════════════════════
+# FIXED: Dashboard with proper error handling
+# ══════════════════════════════════════════════════════════════════
 @candidate_bp.route('/dashboard')
 def dashboard():
-    """Candidate dashboard after login"""
-    candidate_id = session.get('candidate_id') or session.get('aday_id')
-    
-    if not candidate_id:
-        return redirect(url_for('candidate_auth.sinav_giris'))
-    
+    """Candidate dashboard after login - FIXED: Added proper error handling"""
     from app.models import Candidate
-    candidate = Candidate.query.get(candidate_id)
     
+    # Get candidate ID from session
+    candidate_id = session.get('candidate_id') or session.get('aday_id')
+
+    # If no session, redirect to exam entry
+    if not candidate_id:
+        flash("Lütfen giriş yapın.", "warning")
+        try:
+            return redirect(url_for('candidate_auth.sinav_giris'))
+        except:
+            # Fallback if candidate_auth blueprint doesn't exist
+            return redirect(url_for('auth.sinav_giris'))
+
+    # Try to get candidate from database
+    try:
+        candidate = Candidate.query.get(candidate_id)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Candidate dashboard query failed: {e}")
+        session.clear()
+        flash("Bir hata oluştu. Lütfen tekrar giriş yapın.", "danger")
+        try:
+            return redirect(url_for('candidate_auth.sinav_giris'))
+        except:
+            return redirect(url_for('auth.sinav_giris'))
+
+    # If candidate not found, clear session
     if not candidate:
         session.clear()
-        return redirect(url_for('candidate_auth.sinav_giris'))
-    
+        flash("Aday bulunamadı. Lütfen tekrar giriş yapın.", "warning")
+        try:
+            return redirect(url_for('candidate_auth.sinav_giris'))
+        except:
+            return redirect(url_for('auth.sinav_giris'))
+
     return render_template('candidate_dashboard.html', aday=candidate)
 
 
@@ -159,38 +202,43 @@ def dashboard():
 def offline_sync():
     """Sync offline exam data"""
     from app.models import Candidate, ExamAnswer
-    
+
     data = request.get_json()
     if not data:
         return jsonify({'success': False, 'error': 'No data provided'}), 400
-    
+
     candidate_id = data.get('candidate_id')
     answers = data.get('answers', [])
-    
-    candidate = Candidate.query.get(candidate_id)
+
+    try:
+        candidate = Candidate.query.get(candidate_id)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
     if not candidate:
         return jsonify({'success': False, 'error': 'Candidate not found'}), 404
-    
+
     # Save answers
-    for ans in answers:
-        existing = ExamAnswer.query.filter_by(
-            aday_id=candidate_id,
-            soru_id=ans.get('question_id')
-        ).first()
-        
-        if not existing:
-            answer = ExamAnswer(
+    try:
+        for ans in answers:
+            existing = ExamAnswer.query.filter_by(
                 aday_id=candidate_id,
-                soru_id=ans.get('question_id'),
-                verilen_cevap=ans.get('answer'),
-                dogru_mu=ans.get('is_correct', False)
-            )
-            db.session.add(answer)
-    
-    db.session.commit()
-    
+                soru_id=ans.get('question_id')
+            ).first()
+
+            if not existing:
+                answer = ExamAnswer(
+                    aday_id=candidate_id,
+                    soru_id=ans.get('question_id'),
+                    verilen_cevap=ans.get('answer'),
+                    dogru_mu=ans.get('is_correct', False)
+                )
+                db.session.add(answer)
+
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
     return jsonify({'success': True, 'synced': len(answers)})
-
-
-# Import redirect for dashboard route
-from flask import redirect
