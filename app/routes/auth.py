@@ -3,6 +3,8 @@
 Authentication Routes - Login, Logout, Password Reset, Toggle Theme
 Enhanced with security best practices
 FIXED: Added proper error handling for missing database tables
+FIXED: exam.start -> exam.sinav
+FIXED: Added privacy route
 """
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
 from app.extensions import db, limiter
@@ -73,7 +75,7 @@ def safe_record_login(tracker, email, ip_address, success=True):
     """
     if not tracker:
         return
-    
+
     try:
         if success:
             tracker.record_successful_login(email, ip_address)
@@ -183,6 +185,15 @@ def logout():
 
 
 # ══════════════════════════════════════════════════════════════════
+# FIXED: Added privacy route
+# ══════════════════════════════════════════════════════════════════
+@auth_bp.route('/privacy')
+def privacy():
+    """Privacy policy page"""
+    return render_template('privacy.html')
+
+
+# ══════════════════════════════════════════════════════════════════
 @auth_bp.route('/toggle-theme')
 def toggle_theme():
     """Toggle between dark and light theme"""
@@ -234,7 +245,8 @@ def sinav_giris():
             session['aday_isim'] = candidate.ad_soyad
 
             flash(f"Hoş geldiniz, {candidate.ad_soyad}!", "success")
-            return redirect(url_for('exam.start'))
+            # FIXED: exam.start -> exam.sinav (exam.start route doesn't exist)
+            return redirect(url_for('exam.sinav'))
         else:
             flash("TC Kimlik veya giriş kodu hatalı.", "danger")
 
@@ -318,3 +330,13 @@ def reset_password(token):
             flash("Şifre değiştirilemedi, lütfen tekrar deneyin.", "danger")
 
     return render_template('reset_password.html', token=token)
+
+
+# ══════════════════════════════════════════════════════════════════
+@auth_bp.route('/set-language/<lang>')
+def set_language(lang):
+    """Set user's preferred language"""
+    supported_languages = ['tr', 'en', 'de', 'es', 'fr', 'ar']
+    if lang in supported_languages:
+        session['lang'] = lang
+    return redirect(request.referrer or url_for('auth.index'))
