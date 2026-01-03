@@ -1553,3 +1553,37 @@ def loglar():
     except:
         pass
     return render_template('admin_logs.html', logs=logs, pagination=pagination)
+
+@admin_bp.route('/kredi-yukle', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def kredi_yukle():
+    '''Genel kredi yükleme sayfası - Tüm şirketler için'''
+    from app.models import Company
+    
+    sirketler = Company.query.filter_by(is_active=True).order_by(Company.isim).all()
+    
+    if request.method == 'POST':
+        sirket_id = request.form.get('sirket_id', type=int)
+        miktar = request.form.get('miktar', type=int, default=0)
+        
+        if not sirket_id:
+            flash("Lütfen bir şirket seçin.", "danger")
+            return render_template('credits_manage.html', sirketler=sirketler)
+        
+        if miktar <= 0:
+            flash("Geçersiz kredi miktarı.", "danger")
+            return render_template('credits_manage.html', sirketler=sirketler)
+        
+        company = Company.query.get(sirket_id)
+        if not company:
+            flash("Şirket bulunamadı.", "danger")
+            return render_template('credits_manage.html', sirketler=sirketler)
+        
+        company.kredi = (company.kredi or 0) + miktar
+        db.session.commit()
+        
+        flash(f"'{company.isim}' şirketine {miktar} kredi yüklendi. Yeni bakiye: {company.kredi}", "success")
+        return redirect(url_for('admin.kredi_yukle'))
+    
+    return render_template('credits_manage.html', sirketler=sirketler)
