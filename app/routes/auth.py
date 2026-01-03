@@ -5,6 +5,7 @@ Enhanced with security best practices
 FIXED: Added proper error handling for missing database tables
 FIXED: exam.start -> exam.sinav
 FIXED: Added privacy route
+FIXED: Password reset email sending implemented
 """
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
 from app.extensions import db, limiter
@@ -88,6 +89,135 @@ def safe_record_login(tracker, email, ip_address, success=True):
         except:
             pass
         current_app.logger.warning(f"Login tracking failed (table may not exist): {e}")
+
+
+def send_password_reset_email_sync(email, name, reset_url):
+    """
+    Send password reset email synchronously.
+    Uses company SMTP settings if available, otherwise falls back to default.
+    """
+    try:
+        # Try to use Flask-Mail or custom email sender
+        from flask_mail import Message
+        from app.extensions import mail
+        
+        msg = Message(
+            subject='Şifre Sıfırlama - Skills Test Center',
+            recipients=[email],
+            html=f'''
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+                    <h1 style="color: white; margin: 0;">Skills Test Center</h1>
+                </div>
+                <div style="padding: 30px; background: #f9f9f9;">
+                    <h2 style="color: #333;">Merhaba {name},</h2>
+                    <p style="color: #666; font-size: 16px;">
+                        Şifrenizi sıfırlamak için aşağıdaki butona tıklayın:
+                    </p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{reset_url}" 
+                           style="background: #667eea; color: white; padding: 15px 30px; 
+                                  text-decoration: none; border-radius: 5px; font-size: 16px;">
+                            Şifremi Sıfırla
+                        </a>
+                    </div>
+                    <p style="color: #999; font-size: 14px;">
+                        Bu link 1 saat geçerlidir.<br>
+                        Bu işlemi siz yapmadıysanız, bu e-postayı görmezden gelin.
+                    </p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="color: #999; font-size: 12px; text-align: center;">
+                        Skills Test Center © 2024
+                    </p>
+                </div>
+            </div>
+            ''',
+            body=f'''Merhaba {name},
+
+Şifrenizi sıfırlamak için aşağıdaki linke tıklayın:
+{reset_url}
+
+Bu link 1 saat geçerlidir.
+Bu işlemi siz yapmadıysanız, bu e-postayı görmezden gelin.
+
+Skills Test Center'''
+        )
+        mail.send(msg)
+        return True
+    except ImportError:
+        # Flask-Mail not installed, try alternative
+        current_app.logger.warning("Flask-Mail not available, trying alternative email method")
+    except Exception as e:
+        current_app.logger.error(f"Flask-Mail error: {e}")
+    
+    # Try using smtplib directly
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        
+        smtp_host = os.getenv('SMTP_HOST', os.getenv('MAIL_SERVER', 'smtp.gmail.com'))
+        smtp_port = int(os.getenv('SMTP_PORT', os.getenv('MAIL_PORT', 587)))
+        smtp_user = os.getenv('SMTP_USER', os.getenv('MAIL_USERNAME', ''))
+        smtp_pass = os.getenv('SMTP_PASS', os.getenv('MAIL_PASSWORD', ''))
+        smtp_from = os.getenv('SMTP_FROM', os.getenv('MAIL_DEFAULT_SENDER', smtp_user))
+        
+        if not smtp_user or not smtp_pass:
+            current_app.logger.error("SMTP credentials not configured")
+            return False
+        
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'Şifre Sıfırlama - Skills Test Center'
+        msg['From'] = smtp_from
+        msg['To'] = email
+        
+        text_content = f'''Merhaba {name},
+
+Şifrenizi sıfırlamak için aşağıdaki linke tıklayın:
+{reset_url}
+
+Bu link 1 saat geçerlidir.
+Bu işlemi siz yapmadıysanız, bu e-postayı görmezden gelin.
+
+Skills Test Center'''
+        
+        html_content = f'''
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0;">Skills Test Center</h1>
+            </div>
+            <div style="padding: 30px; background: #f9f9f9;">
+                <h2 style="color: #333;">Merhaba {name},</h2>
+                <p style="color: #666; font-size: 16px;">
+                    Şifrenizi sıfırlamak için aşağıdaki butona tıklayın:
+                </p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_url}" 
+                       style="background: #667eea; color: white; padding: 15px 30px; 
+                              text-decoration: none; border-radius: 5px; font-size: 16px;">
+                        Şifremi Sıfırla
+                    </a>
+                </div>
+                <p style="color: #999; font-size: 14px;">
+                    Bu link 1 saat geçerlidir.<br>
+                    Bu işlemi siz yapmadıysanız, bu e-postayı görmezden gelin.
+                </p>
+            </div>
+        </div>
+        '''
+        
+        msg.attach(MIMEText(text_content, 'plain', 'utf-8'))
+        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+        
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_from, [email], msg.as_string())
+        
+        return True
+    except Exception as e:
+        current_app.logger.error(f"SMTP error: {e}")
+        return False
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -183,15 +313,11 @@ def logout():
     flash("Çıkış yapıldı.", "info")
     return redirect(url_for('auth.login'))
 
-
-# ══════════════════════════════════════════════════════════════════
-# FIXED: Added privacy route
 # ══════════════════════════════════════════════════════════════════
 @auth_bp.route('/privacy')
 def privacy():
     """Privacy policy page"""
     return render_template('privacy.html')
-
 
 # ══════════════════════════════════════════════════════════════════
 @auth_bp.route('/toggle-theme')
@@ -254,6 +380,8 @@ def sinav_giris():
 
 
 # ══════════════════════════════════════════════════════════════════
+# PASSWORD RESET ROUTES - FIXED: Now with email sending
+# ══════════════════════════════════════════════════════════════════
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
 def forgot_password():
@@ -261,10 +389,15 @@ def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
 
+        if not email:
+            flash("Lütfen e-posta adresinizi girin.", "warning")
+            return render_template('forgot_password.html')
+
         try:
             user = User.query.filter_by(email=email).first()
         except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f"User query failed: {e}")
             # Don't reveal if user exists
             flash("Eğer bu e-posta kayıtlıysa, şifre sıfırlama linki gönderildi.", "info")
             return render_template('forgot_password.html')
@@ -277,12 +410,24 @@ def forgot_password():
                     'exp': datetime.utcnow() + timedelta(hours=1)
                 }, get_secret_key(), algorithm='HS256')
 
-                # TODO: Send email with reset link
-                current_app.logger.info(f"Password reset requested for {email}")
+                # Generate reset URL
+                reset_url = url_for('auth.reset_password', token=token, _external=True)
+                
+                # Get user name
+                user_name = getattr(user, 'ad_soyad', None) or getattr(user, 'name', None) or email.split('@')[0]
+                
+                # Send email
+                email_sent = send_password_reset_email_sync(email, user_name, reset_url)
+                
+                if email_sent:
+                    current_app.logger.info(f"Password reset email sent to {email}")
+                else:
+                    current_app.logger.warning(f"Password reset email could not be sent to {email}")
+                    
             except Exception as e:
-                current_app.logger.error(f"Token generation failed: {e}")
+                current_app.logger.error(f"Token generation or email failed: {e}")
 
-        # Always show same message (security)
+        # Always show same message (security - don't reveal if user exists)
         flash("Eğer bu e-posta kayıtlıysa, şifre sıfırlama linki gönderildi.", "info")
 
     return render_template('forgot_password.html')
@@ -299,7 +444,10 @@ def reset_password(token):
         flash("Şifre sıfırlama linki süresi dolmuş.", "danger")
         return redirect(url_for('auth.forgot_password'))
     except (jwt.InvalidTokenError, Exception) as e:
-        db.session.rollback()
+        try:
+            db.session.rollback()
+        except:
+            pass
         flash("Geçersiz şifre sıfırlama linki.", "danger")
         return redirect(url_for('auth.forgot_password'))
 
@@ -323,10 +471,12 @@ def reset_password(token):
         try:
             user.set_password(password)
             db.session.commit()
+            current_app.logger.info(f"Password reset successful for user {user.email}")
             flash("Şifreniz başarıyla değiştirildi. Giriş yapabilirsiniz.", "success")
             return redirect(url_for('auth.login'))
         except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f"Password reset failed: {e}")
             flash("Şifre değiştirilemedi, lütfen tekrar deneyin.", "danger")
 
     return render_template('reset_password.html', token=token)
