@@ -881,7 +881,20 @@ def demo_olustur():
 def ayarlar():
     """Company settings"""
     from app.models import Company
-    company = Company.query.get(session.get('sirket_id'))
+    
+    sirket_id = session.get('sirket_id')
+    
+    # SuperAdmin için şirket seçtir veya varsayılan göster
+    if sirket_id:
+        company = Company.query.get(sirket_id)
+    else:
+        # SuperAdmin'in kendi şirketi yoksa, boş bir obje göster
+        company = None
+    
+    if company is None:
+        flash("Ayarlar sayfası için bir şirket seçmeniz gerekiyor.", "warning")
+        return redirect(url_for('admin.sirketler'))
+    
     if request.method == 'POST':
         company.isim = request.form.get('isim')
         company.email = request.form.get('email')
@@ -897,6 +910,7 @@ def ayarlar():
         company.smtp_from = request.form.get('smtp_from')
         db.session.commit()
         flash("Ayarlar kaydedildi.", "success")
+    
     return render_template('ayarlar.html', company=company)
 # ══════════════════════════════════════════════════════════════
 @admin_bp.route('/sablonlar')
