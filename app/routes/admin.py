@@ -875,6 +875,7 @@ def demo_olustur():
         flash(f"Demo şirket oluşturuldu. Email: {demo_email}, Şifre: {demo_password}", "success")
         return redirect(url_for('admin.sirketler'))
     return render_template('demo_olustur.html')
+    
 @admin_bp.route('/ayarlar', methods=['GET', 'POST'])
 @login_required
 @superadmin_required
@@ -884,15 +885,15 @@ def ayarlar():
     
     sirket_id = session.get('sirket_id')
     
-    # SuperAdmin için şirket seçtir veya varsayılan göster
-    if sirket_id:
-        company = Company.query.get(sirket_id)
-    else:
-        # SuperAdmin'in kendi şirketi yoksa, boş bir obje göster
-        company = None
+    if not sirket_id:
+        # Superadmin için: bir şirket seçmesi gerekiyor
+        flash("Ayarları düzenlemek için önce bir şirket seçmelisiniz.", "warning")
+        return redirect(url_for('admin.sirketler'))
     
-    if company is None:
-        flash("Ayarlar sayfası için bir şirket seçmeniz gerekiyor.", "warning")
+    company = Company.query.get(sirket_id)
+    
+    if not company:
+        flash("Şirket bulunamadı.", "danger")
         return redirect(url_for('admin.sirketler'))
     
     if request.method == 'POST':
