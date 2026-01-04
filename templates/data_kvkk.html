@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}KVKK Uyumluluk - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-shield-alt me-2"></i>KVKK Uyumluluk
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                            <li class="breadcrumb-item"><a href="{{ url_for('data.backup') }}">Veri Yönetimi</a></li>
+                            <li class="breadcrumb-item active">KVKK</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-1">Kişisel Veri Kaydı</h6>
+                            <h2 class="mb-0">{{ stats.total_personal_data }}</h2>
+                        </div>
+                        <i class="fas fa-database fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-warning text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-1">Bekleyen Silme Talepleri</h6>
+                            <h2 class="mb-0">{{ stats.pending_deletions }}</h2>
+                        </div>
+                        <i class="fas fa-trash-alt fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-1">Veri Talepleri</h6>
+                            <h2 class="mb-0">{{ stats.data_requests }}</h2>
+                        </div>
+                        <i class="fas fa-file-download fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-1">Son Denetim</h6>
+                            <h4 class="mb-0">{{ stats.last_audit.strftime('%d/%m/%Y') if stats.last_audit else
+                                'Yapılmadı' }}</h4>
+                        </div>
+                        <i class="fas fa-calendar-check fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KVKK Rights Info -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-gavel me-2"></i>KVKK Madde 11 - Kişisel Veri Sahibinin Hakları
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Kişisel veri işlenip
+                                    işlenmediğini öğrenme</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Kişisel verileri
+                                    işlenmişse buna ilişkin bilgi talep etme</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Kişisel verilerin işlenme
+                                    amacını öğrenme</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Kişisel verilerin
+                                    silinmesini veya yok edilmesini isteme</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Kişisel verilerin
+                                    düzeltilmesini isteme</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Verilerin aktarıldığı
+                                    üçüncü kişileri bilme</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Deletions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-user-times me-2"></i>Bekleyen Silme Talepleri</h5>
+                </div>
+                <div class="card-body">
+                    {% if pending_deletions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Ad Soyad</th>
+                                    <th>Email</th>
+                                    <th>Talep Tarihi</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for aday in pending_deletions %}
+                                <tr>
+                                    <td>#{{ aday.id }}</td>
+                                    <td>{{ aday.ad_soyad }}</td>
+                                    <td>{{ aday.email or '-' }}</td>
+                                    <td>{{ aday.updated_at.strftime('%d/%m/%Y %H:%M') if aday.updated_at else '-' }}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('data.kvkk_export_data', candidate_id=aday.id) }}"
+                                            class="btn btn-sm btn-outline-info" title="Verileri İndir">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        <form action="{{ url_for('data.gdpr_delete', candidate_id=aday.id) }}"
+                                            method="POST" class="d-inline"
+                                            onsubmit="return confirm('Bu işlem geri alınamaz! Devam etmek istiyor musunuz?')">
+                                            <input type="hidden" name="csrf_token"
+                                                value="{{ csrf_token() if csrf_token else '' }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                title="Kalıcı Sil">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                        <form action="{{ url_for('data.anonymize_candidate', candidate_id=aday.id) }}"
+                                            method="POST" class="d-inline">
+                                            <input type="hidden" name="csrf_token"
+                                                value="{{ csrf_token() if csrf_token else '' }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                title="Anonimleştir">
+                                                <i class="fas fa-user-secret"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <p class="text-muted mb-0">Bekleyen silme talebi bulunmuyor.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
