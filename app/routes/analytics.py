@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 Analytics Routes - Dashboard and reporting endpoints
-FIXED: Added error handling for missing model attributes
+FIXED: Added @login_required decorator to ALL routes for security
+GitHub: app/routes/analytics.py
 """
-from flask import Blueprint, render_template, jsonify, request
+from functools import wraps
+from flask import Blueprint, render_template, jsonify, request, redirect, url_for, session, flash
 from app.extensions import db
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -11,7 +13,37 @@ from sqlalchemy import func
 analytics_bp = Blueprint('analytics', __name__, url_prefix='/analytics')
 
 
+# ══════════════════════════════════════════════════════════════
+# SECURITY DECORATORS - CRITICAL FIX
+# ══════════════════════════════════════════════════════════════
+def login_required(f):
+    """Require admin login"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'kullanici_id' not in session:
+            flash("Lütfen giriş yapın.", "warning")
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def superadmin_required(f):
+    """Only superadmin can access"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get('rol') != 'superadmin':
+            flash("Bu işlem sadece süper admin tarafından yapılabilir.", "danger")
+            return redirect(url_for('admin.dashboard'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ══════════════════════════════════════════════════════════════
+# MAIN ANALYTICS DASHBOARD - FIXED: Added @login_required
+# ══════════════════════════════════════════════════════════════
 @analytics_bp.route('/dashboard')
+@login_required
+@superadmin_required
 def analytics_dashboard():
     """Main analytics dashboard with real-time stats"""
     try:
@@ -33,12 +65,12 @@ def analytics_dashboard():
             'db_response_time': 5,
             'celery_queue': 0
         }
-        
+
         try:
             stats['active_exams'] = Candidate.query.filter_by(sinav_durumu='devam_ediyor').count()
         except:
             pass
-            
+
         try:
             stats['today_completed'] = Candidate.query.filter(
                 Candidate.sinav_durumu == 'tamamlandi',
@@ -46,12 +78,12 @@ def analytics_dashboard():
             ).count()
         except:
             pass
-            
+
         try:
             stats['total_candidates'] = Candidate.query.filter_by(is_deleted=False).count()
         except:
             stats['total_candidates'] = Candidate.query.count()
-            
+
         try:
             avg = db.session.query(func.avg(Candidate.puan)).filter(
                 Candidate.sinav_durumu == 'tamamlandi'
@@ -143,7 +175,12 @@ def analytics_dashboard():
         return render_template('500.html'), 500
 
 
+# ══════════════════════════════════════════════════════════════
+# QUESTION ANALYTICS - FIXED: Added @login_required
+# ══════════════════════════════════════════════════════════════
 @analytics_bp.route('/questions')
+@login_required
+@superadmin_required
 def question_analytics():
     """Question difficulty and performance analytics"""
     try:
@@ -203,7 +240,12 @@ def question_analytics():
         return render_template('500.html'), 500
 
 
+# ══════════════════════════════════════════════════════════════
+# FRAUD DETECTION - FIXED: Added @login_required
+# ══════════════════════════════════════════════════════════════
 @analytics_bp.route('/fraud')
+@login_required
+@superadmin_required
 def fraud_dashboard():
     """Fraud detection dashboard"""
     stats = {
@@ -224,8 +266,13 @@ def fraud_dashboard():
                           proctoring_violations=proctoring_violations)
 
 
+# ══════════════════════════════════════════════════════════════
+# TEAM REPORT - FIXED: Added @login_required
+# ══════════════════════════════════════════════════════════════
 @analytics_bp.route('/team/<int:team_id>')
 @analytics_bp.route('/team')
+@login_required
+@superadmin_required
 def team_report(team_id=None):
     """Team/department report"""
     try:
@@ -239,7 +286,7 @@ def team_report(team_id=None):
         query = Candidate.query.filter_by(is_deleted=False)
         if hasattr(Candidate, 'is_practice'):
             query = query.filter_by(is_practice=False)
-            
+
         if team_id:
             query = query.filter_by(sirket_id=team_id)
             team = Company.query.get(team_id)
@@ -288,19 +335,24 @@ def team_report(team_id=None):
         return render_template('500.html'), 500
 
 
-# API Endpoints
+# ══════════════════════════════════════════════════════════════
+# API ENDPOINTS - FIXED: Added @login_required
+# ══════════════════════════════════════════════════════════════
 @analytics_bp.route('/api/calibrate', methods=['POST'])
+@login_required
+@superadmin_required
 def api_calibrate():
     """Trigger question calibration"""
     return jsonify({'status': 'error', 'message': 'Calibration not available'}), 501
 
 
 @analytics_bp.route('/api/questions/<int:question_id>/difficulty', methods=['PATCH'])
+@login_required
+@superadmin_required
 def update_question_difficulty(question_id):
     """Update question difficulty manually"""
     try:
         from app.models import Question
-        from flask import session
 
         question = Question.query.get_or_404(question_id)
         new_level = request.json.get('zorluk')
@@ -314,26 +366,28 @@ def update_question_difficulty(question_id):
 
 
 @analytics_bp.route('/api/fraud-cases/<int:case_id>/clear', methods=['POST'])
+@login_required
+@superadmin_required
 def clear_fraud_case(case_id):
     """Mark fraud case as cleared"""
     return jsonify({'status': 'error', 'message': 'Not implemented'}), 501
 
 
 @analytics_bp.route('/api/fraud-cases/<int:case_id>/confirm', methods=['POST'])
+@login_required
+@superadmin_required
 def confirm_fraud_case(case_id):
     """Confirm fraud case"""
     return jsonify({'status': 'error', 'message': 'Not implemented'}), 501
 
-# QUESTION PERFORMANCE
+
+# ══════════════════════════════════════════════════════════════
+# QUESTION PERFORMANCE - FIXED: Added decorators
+# ══════════════════════════════════════════════════════════════
 @analytics_bp.route('/question-performance')
+@login_required
+@superadmin_required
 def question_performance():
-    from flask import session, redirect, url_for, flash
-    if 'kullanici_id' not in session:
-        flash("Lutfen giris yapin.", "warning")
-        return redirect(url_for('auth.login'))
-    if session.get('rol') != 'superadmin':
-        flash("Bu islem sadece super admin tarafindan yapilabilir.", "danger")
-        return redirect(url_for('admin.dashboard'))
     questions = []
     try:
         from app.models import Question
@@ -346,17 +400,13 @@ def question_performance():
     return render_template('analytics_question_performance.html', questions=questions)
 
 
-# FRAUD DETECTION
+# ══════════════════════════════════════════════════════════════
+# FRAUD DETECTION PAGE - FIXED: Added decorators
+# ══════════════════════════════════════════════════════════════
 @analytics_bp.route('/fraud-detection')
+@login_required
+@superadmin_required
 def fraud_detection():
-    from flask import session, redirect, url_for, flash
-    from datetime import datetime, timedelta
-    if 'kullanici_id' not in session:
-        flash("Lutfen giris yapin.", "warning")
-        return redirect(url_for('auth.login'))
-    if session.get('rol') != 'superadmin':
-        flash("Bu islem sadece super admin tarafindan yapilabilir.", "danger")
-        return redirect(url_for('admin.dashboard'))
     return render_template('analytics_fraud_detection.html',
         high_risk_count=0, medium_risk_count=0,
         low_risk_count=0, normal_count=0,
