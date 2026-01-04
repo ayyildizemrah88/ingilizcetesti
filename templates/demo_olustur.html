@@ -1,131 +1,70 @@
 {% extends "base.html" %}
 
-{% block title %}Demo Hesap Oluştur{% endblock %}
+{% block title %}Demo Hesabı Oluştur - Skills Test Center{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <!-- Navigation -->
-    <div class="mb-3">
-        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary me-2">
-            <i class="bi bi-house-fill me-1"></i>Dashboard
-        </a>
-        <a href="{{ url_for('admin.sirketler') }}" class="btn btn-outline-primary">
-            <i class="bi bi-arrow-left me-1"></i>Şirketler
-        </a>
-    </div>
-
+<div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-6">
-
-            <!-- Header Card -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">
-                        <i class="material-icons align-middle me-2">science</i>
-                        Hızlı Demo Hesap Oluştur
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        <strong>Bu form ile hızlıca oluşturulacak:</strong>
-                        <ul class="mb-0 mt-2">
-                            <li>1 Şirket (belirtilen isimle)</li>
-                            <li>1 Admin Kullanıcı (customer rolü)</li>
-                            <li>Belirtilen kredi miktarı</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Form Card -->
+        <div class="col-md-6 col-lg-5">
             <div class="card shadow">
-                <div class="card-body">
+                <div class="card-header bg-gradient text-white text-center py-4"
+                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h3 class="mb-0">
+                        <i class="fas fa-rocket me-2"></i>Demo Hesabı Oluştur
+                    </h3>
+                    <p class="mb-0 mt-2 opacity-75">Platformumuzu ücretsiz deneyin</p>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('auth.demo_olustur') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
 
-                    <!-- Flash Messages -->
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                    {% endfor %}
-                    {% endif %}
-                    {% endwith %}
-
-                    <form method="POST" action="{{ url_for('admin.demo_olustur') }}">
-                        <!-- CSRF Token for Security -->
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                        <!-- Firma Adı -->
                         <div class="mb-3">
-                            <label for="firma_adi" class="form-label">
-                                <i class="material-icons align-middle me-1" style="font-size: 18px;">business</i>
-                                Firma Adı
+                            <label for="sirket_adi" class="form-label">
+                                <i class="fas fa-building me-1"></i> Şirket Adı
                             </label>
-                            <input type="text" class="form-control" id="firma_adi" name="firma_adi"
-                                placeholder="Demo Şirket" value="{{ request.form.get('firma_adi', 'Demo Şirket') }}"
-                                required>
+                            <input type="text" class="form-control" id="sirket_adi" name="sirket_adi"
+                                placeholder="Şirket adınızı girin" required>
                         </div>
 
-                        <!-- Admin Email -->
                         <div class="mb-3">
-                            <label for="admin_email" class="form-label">
-                                <i class="material-icons align-middle me-1" style="font-size: 18px;">email</i>
-                                Admin E-posta
+                            <label for="ad_soyad" class="form-label">
+                                <i class="fas fa-user me-1"></i> Ad Soyad
                             </label>
-                            <input type="email" class="form-control" id="admin_email" name="admin_email"
-                                placeholder="demo@sirket.com" value="{{ request.form.get('admin_email', '') }}"
-                                required>
-                            <div class="form-text">Bu e-posta adresi ile giriş yapılacak.</div>
+                            <input type="text" class="form-control" id="ad_soyad" name="ad_soyad"
+                                placeholder="Adınızı ve soyadınızı girin" required>
                         </div>
 
-                        <!-- Admin Şifre -->
-                        <div class="mb-3">
-                            <label for="admin_sifre" class="form-label">
-                                <i class="material-icons align-middle me-1" style="font-size: 18px;">lock</i>
-                                Admin Şifre
-                            </label>
-                            <input type="text" class="form-control" id="admin_sifre" name="admin_sifre"
-                                placeholder="Demo123!" value="{{ request.form.get('admin_sifre', 'Demo123!') }}"
-                                required>
-                            <div class="form-text">En az 8 karakter, 1 büyük harf, 1 rakam.</div>
-                        </div>
-
-                        <!-- Kredi Miktarı -->
                         <div class="mb-4">
-                            <label for="kredi" class="form-label">
-                                <i class="material-icons align-middle me-1" style="font-size: 18px;">monetization_on</i>
-                                Başlangıç Kredisi
+                            <label for="email" class="form-label">
+                                <i class="fas fa-envelope me-1"></i> E-posta Adresi
                             </label>
-                            <input type="number" class="form-control" id="kredi" name="kredi" min="0" max="1000"
-                                value="{{ request.form.get('kredi', '10') }}" required>
-                            <div class="form-text">Her sınav 1 kredi tüketir.</div>
+                            <input type="email" class="form-control" id="email" name="email"
+                                placeholder="ornek@sirket.com" required>
                         </div>
 
-                        <!-- Submit Buttons -->
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Demo hesabınızda <strong>10 ücretsiz kredi</strong> ve örnek bir aday kodu verilecektir.
+                        </div>
+
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="material-icons align-middle me-2">add_circle</i>
-                                Demo Hesap Oluştur
+                                <i class="fas fa-check me-1"></i> Demo Hesabı Oluştur
                             </button>
+                            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Giriş Sayfasına Dön
+                            </a>
                         </div>
                     </form>
                 </div>
             </div>
 
-            <!-- Navigation -->
-            <div class="mt-4 text-center">
-                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary me-2">
-                    <i class="material-icons align-middle me-1">arrow_back</i>
-                    Dashboard
-                </a>
-                <a href="{{ url_for('admin.sirketler') }}" class="btn btn-outline-secondary">
-                    <i class="material-icons align-middle me-1">business</i>
-                    Şirketler
-                </a>
+            <div class="text-center mt-4">
+                <p class="text-muted">
+                    Zaten hesabınız var mı?
+                    <a href="{{ url_for('auth.login') }}">Giriş yapın</a>
+                </p>
             </div>
-
         </div>
     </div>
 </div>
