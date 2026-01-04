@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Exam Routes - Exam interface and flow
-FIXED: Added /exam/reset route
+DÜZELTME: auth.sinav_giris -> candidate_auth.sinav_giris
 GitHub: app/routes/exam.py
 """
 from functools import wraps
@@ -14,12 +14,12 @@ exam_bp = Blueprint('exam', __name__)
 
 
 def exam_required(f):
-    """Require active exam session"""
+    """Require active exam session - FIXED: candidate_auth.sinav_giris"""
     @wraps(f)
     def decorated(*args, **kwargs):
         if 'aday_id' not in session:
             flash("Lütfen sınav giriş kodunuzu girin.", "warning")
-            return redirect(url_for('auth.sinav_giris'))
+            return redirect(url_for('candidate_auth.sinav_giris'))
         return f(*args, **kwargs)
     return decorated
 
@@ -47,7 +47,7 @@ def superadmin_required(f):
 
 
 # ══════════════════════════════════════════════════════════════
-# MAIN EXAM PAGE
+# EXAM ROUTES
 # ══════════════════════════════════════════════════════════════
 @exam_bp.route('/')
 @exam_bp.route('/sinav')
@@ -61,7 +61,7 @@ def sinav():
 
     if not candidate:
         session.clear()
-        return redirect(url_for('auth.sinav_giris'))
+        return redirect(url_for('candidate_auth.sinav_giris'))
 
     # Check time limit
     elapsed = datetime.utcnow() - candidate.baslama_tarihi
@@ -198,7 +198,7 @@ def sinav_bitti():
     candidate = Candidate.query.get(aday_id)
 
     if not candidate:
-        return redirect(url_for('auth.sinav_giris'))
+        return redirect(url_for('candidate_auth.sinav_giris'))
 
     # Calculate scores
     answers = ExamAnswer.query.filter_by(aday_id=aday_id).all()
@@ -261,13 +261,13 @@ def sonuc(giris_kodu):
 
     if candidate.sinav_durumu != 'tamamlandi':
         flash("Sınav henüz tamamlanmamış.", "warning")
-        return redirect(url_for('index'))
+        return redirect(url_for('main.index'))
 
     return render_template('sinav_bitti.html', aday=candidate)
 
 
 # ══════════════════════════════════════════════════════════════
-# EXAM RESET - FIXED: Was returning 404
+# EXAM RESET & TIME EXTENSION
 # ══════════════════════════════════════════════════════════════
 @exam_bp.route('/reset', methods=['GET'])
 @login_required
@@ -275,20 +275,20 @@ def sonuc(giris_kodu):
 def reset_page():
     """Exam reset page - shows candidates that can be reset"""
     from app.models import Candidate
-    
+
     sirket_id = session.get('sirket_id')
-    
+
     # Get candidates with active or completed exams
     query = Candidate.query.filter(
         Candidate.sinav_durumu.in_(['devam_ediyor', 'tamamlandi']),
         Candidate.is_deleted == False
     )
-    
+
     if sirket_id and session.get('rol') != 'superadmin':
         query = query.filter_by(sirket_id=sirket_id)
-    
+
     candidates = query.order_by(Candidate.updated_at.desc()).limit(50).all()
-    
+
     return render_template('exam_reset.html', candidates=candidates)
 
 
@@ -297,20 +297,20 @@ def reset_page():
 def reset_exam(candidate_id):
     """Reset a candidate's exam - clears answers and allows re-entry"""
     from app.models import Candidate, ExamAnswer
-    
+
     candidate = Candidate.query.get_or_404(candidate_id)
     sirket_id = session.get('sirket_id')
     rol = session.get('rol')
-    
+
     # Security check
     if rol not in ['super_admin', 'superadmin']:
         if sirket_id and candidate.sirket_id != sirket_id:
             return jsonify({'success': False, 'message': 'Yetkiniz yok'}), 403
-    
+
     try:
         # Delete all answers for this candidate
         ExamAnswer.query.filter_by(aday_id=candidate_id).delete()
-        
+
         # Reset candidate exam status
         candidate.sinav_durumu = 'beklemede'
         candidate.puan = None
@@ -324,12 +324,12 @@ def reset_exam(candidate_id):
         candidate.p_listening = None
         candidate.p_speaking = None
         candidate.p_writing = None
-        
+
         db.session.commit()
-        
+
         flash(f"'{candidate.ad_soyad}' sınavı sıfırlandı.", "success")
         return jsonify({'success': True, 'message': 'Sınav sıfırlandı'})
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -340,32 +340,32 @@ def reset_exam(candidate_id):
 def extend_time(candidate_id):
     """Extend exam time for a candidate"""
     from app.models import Candidate
-    
+
     candidate = Candidate.query.get_or_404(candidate_id)
     sirket_id = session.get('sirket_id')
     rol = session.get('rol')
-    
+
     # Security check
     if rol not in ['super_admin', 'superadmin']:
         if sirket_id and candidate.sirket_id != sirket_id:
             return jsonify({'success': False, 'message': 'Yetkiniz yok'}), 403
-    
+
     # Only extend for active exams
     if candidate.sinav_durumu != 'devam_ediyor':
         return jsonify({'success': False, 'message': 'Sadece devam eden sınavlar uzatılabilir'}), 400
-    
+
     extra_minutes = request.form.get('extra_minutes', 15, type=int)
-    
+
     try:
         candidate.sinav_suresi += extra_minutes
         db.session.commit()
-        
+
         return jsonify({
             'success': True, 
             'message': f'{extra_minutes} dakika eklendi',
             'new_duration': candidate.sinav_suresi
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -379,19 +379,19 @@ def extend_time(candidate_id):
 def get_exam_status(candidate_id):
     """Get current exam status for a candidate"""
     from app.models import Candidate, ExamAnswer
-    
+
     candidate = Candidate.query.get_or_404(candidate_id)
-    
+
     # Calculate progress
     answered = ExamAnswer.query.filter_by(aday_id=candidate_id).count()
     total = candidate.soru_limiti or 25
-    
+
     # Calculate remaining time
     remaining_seconds = 0
     if candidate.sinav_durumu == 'devam_ediyor' and candidate.baslama_tarihi:
         elapsed = (datetime.utcnow() - candidate.baslama_tarihi).total_seconds()
         remaining_seconds = max(0, (candidate.sinav_suresi * 60) - elapsed)
-    
+
     return jsonify({
         'status': candidate.sinav_durumu,
         'answered': answered,
