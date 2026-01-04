@@ -112,7 +112,7 @@ def study_plan(giris_kodu):
     except Exception as e:
         db.session.rollback()
         flash("Çalışma planı bulunamadı.", "danger")
-        return redirect(url_for('auth.index'))
+        return redirect(url_for('main.index'))
 
     # Check if study plan already exists
     plan = None
