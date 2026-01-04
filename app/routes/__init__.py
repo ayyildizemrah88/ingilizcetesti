@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Routes Package - Flask Blueprints
-TÜM BLUEPRINT'LER DAHİL - TAM VERSİYON (GÜNCELLENME: customer_bp EKLENDİ)
+TÜM BLUEPRINT'LER DAHİL - TAM VERSİYON
+FIXED: main_bp ve customer_bp eklendi
 GitHub: app/routes/__init__.py
 """
 # ══════════════════════════════════════════════════════════════
 # TEMEL BLUEPRINT'LER
 # ══════════════════════════════════════════════════════════════
+from app.routes.main import main_bp  # YENİ: Ana sayfa route'u
 from app.routes.auth import auth_bp
 from app.routes.admin import admin_bp
 from app.routes.exam import exam_bp
@@ -38,6 +40,7 @@ from app.routes.customer import customer_bp  # YENİ: Müşteri dashboard
 # ══════════════════════════════════════════════════════════════
 __all__ = [
     # Temel
+    'main_bp',  # YENİ: Ana sayfa
     'auth_bp',
     'admin_bp', 
     'exam_bp',
