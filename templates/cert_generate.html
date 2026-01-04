@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Sertifika Oluştur - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-certificate me-2"></i>Sertifika Oluşturma
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                            <li class="breadcrumb-item active">Sertifika Oluştur</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Without Certificate -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-circle me-2"></i>Sertifikası Olmayan Adaylar</h5>
+                </div>
+                <div class="card-body">
+                    {% if candidates_without_cert %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Ad Soyad</th>
+                                    <th>Puan</th>
+                                    <th>Seviye</th>
+                                    <th>Tamamlanma</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for aday in candidates_without_cert %}
+                                <tr id="row-{{ aday.id }}">
+                                    <td>#{{ aday.id }}</td>
+                                    <td>{{ aday.ad_soyad }}</td>
+                                    <td>{{ aday.puan or aday.toplam_puan or '-' }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ aday.seviye_sonuc or aday.cefr_seviye or '-'
+                                            }}</span>
+                                    </td>
+                                    <td>{{ aday.bitis_tarihi.strftime('%d/%m/%Y') if aday.bitis_tarihi else '-' }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-success"
+                                            onclick="generateCertificate({{ aday.id }}, '{{ aday.ad_soyad }}')">
+                                            <i class="fas fa-plus me-1"></i> Sertifika Oluştur
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                        <p class="text-muted mb-0">Tüm adayların sertifikası mevcut.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- With Certificate -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Sertifikası Olan Adaylar</h5>
+                </div>
+                <div class="card-body">
+                    {% if candidates_with_cert %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Ad Soyad</th>
+                                    <th>Puan</th>
+                                    <th>Seviye</th>
+                                    <th>Sertifika Kodu</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for aday in candidates_with_cert %}
+                                <tr>
+                                    <td>#{{ aday.id }}</td>
+                                    <td>{{ aday.ad_soyad }}</td>
+                                    <td>{{ aday.puan or aday.toplam_puan or '-' }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ aday.seviye_sonuc or aday.cefr_seviye or '-'
+                                            }}</span>
+                                    </td>
+                                    <td>
+                                        <code>{{ aday.certificate_hash }}</code>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('certificate.download_certificate', candidate_id=aday.id) }}"
+                                            class="btn btn-sm btn-outline-primary" title="İndir">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        <a href="{{ url_for('certificate.verify_certificate', cert_hash=aday.certificate_hash) }}"
+                                            class="btn btn-sm btn-outline-info" title="Doğrula" target="_blank">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-info-circle fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">Henüz sertifika oluşturulmamış.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function generateCertificate(candidateId, candidateName) {
+        if (confirm(`"${candidateName}" için sertifika oluşturulsun mu?`)) {
+            fetch(`/sertifika/generate/${candidateId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Sertifika oluşturuldu!\n\nKod: ${data.certificate_hash}\n\nİndirme linki: ${data.download_url}`);
+                        location.reload();
+                    } else {
+                        alert('Hata: ' + (data.error || data.message));
+                    }
+                })
+                .catch(error => {
+                    alert('Bir hata oluştu: ' + error);
+                });
+        }
+    }
+</script>
+{% endblock %}
