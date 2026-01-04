@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Decorators - Reusable route decorators
+DÜZELTME: auth.sinav_giris -> candidate_auth.sinav_giris
 """
 from functools import wraps
 from flask import session, redirect, url_for, flash, jsonify, request
@@ -73,12 +74,13 @@ def exam_required(f):
     """
     Require active exam session
     Redirects to exam login if not in exam
+    DÜZELTME: auth.sinav_giris -> candidate_auth.sinav_giris
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'aday_id' not in session:
             flash("Lütfen sınav giriş kodunuzu girin.", "warning")
-            return redirect(url_for('auth.sinav_giris'))
+            return redirect(url_for('candidate_auth.sinav_giris'))
         return f(*args, **kwargs)
     return decorated_function
 
