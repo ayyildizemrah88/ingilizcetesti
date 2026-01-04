@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Sınav Sıfırlama - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-redo me-2"></i>Sınav Sıfırlama
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                            <li class="breadcrumb-item active">Sınav Sıfırlama</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Alert -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Dikkat:</strong> Sınav sıfırlama işlemi adayın tüm cevaplarını siler ve sınavı yeniden
+                başlatmasına izin verir. Bu işlem geri alınamaz!
+            </div>
+        </div>
+    </div>
+
+    <!-- Candidates Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>Sıfırlanabilir Adaylar</h5>
+                </div>
+                <div class="card-body">
+                    {% if candidates %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Ad Soyad</th>
+                                    <th>Email</th>
+                                    <th>Durum</th>
+                                    <th>Puan</th>
+                                    <th>Başlama</th>
+                                    <th>Bitiş</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for aday in candidates %}
+                                <tr id="row-{{ aday.id }}">
+                                    <td>#{{ aday.id }}</td>
+                                    <td>{{ aday.ad_soyad }}</td>
+                                    <td>{{ aday.email or '-' }}</td>
+                                    <td>
+                                        {% if aday.sinav_durumu == 'tamamlandi' %}
+                                        <span class="badge bg-success">Tamamlandı</span>
+                                        {% elif aday.sinav_durumu == 'devam_ediyor' %}
+                                        <span class="badge bg-warning">Devam Ediyor</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Beklemede</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ aday.puan or '-' }}</td>
+                                    <td>{{ aday.baslama_tarihi.strftime('%d/%m/%Y %H:%M') if aday.baslama_tarihi else
+                                        '-' }}</td>
+                                    <td>{{ aday.bitis_tarihi.strftime('%d/%m/%Y %H:%M') if aday.bitis_tarihi else '-' }}
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-warning"
+                                            onclick="resetExam({{ aday.id }}, '{{ aday.ad_soyad }}')"
+                                            title="Sınavı Sıfırla">
+                                            <i class="fas fa-redo"></i> Sıfırla
+                                        </button>
+                                        {% if aday.sinav_durumu == 'devam_ediyor' %}
+                                        <button type="button" class="btn btn-sm btn-outline-info"
+                                            onclick="extendTime({{ aday.id }}, '{{ aday.ad_soyad }}')"
+                                            title="Süre Uzat">
+                                            <i class="fas fa-clock"></i> Süre Uzat
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <p class="text-muted mb-0">Sıfırlanabilir aday bulunmuyor.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Extend Time Modal -->
+<div class="modal fade" id="extendTimeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Süre Uzat</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Aday: <strong id="extendCandidateName"></strong></p>
+                <div class="mb-3">
+                    <label for="extraMinutes" class="form-label">Eklenecek Dakika</label>
+                    <input type="number" class="form-control" id="extraMinutes" value="15" min="5" max="60">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" onclick="confirmExtendTime()">
+                    <i class="fas fa-plus me-1"></i> Süre Ekle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentCandidateId = null;
+
+    function resetExam(candidateId, candidateName) {
+        if (confirm(`"${candidateName}" için sınavı sıfırlamak istediğinize emin misiniz?\n\nBu işlem:\n- Tüm cevapları silecek\n- Puanı sıfırlayacak\n- Adayın yeniden sınava girmesine izin verecek\n\nBu işlem GERİ ALINAMAZ!`)) {
+            fetch(`/exam/reset/${candidateId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Sınav başarıyla sıfırlandı!');
+                        location.reload();
+                    } else {
+                        alert('Hata: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Bir hata oluştu: ' + error);
+                });
+        }
+    }
+
+    function extendTime(candidateId, candidateName) {
+        currentCandidateId = candidateId;
+        document.getElementById('extendCandidateName').textContent = candidateName;
+        new bootstrap.Modal(document.getElementById('extendTimeModal')).show();
+    }
+
+    function confirmExtendTime() {
+        const extraMinutes = document.getElementById('extraMinutes').value;
+
+        const formData = new FormData();
+        formData.append('extra_minutes', extraMinutes);
+
+        fetch(`/exam/extend-time/${currentCandidateId}`, {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`${extraMinutes} dakika eklendi! Yeni süre: ${data.new_duration} dakika`);
+                    bootstrap.Modal.getInstance(document.getElementById('extendTimeModal')).hide();
+                } else {
+                    alert('Hata: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Bir hata oluştu: ' + error);
+            });
+    }
+</script>
+{% endblock %}
