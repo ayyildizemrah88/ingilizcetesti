@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Aday Detay - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Ana Sayfa</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('customer.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('customer.candidates') }}">Adaylar</a></li>
+            <li class="breadcrumb-item active">{{ aday.ad_soyad }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-user me-2"></i>{{ aday.ad_soyad }}</h2>
+            <p class="text-muted mb-0">Aday detayları ve sınav sonuçları</p>
+        </div>
+        <a href="{{ url_for('customer.candidates') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Geri
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Candidate Info -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Aday Bilgileri</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="40%">Ad Soyad:</th>
+                            <td>{{ aday.ad_soyad }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email:</th>
+                            <td>{{ aday.email or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>TC Kimlik:</th>
+                            <td>{{ aday.tc_kimlik or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Telefon:</th>
+                            <td>{{ aday.cep_no or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Giriş Kodu:</th>
+                            <td><code class="fs-5">{{ aday.giris_kodu }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>Kayıt Tarihi:</th>
+                            <td>{{ aday.created_at.strftime('%d.%m.%Y %H:%M') if aday.created_at else '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exam Info -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Sınav Bilgileri</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="40%">Durum:</th>
+                            <td>
+                                {% if aday.sinav_durumu == 'tamamlandi' %}
+                                <span class="badge bg-success fs-6">Tamamlandı</span>
+                                {% elif aday.sinav_durumu == 'devam_ediyor' %}
+                                <span class="badge bg-warning text-dark fs-6">Devam Ediyor</span>
+                                {% else %}
+                                <span class="badge bg-secondary fs-6">Beklemede</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Sınav Süresi:</th>
+                            <td>{{ aday.sinav_suresi or 30 }} dakika</td>
+                        </tr>
+                        <tr>
+                            <th>Soru Sayısı:</th>
+                            <td>{{ aday.soru_limiti or 25 }} soru</td>
+                        </tr>
+                        <tr>
+                            <th>Başlangıç:</th>
+                            <td>{{ aday.baslangic_tarihi.strftime('%d.%m.%Y %H:%M') if aday.baslangic_tarihi else '-' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Bitiş:</th>
+                            <td>{{ aday.bitis_tarihi.strftime('%d.%m.%Y %H:%M') if aday.bitis_tarihi else '-' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exam Results -->
+    {% if aday.sinav_durumu == 'tamamlandi' %}
+    <div class="card mt-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Sınav Sonuçları</h5>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <div class="border rounded p-4">
+                        <h6 class="text-muted">Puan</h6>
+                        <h1 class="text-primary mb-0">{{ aday.puan or 0 }}</h1>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded p-4">
+                        <h6 class="text-muted">CEFR Seviyesi</h6>
+                        <h1 class="mb-0">
+                            <span class="badge bg-primary fs-2">{{ aday.seviye_sonuc or '-' }}</span>
+                        </h1>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded p-4">
+                        <h6 class="text-muted">Doğru / Yanlış</h6>
+                        <h1 class="mb-0">
+                            <span class="text-success">{{ aday.dogru_sayisi or 0 }}</span>
+                            /
+                            <span class="text-danger">{{ aday.yanlis_sayisi or 0 }}</span>
+                        </h1>
+                    </div>
+                </div>
+            </div>
+
+            {% if aday.sertifika_hash %}
+            <div class="mt-4 text-center">
+                <a href="{{ url_for('certificate.view', hash=aday.sertifika_hash) }}" class="btn btn-success btn-lg"
+                    target="_blank">
+                    <i class="fas fa-certificate me-2"></i>Sertifikayı Görüntüle
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
