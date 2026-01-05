@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Raporlar - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Ana Sayfa</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('customer.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item active">Raporlar</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-chart-bar me-2"></i>Raporlar</h2>
+            <p class="text-muted mb-0">Sınav sonuçları ve istatistikler</p>
+        </div>
+        <div>
+            <a href="{{ url_for('customer.dashboard') }}" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left"></i> Dashboard
+            </a>
+            <a href="{{ url_for('customer.export_data') }}" class="btn btn-success">
+                <i class="fas fa-download"></i> CSV İndir
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-white-50">Toplam Tamamlanan</h6>
+                    <h2 class="mb-0">{{ stats.total }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-white-50">Ortalama Puan</h6>
+                    <h2 class="mb-0">{{ "%.1f"|format(stats.avg_score) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-white-50">Başarı Oranı (B1+)</h6>
+                    <h2 class="mb-0">%{{ stats.pass_rate }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- CEFR Chart -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>CEFR Seviye Dağılımı</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="cefrChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- CEFR Table -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>Seviye Detayları</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Seviye</th>
+                                <th>Aday Sayısı</th>
+                                <th>Yüzde</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for level in ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] %}
+                            <tr>
+                                <td><span class="badge bg-primary">{{ level }}</span></td>
+                                <td>{{ cefr_data.get(level, 0) }}</td>
+                                <td>
+                                    {% if stats.total > 0 %}
+                                    {{ "%.1f"|format(cefr_data.get(level, 0) / stats.total * 100) }}%
+                                    {% else %}
+                                    0%
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Results -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Son Tamamlanan Sınavlar</h5>
+        </div>
+        <div class="card-body">
+            {% if candidates %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ad Soyad</th>
+                            <th>Email</th>
+                            <th>Puan</th>
+                            <th>Seviye</th>
+                            <th>Tamamlanma Tarihi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in candidates %}
+                        <tr>
+                            <td><strong>{{ c.ad_soyad }}</strong></td>
+                            <td>{{ c.email or '-' }}</td>
+                            <td>{{ c.puan or '-' }}</td>
+                            <td>
+                                {% if c.seviye_sonuc %}
+                                <span class="badge bg-primary">{{ c.seviye_sonuc }}</span>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>{{ c.bitis_tarihi.strftime('%d.%m.%Y %H:%M') if c.bitis_tarihi else '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Henüz tamamlanmış sınav bulunmuyor.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctx = document.getElementById('cefrChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+                datasets: [{
+                    label: 'Aday Sayısı',
+                    data: [
+                        {{ cefr_data.get('A1', 0) }},
+                {{ cefr_data.get('A2', 0) }},
+                    {{ cefr_data.get('B1', 0) }},
+        {{ cefr_data.get('B2', 0) }},
+        {{ cefr_data.get('C1', 0) }},
+        {{ cefr_data.get('C2', 0) }}
+                ],
+        backgroundColor: [
+        '#dc3545', '#fd7e14', '#ffc107', '#28a745', '#17a2b8', '#6f42c1'
+    ]
+            }]
+        },
+        options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+    });
+});
+</script>
+{% endblock %}
