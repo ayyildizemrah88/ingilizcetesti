@@ -1220,7 +1220,6 @@ def sirket_ekle():
             return render_template('sirket_form.html')
         company = Company(
             isim=isim,
-            ad=isim,
             email=email,
             telefon=telefon,
             adres=adres,
@@ -1233,7 +1232,7 @@ def sirket_ekle():
             admin_password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
         admin_user = User(
             email=admin_email,
-            password=generate_password_hash(admin_password),
+            sifre_hash=generate_password_hash(admin_password),
             ad_soyad=admin_ad_soyad or f"{isim} Admin",
             rol='customer',
             sirket_id=company.id,
