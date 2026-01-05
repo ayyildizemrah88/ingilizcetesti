@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Adaylar - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Ana Sayfa</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('customer.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item active">Adaylar</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-users me-2"></i>Adaylar</h2>
+            <p class="text-muted mb-0">Şirketinize kayıtlı tüm adayları görüntüleyin ve yönetin.</p>
+        </div>
+        <div>
+            <a href="{{ url_for('customer.dashboard') }}" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left"></i> Dashboard
+            </a>
+            <a href="{{ url_for('customer.add_candidate') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Yeni Aday Ekle
+            </a>
+        </div>
+    </div>
+
+    <!-- Candidates Table -->
+    <div class="card">
+        <div class="card-body">
+            {% if adaylar.items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Ad Soyad</th>
+                            <th>Email</th>
+                            <th>TC Kimlik</th>
+                            <th>Giriş Kodu</th>
+                            <th>Durum</th>
+                            <th>Puan</th>
+                            <th>Seviye</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for aday in adaylar.items %}
+                        <tr>
+                            <td>{{ aday.id }}</td>
+                            <td><strong>{{ aday.ad_soyad }}</strong></td>
+                            <td>{{ aday.email or '-' }}</td>
+                            <td>{{ aday.tc_kimlik or '-' }}</td>
+                            <td><code>{{ aday.giris_kodu }}</code></td>
+                            <td>
+                                {% if aday.sinav_durumu == 'tamamlandi' %}
+                                <span class="badge bg-success">Tamamlandı</span>
+                                {% elif aday.sinav_durumu == 'devam_ediyor' %}
+                                <span class="badge bg-warning text-dark">Devam Ediyor</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Beklemede</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ aday.puan if aday.puan else '-' }}</td>
+                            <td>
+                                {% if aday.seviye_sonuc %}
+                                <span class="badge bg-primary">{{ aday.seviye_sonuc }}</span>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('customer.candidate_detail', id=aday.id) }}"
+                                    class="btn btn-sm btn-outline-info" title="Detay">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if adaylar.pages > 1 %}
+            <nav aria-label="Sayfalama" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if adaylar.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('customer.candidates', page=adaylar.prev_num) }}">
+                            <i class="fas fa-chevron-left"></i> Önceki
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for page_num in adaylar.iter_pages(left_edge=2, right_edge=2, left_current=1, right_current=2) %}
+                    {% if page_num %}
+                    {% if page_num == adaylar.page %}
+                    <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('customer.candidates', page=page_num) }}">{{ page_num
+                            }}</a>
+                    </li>
+                    {% endif %}
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if adaylar.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('customer.candidates', page=adaylar.next_num) }}">
+                            Sonraki <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h5>Henüz aday bulunmuyor</h5>
+                <p class="text-muted">İlk adayınızı ekleyerek başlayın.</p>
+                <a href="{{ url_for('customer.add_candidate') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Yeni Aday Ekle
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
