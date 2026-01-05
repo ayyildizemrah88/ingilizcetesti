@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}İletişim - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <!-- Contact Form -->
+        <div class="col-lg-7 mb-4">
+            <div class="card shadow-lg border-0 h-100">
+                <div class="card-header bg-primary text-white py-3">
+                    <h4 class="mb-0"><i class="fas fa-envelope me-2"></i>Bize Ulaşın</h4>
+                </div>
+                <div class="card-body p-4">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" action="{{ url_for('auth.iletisim') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="ad_soyad" class="form-label">Ad Soyad <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="ad_soyad" name="ad_soyad" required
+                                    placeholder="Adınız Soyadınız">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">E-posta <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="email" name="email" required
+                                    placeholder="ornek@email.com">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="konu" class="form-label">Konu <span class="text-danger">*</span></label>
+                            <select class="form-select" id="konu" name="konu" required>
+                                <option value="">Konu seçin...</option>
+                                <option value="Genel Bilgi">Genel Bilgi</option>
+                                <option value="Fiyat Teklifi">Fiyat Teklifi</option>
+                                <option value="Teknik Destek">Teknik Destek</option>
+                                <option value="Demo Talebi">Demo Talebi</option>
+                                <option value="Diğer">Diğer</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="mesaj" class="form-label">Mesajınız <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="mesaj" name="mesaj" rows="5" required
+                                placeholder="Mesajınızı buraya yazın..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            <i class="fas fa-paper-plane me-2"></i>Gönder
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Info -->
+        <div class="col-lg-5 mb-4">
+            <div class="card shadow-lg border-0 h-100">
+                <div class="card-header bg-dark text-white py-3">
+                    <h4 class="mb-0"><i class="fas fa-info-circle me-2"></i>İletişim Bilgileri</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="d-flex mb-4">
+                        <div class="flex-shrink-0">
+                            <div class="bg-primary rounded-circle p-3 text-white">
+                                <i class="fas fa-map-marker-alt fa-lg"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="fw-bold mb-1">Adres</h6>
+                            <p class="text-muted mb-0">İstanbul, Türkiye</p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex mb-4">
+                        <div class="flex-shrink-0">
+                            <div class="bg-success rounded-circle p-3 text-white">
+                                <i class="fas fa-envelope fa-lg"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="fw-bold mb-1">E-posta</h6>
+                            <p class="text-muted mb-0">info@skillstestcenter.com</p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex mb-4">
+                        <div class="flex-shrink-0">
+                            <div class="bg-warning rounded-circle p-3 text-white">
+                                <i class="fas fa-phone fa-lg"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="fw-bold mb-1">Telefon</h6>
+                            <p class="text-muted mb-0">+90 (XXX) XXX XX XX</p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex mb-4">
+                        <div class="flex-shrink-0">
+                            <div class="bg-info rounded-circle p-3 text-white">
+                                <i class="fas fa-clock fa-lg"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="fw-bold mb-1">Çalışma Saatleri</h6>
+                            <p class="text-muted mb-0">Pazartesi - Cuma: 09:00 - 18:00</p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6 class="fw-bold mb-3">Bizi Takip Edin</h6>
+                    <div class="d-flex gap-2">
+                        <a href="#" class="btn btn-outline-primary btn-sm">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
+                        <a href="#" class="btn btn-outline-info btn-sm">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="btn btn-outline-primary btn-sm">
+                            <i class="fab fa-facebook"></i>
+                        </a>
+                        <a href="#" class="btn btn-outline-danger btn-sm">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('main.index') }}" class="text-muted">
+            <i class="fas fa-arrow-left me-1"></i>Ana Sayfaya Dön
+        </a>
+    </div>
+</div>
+{% endblock %}
