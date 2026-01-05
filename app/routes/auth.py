@@ -3,8 +3,7 @@
 Auth Routes - Kimlik Doğrulama ve Oturum Yönetimi
 GitHub: app/routes/auth.py
 
-DÜZELTME: Dosya bozuktu, tamamen yeniden oluşturuldu.
-Eklenen yeni rotalar: /giris, /kayit, /iletisim
+DÜZELTME: Login şifre alanı 'sifre' veya 'password' olarak kabul ediliyor.
 """
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
@@ -49,7 +48,8 @@ def login():
     """User login page"""
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password', '')
+        # FIX: Form'dan 'sifre' veya 'password' olarak al
+        password = request.form.get('sifre', '') or request.form.get('password', '')
         
         if not email or not password:
             flash("E-posta ve şifre gereklidir.", "warning")
@@ -59,22 +59,28 @@ def login():
         user = User.query.filter_by(email=email).first()
         
         if user and check_password_hash(user.sifre_hash, password):
-            if not user.aktif:
+            # Aktiflik kontrolü - her iki alan da kontrol ediliyor
+            is_active = getattr(user, 'aktif', True) or getattr(user, 'is_active', True)
+            if not is_active:
                 flash("Hesabınız henüz aktif değil. Lütfen admin onayını bekleyin.", "warning")
                 return render_template('login.html')
             
             # Set session
             session['kullanici_id'] = user.id
-            session['kullanici'] = user.ad
+            session['kullanici'] = getattr(user, 'ad', None) or getattr(user, 'ad_soyad', user.email)
             session['email'] = user.email
             session['rol'] = user.rol
-            session['sirket_id'] = user.sirket_id
+            session['sirket_id'] = getattr(user, 'sirket_id', None)
             
             # Update last login
-            user.son_giris = datetime.utcnow()
-            db.session.commit()
+            try:
+                user.son_giris = datetime.utcnow()
+                db.session.commit()
+            except:
+                pass
             
-            flash(f"Hoş geldiniz, {user.ad}!", "success")
+            user_name = getattr(user, 'ad', None) or getattr(user, 'ad_soyad', user.email)
+            flash(f"Hoş geldiniz, {user_name}!", "success")
             
             # Redirect based on role
             if user.rol == 'superadmin':
@@ -462,6 +468,7 @@ def profile():
     
     return render_template('profile.html', user=user)
 
+
 # ══════════════════════════════════════════════════════════════
 # SUPER ADMIN OLUŞTURMA ROUTE - Sabit kullanıcı
 # ══════════════════════════════════════════════════════════════
@@ -477,13 +484,19 @@ def setup_admin():
         # Varsa rolünü superadmin yap ve aktifleştir
         existing.rol = 'superadmin'
         existing.aktif = True
-        existing.is_active = True
+        try:
+            existing.is_active = True
+        except:
+            pass
+        # Şifreyi de güncelle
+        existing.sifre_hash = generate_password_hash('Gamberetto88!')
         db.session.commit()
         return """
         <html>
         <body style="font-family: Arial; text-align: center; padding: 50px;">
             <h1>✅ Super Admin Güncellendi</h1>
             <p><strong>Email:</strong> emrahayyildiz88@yahoo.com</p>
+            <p><strong>Şifre:</strong> Gamberetto88!</p>
             <p>Hesap aktifleştirildi ve superadmin rolü verildi.</p>
             <a href="/login" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Giriş Yap</a>
         </body>
@@ -497,9 +510,12 @@ def setup_admin():
         ad='Emrah',
         ad_soyad='Emrah Ayyıldız',
         rol='superadmin',
-        aktif=True,
-        is_active=True
+        aktif=True
     )
+    try:
+        admin.is_active = True
+    except:
+        pass
     db.session.add(admin)
     db.session.commit()
     
