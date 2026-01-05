@@ -461,3 +461,55 @@ def profile():
         flash("Profil güncellendi.", "success")
     
     return render_template('profile.html', user=user)
+
+# ══════════════════════════════════════════════════════════════
+# SUPER ADMIN OLUŞTURMA ROUTE - Sabit kullanıcı
+# ══════════════════════════════════════════════════════════════
+@auth_bp.route('/setup-admin')
+def setup_admin():
+    """Super admin oluşturma - Eğer yoksa oluşturur"""
+    from app.models import User
+    from werkzeug.security import generate_password_hash
+    
+    # Super admin var mı kontrol et
+    existing = User.query.filter_by(email='emrahayyildiz88@yahoo.com').first()
+    if existing:
+        # Varsa rolünü superadmin yap ve aktifleştir
+        existing.rol = 'superadmin'
+        existing.aktif = True
+        existing.is_active = True
+        db.session.commit()
+        return """
+        <html>
+        <body style="font-family: Arial; text-align: center; padding: 50px;">
+            <h1>✅ Super Admin Güncellendi</h1>
+            <p><strong>Email:</strong> emrahayyildiz88@yahoo.com</p>
+            <p>Hesap aktifleştirildi ve superadmin rolü verildi.</p>
+            <a href="/login" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Giriş Yap</a>
+        </body>
+        </html>
+        """
+    
+    # Yoksa yeni oluştur
+    admin = User(
+        email='emrahayyildiz88@yahoo.com',
+        sifre_hash=generate_password_hash('Gamberetto88!'),
+        ad='Emrah',
+        ad_soyad='Emrah Ayyıldız',
+        rol='superadmin',
+        aktif=True,
+        is_active=True
+    )
+    db.session.add(admin)
+    db.session.commit()
+    
+    return """
+    <html>
+    <body style="font-family: Arial; text-align: center; padding: 50px;">
+        <h1>✅ Super Admin Oluşturuldu!</h1>
+        <p><strong>Email:</strong> emrahayyildiz88@yahoo.com</p>
+        <p><strong>Şifre:</strong> Gamberetto88!</p>
+        <a href="/login" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Giriş Yap</a>
+    </body>
+    </html>
+    """
