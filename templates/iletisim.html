@@ -3,150 +3,292 @@
 {% block title %}İletişim - Skills Test Center{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <div class="row">
-        <!-- Contact Form -->
-        <div class="col-lg-7 mb-4">
-            <div class="card shadow-lg border-0 h-100">
-                <div class="card-header bg-primary text-white py-3">
-                    <h4 class="mb-0"><i class="fas fa-envelope me-2"></i>Bize Ulaşın</h4>
-                </div>
-                <div class="card-body p-4">
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                    {% endfor %}
-                    {% endif %}
-                    {% endwith %}
-
-                    <form method="POST" action="{{ url_for('auth.iletisim') }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="ad_soyad" class="form-label">Ad Soyad <span
-                                        class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="ad_soyad" name="ad_soyad" required
-                                    placeholder="Adınız Soyadınız">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="email" class="form-label">E-posta <span class="text-danger">*</span></label>
-                                <input type="email" class="form-control" id="email" name="email" required
-                                    placeholder="ornek@email.com">
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="konu" class="form-label">Konu <span class="text-danger">*</span></label>
-                            <select class="form-select" id="konu" name="konu" required>
-                                <option value="">Konu seçin...</option>
-                                <option value="Genel Bilgi">Genel Bilgi</option>
-                                <option value="Fiyat Teklifi">Fiyat Teklifi</option>
-                                <option value="Teknik Destek">Teknik Destek</option>
-                                <option value="Demo Talebi">Demo Talebi</option>
-                                <option value="Diğer">Diğer</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="mesaj" class="form-label">Mesajınız <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="mesaj" name="mesaj" rows="5" required
-                                placeholder="Mesajınızı buraya yazın..."></textarea>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100 py-2">
-                            <i class="fas fa-paper-plane me-2"></i>Gönder
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
+<div class="contact-container">
+    <div class="contact-wrapper">
         <!-- Contact Info -->
-        <div class="col-lg-5 mb-4">
-            <div class="card shadow-lg border-0 h-100">
-                <div class="card-header bg-dark text-white py-3">
-                    <h4 class="mb-0"><i class="fas fa-info-circle me-2"></i>İletişim Bilgileri</h4>
+        <div class="contact-info">
+            <h1>Bize Ulaşın</h1>
+            <p>Sorularınız için bizimle iletişime geçin</p>
+
+            <div class="info-items">
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>Adres</h3>
+                        <p>İstanbul, Türkiye</p>
+                    </div>
                 </div>
-                <div class="card-body p-4">
-                    <div class="d-flex mb-4">
-                        <div class="flex-shrink-0">
-                            <div class="bg-primary rounded-circle p-3 text-white">
-                                <i class="fas fa-map-marker-alt fa-lg"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="fw-bold mb-1">Adres</h6>
-                            <p class="text-muted mb-0">İstanbul, Türkiye</p>
-                        </div>
+
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-envelope"></i>
                     </div>
-
-                    <div class="d-flex mb-4">
-                        <div class="flex-shrink-0">
-                            <div class="bg-success rounded-circle p-3 text-white">
-                                <i class="fas fa-envelope fa-lg"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="fw-bold mb-1">E-posta</h6>
-                            <p class="text-muted mb-0">info@skillstestcenter.com</p>
-                        </div>
+                    <div class="info-content">
+                        <h3>E-posta</h3>
+                        <p>info@skillstestcenter.com</p>
                     </div>
+                </div>
 
-                    <div class="d-flex mb-4">
-                        <div class="flex-shrink-0">
-                            <div class="bg-warning rounded-circle p-3 text-white">
-                                <i class="fas fa-phone fa-lg"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="fw-bold mb-1">Telefon</h6>
-                            <p class="text-muted mb-0">+90 (XXX) XXX XX XX</p>
-                        </div>
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-phone"></i>
                     </div>
-
-                    <div class="d-flex mb-4">
-                        <div class="flex-shrink-0">
-                            <div class="bg-info rounded-circle p-3 text-white">
-                                <i class="fas fa-clock fa-lg"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="fw-bold mb-1">Çalışma Saatleri</h6>
-                            <p class="text-muted mb-0">Pazartesi - Cuma: 09:00 - 18:00</p>
-                        </div>
+                    <div class="info-content">
+                        <h3>Telefon</h3>
+                        <p>+90 (XXX) XXX XX XX</p>
                     </div>
+                </div>
 
-                    <hr>
-
-                    <h6 class="fw-bold mb-3">Bizi Takip Edin</h6>
-                    <div class="d-flex gap-2">
-                        <a href="#" class="btn btn-outline-primary btn-sm">
-                            <i class="fab fa-linkedin"></i>
-                        </a>
-                        <a href="#" class="btn btn-outline-info btn-sm">
-                            <i class="fab fa-twitter"></i>
-                        </a>
-                        <a href="#" class="btn btn-outline-primary btn-sm">
-                            <i class="fab fa-facebook"></i>
-                        </a>
-                        <a href="#" class="btn btn-outline-danger btn-sm">
-                            <i class="fab fa-instagram"></i>
-                        </a>
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>Çalışma Saatleri</h3>
+                        <p>Pazartesi - Cuma: 09:00 - 18:00</p>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="text-center mt-4">
-        <a href="{{ url_for('main.index') }}" class="text-muted">
-            <i class="fas fa-arrow-left me-1"></i>Ana Sayfaya Dön
-        </a>
+            <div class="social-links">
+                <a href="#" class="social-link"><i class="fab fa-linkedin"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+            </div>
+        </div>
+
+        <!-- Contact Form -->
+        <div class="contact-form-card">
+            <h2>Mesaj Gönderin</h2>
+
+            <form method="POST" action="{{ url_for('auth.iletisim') }}" class="contact-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ad_soyad">Ad Soyad</label>
+                        <input type="text" id="ad_soyad" name="ad_soyad" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">E-posta</label>
+                        <input type="email" id="email" name="email" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="konu">Konu</label>
+                    <select id="konu" name="konu" class="form-control" required>
+                        <option value="">Konu seçin...</option>
+                        <option value="Genel Bilgi">Genel Bilgi</option>
+                        <option value="Fiyatlandırma">Fiyatlandırma</option>
+                        <option value="Teknik Destek">Teknik Destek</option>
+                        <option value="Kurumsal Teklif">Kurumsal Teklif</option>
+                        <option value="Diğer">Diğer</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="mesaj">Mesajınız</label>
+                    <textarea id="mesaj" name="mesaj" class="form-control" rows="5" required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-submit">
+                    <i class="fas fa-paper-plane"></i> Gönder
+                </button>
+            </form>
+        </div>
     </div>
 </div>
+
+<style>
+    .contact-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px 20px;
+    }
+
+    .contact-wrapper {
+        max-width: 1100px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 40px;
+        align-items: start;
+    }
+
+    .contact-info {
+        color: white;
+        padding: 20px 0;
+    }
+
+    .contact-info h1 {
+        font-size: 36px;
+        margin-bottom: 10px;
+    }
+
+    .contact-info>p {
+        opacity: 0.9;
+        margin-bottom: 40px;
+    }
+
+    .info-items {
+        display: flex;
+        flex-direction: column;
+        gap: 25px;
+    }
+
+    .info-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .info-icon {
+        width: 50px;
+        height: 50px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .info-icon i {
+        font-size: 20px;
+    }
+
+    .info-content h3 {
+        font-size: 16px;
+        margin-bottom: 5px;
+    }
+
+    .info-content p {
+        opacity: 0.9;
+        font-size: 14px;
+    }
+
+    .social-links {
+        display: flex;
+        gap: 15px;
+        margin-top: 40px;
+    }
+
+    .social-link {
+        width: 45px;
+        height: 45px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+
+    .social-link:hover {
+        background: white;
+        color: #667eea;
+        transform: translateY(-3px);
+    }
+
+    .contact-form-card {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+    }
+
+    .contact-form-card h2 {
+        font-size: 24px;
+        color: #1a1a2e;
+        margin-bottom: 30px;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 15px;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+    }
+
+    .form-control:focus {
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+    }
+
+    textarea.form-control {
+        resize: vertical;
+        min-height: 120px;
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    @media (max-width: 768px) {
+        .contact-wrapper {
+            grid-template-columns: 1fr;
+        }
+
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .contact-info {
+            text-align: center;
+        }
+
+        .info-item {
+            justify-content: center;
+        }
+
+        .social-links {
+            justify-content: center;
+        }
+    }
+</style>
 {% endblock %}
