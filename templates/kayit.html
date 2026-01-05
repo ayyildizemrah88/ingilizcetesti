@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Kayıt - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <h3 class="mb-0"><i class="fas fa-building me-2"></i>Kurumsal Kayıt</h3>
+                    <p class="mb-0 mt-2 opacity-75">Şirketinizi kaydedin ve sınavlarınızı yönetin</p>
+                </div>
+                <div class="card-body p-4">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form method="POST" action="{{ url_for('auth.kayit') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="mb-3">
+                            <label for="firma_adi" class="form-label">Firma Adı <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-building"></i></span>
+                                <input type="text" class="form-control" id="firma_adi" name="firma_adi" required placeholder="Şirket adınızı girin">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="yetkili_adi" class="form-label">Yetkili Adı Soyadı <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                <input type="text" class="form-control" id="yetkili_adi" name="yetkili_adi" required placeholder="Ad Soyad">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">E-posta Adresi <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                <input type="email" class="form-control" id="email" name="email" required placeholder="ornek@sirket.com">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="telefon" class="form-label">Telefon</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                <input type="tel" class="form-control" id="telefon" name="telefon" placeholder="+90 5XX XXX XX XX">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="sifre" class="form-label">Şifre <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input type="password" class="form-control" id="sifre" name="sifre" required minlength="6" placeholder="En az 6 karakter">
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="sifre_tekrar" class="form-label">Şifre Tekrar <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input type="password" class="form-control" id="sifre_tekrar" name="sifre_tekrar" required placeholder="Şifrenizi tekrarlayın">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="kvkk" required>
+                                <label class="form-check-label" for="kvkk">
+                                    <a href="#" data-bs-toggle="modal" data-bs-target="#kvkkModal">KVKK Aydınlatma Metni</a>'ni okudum, kabul ediyorum.
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            <i class="fas fa-user-plus me-2"></i>Kayıt Ol
+                        </button>
+                    </form>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <p class="mb-0">Zaten hesabınız var mı? <a href="{{ url_for('auth.login') }}" class="text-primary fw-bold">Giriş Yapın</a></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <a href="{{ url_for('main.index') }}" class="text-muted">
+                    <i class="fas fa-arrow-left me-1"></i>Ana Sayfaya Dön
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- KVKK Modal -->
+<div class="modal fade" id="kvkkModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">KVKK Aydınlatma Metni</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Kişisel verileriniz, 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında işlenmektedir.</p>
+                <p>Toplanan veriler: Ad, soyad, e-posta, telefon, şirket bilgileri</p>
+                <p>Kullanım amacı: Sınav hizmetlerinin sunulması, iletişim, fatura düzenleme</p>
+                <p>Verileriniz üçüncü taraflarla paylaşılmamaktadır.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
