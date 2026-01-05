@@ -45,8 +45,7 @@
                     <div class="alert alert-info">
                         <h6>📋 Yapılandırma Talimatları</h6>
                         <p>Email göndermek için şu environment variable'ları ayarlayın:</p>
-                        <pre class="bg-dark text-light p-3 rounded">
-SMTP_HOST=smtp.gmail.com
+                        <pre class="bg-dark text-light p-3 rounded">SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password</pre>
@@ -56,6 +55,9 @@ SMTP_PASS=your-app-password</pre>
                     
                     <!-- Test Formu -->
                     <form method="POST" action="{{ url_for('admin.test_email') }}">
+                        <!-- CSRF Token -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
                         <div class="mb-3">
                             <label for="test_email" class="form-label">Test Email Adresi</label>
                             <input type="email" 
