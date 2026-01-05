@@ -1601,3 +1601,116 @@ def kredi_yukle():
         return redirect(url_for('admin.kredi_yukle'))
     
     return render_template('credits_manage.html', sirketler=sirketler)
+
+# ══════════════════════════════════════════════════════════════
+# EMAIL TEST ROUTE - Super Admin için email testi
+# ══════════════════════════════════════════════════════════════
+@admin_bp.route('/test-email', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def test_email():
+    """Send a test email to verify SMTP configuration"""
+    import smtplib
+    import os
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    from datetime import datetime
+    
+    if request.method == 'POST':
+        test_to = request.form.get('test_email', session.get('email', ''))
+        
+        try:
+            # Get SMTP settings from environment
+            smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+            smtp_port = int(os.getenv('SMTP_PORT', 587))
+            smtp_user = os.getenv('SMTP_USER', '')
+            smtp_pass = os.getenv('SMTP_PASS', '')
+            
+            if not smtp_user or not smtp_pass:
+                flash("⚠️ SMTP ayarları yapılmamış! SMTP_USER ve SMTP_PASS environment variable'larını kontrol edin.", "danger")
+                return redirect(url_for('admin.test_email'))
+            
+            # Create HTML email
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = '✅ Skills Test Center - Email Test Başarılı'
+            msg['From'] = smtp_user
+            msg['To'] = test_to
+            
+            html_content = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center;">
+                    <h1 style="margin: 0;">🎉 Email Sistemi Çalışıyor!</h1>
+                </div>
+                <div style="padding: 30px; background: #f8f9fa; border-radius: 0 0 10px 10px;">
+                    <h2>Test Bilgileri</h2>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Tarih:</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">{datetime.now().strftime('%d.%m.%Y %H:%M:%S')}</td></tr>
+                        <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>SMTP Host:</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">{smtp_host}</td></tr>
+                        <tr><td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>SMTP Port:</strong></td><td style="padding: 10px; border-bottom: 1px solid #ddd;">{smtp_port}</td></tr>
+                        <tr><td style="padding: 10px;"><strong>Gönderen:</strong></td><td style="padding: 10px;">{smtp_user}</td></tr>
+                    </table>
+                    <p style="margin-top: 20px; color: #28a745;"><strong>✅ Email sisteminiz düzgün çalışıyor!</strong></p>
+                    <p>Artık aday davetleri, sonuç bildirimleri ve şifre sıfırlama emailleri gönderilebilir.</p>
+                </div>
+                <div style="text-align: center; padding: 20px; color: #666;">
+                    <p>Skills Test Center © 2026</p>
+                </div>
+            </body>
+            </html>
+            """
+            
+            text_content = f"""
+            Skills Test Center - Email Test Başarılı!
+            
+            Tarih: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}
+            SMTP Host: {smtp_host}
+            SMTP Port: {smtp_port}
+            Gönderen: {smtp_user}
+            
+            Email sisteminiz düzgün çalışıyor!
+            """
+            
+            msg.attach(MIMEText(text_content, 'plain', 'utf-8'))
+            msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+            
+            # Send email
+            with smtplib.SMTP(smtp_host, smtp_port) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.send_message(msg)
+            
+            # Log the test
+            try:
+                from app.models import AuditLog
+                log = AuditLog(
+                    user_id=session.get('kullanici_id'),
+                    action='email_test',
+                    details=f"Test emaili gönderildi: {test_to}"
+                )
+                db.session.add(log)
+                db.session.commit()
+            except:
+                pass
+            
+            flash(f"✅ Test emaili başarıyla gönderildi: {test_to}", "success")
+            
+        except smtplib.SMTPAuthenticationError:
+            flash("❌ SMTP kimlik doğrulama hatası! Kullanıcı adı veya şifre yanlış. Gmail kullanıyorsanız App Password oluşturmanız gerekiyor.", "danger")
+        except smtplib.SMTPConnectError:
+            flash(f"❌ SMTP sunucusuna bağlanılamadı: {smtp_host}:{smtp_port}", "danger")
+        except Exception as e:
+            flash(f"❌ Email gönderme hatası: {str(e)}", "danger")
+        
+        return redirect(url_for('admin.test_email'))
+    
+    # GET request - show form
+    import os
+    smtp_config = {
+        'host': os.getenv('SMTP_HOST', 'Ayarlanmamış'),
+        'port': os.getenv('SMTP_PORT', 'Ayarlanmamış'),
+        'user': os.getenv('SMTP_USER', 'Ayarlanmamış'),
+        'configured': bool(os.getenv('SMTP_USER') and os.getenv('SMTP_PASS'))
+    }
+    
+    return render_template('test_email.html', smtp_config=smtp_config)
