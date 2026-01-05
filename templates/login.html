@@ -184,7 +184,7 @@
         {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('candidate_auth.login') }}">
+        <form method="POST" action="{{ url_for('auth.login') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="form-group">
