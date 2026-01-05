@@ -52,6 +52,26 @@ def create_app(config_class=None):
     except ImportError as e:
         app.logger.warning(f"AI Service blueprint not available: {e}")
 
+    """
+__INIT__.PY EKLEMELERİ
+Bu kodu mevcut app/__init__.py dosyasındaki register_blueprints fonksiyonuna ekleyin
+
+YENİ EKLEME: aday_bp blueprint kaydı
+"""
+
+# ══════════════════════════════════════════════════════════════════
+# Bu satırları register_blueprints fonksiyonuna ekleyin
+# (customer_bp kayıt satırından SONRA ekleyin)
+# ══════════════════════════════════════════════════════════════════
+
+    # Register aday blueprint (Turkish URL routes for candidates)
+    try:
+        from app.routes.aday import aday_bp
+        app.register_blueprint(aday_bp)
+        app.logger.info("✅ Aday blueprint registered (Turkish URLs)")
+    except ImportError as e:
+        app.logger.warning(f"Aday blueprint not available: {e}")
+
     # Register error handlers
     register_error_handlers(app)
 
