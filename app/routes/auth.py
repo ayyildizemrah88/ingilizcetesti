@@ -355,3 +355,143 @@ def send_new_registration_notification(company_name, email, contact_name):
         """
     )
     mail.send(msg)
+
+    """
+AUTH.PY EKLEMELERİ - Bu kodları mevcut auth.py dosyasının sonuna ekleyin
+GitHub: app/routes/auth.py
+
+EKLENECEK YENİ ROTALAR:
+- /giris → /login yönlendirmesi
+- /kayit → Kayıt sayfası
+- /iletisim → İletişim sayfası
+"""
+
+# ══════════════════════════════════════════════════════════════════
+# YENİ ROTALAR - Bu kodları mevcut auth.py dosyasının SONUNA ekleyin
+# ══════════════════════════════════════════════════════════════════
+
+@auth_bp.route('/giris')
+def giris():
+    """Türkçe giriş URL'i - /login'e yönlendir"""
+    return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/kayit', methods=['GET', 'POST'])
+def kayit():
+    """Kurumsal kayıt sayfası"""
+    if request.method == 'POST':
+        firma_adi = request.form.get('firma_adi', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        telefon = request.form.get('telefon', '').strip()
+        yetkili_adi = request.form.get('yetkili_adi', '').strip()
+        sifre = request.form.get('sifre', '')
+        sifre_tekrar = request.form.get('sifre_tekrar', '')
+        
+        # Validation
+        errors = []
+        if not firma_adi:
+            errors.append("Firma adı gereklidir.")
+        if not email:
+            errors.append("E-posta adresi gereklidir.")
+        if not yetkili_adi:
+            errors.append("Yetkili adı gereklidir.")
+        if len(sifre) < 6:
+            errors.append("Şifre en az 6 karakter olmalıdır.")
+        if sifre != sifre_tekrar:
+            errors.append("Şifreler eşleşmiyor.")
+            
+        # Check existing email
+        from app.models import User, Company
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            errors.append("Bu e-posta adresi zaten kayıtlı.")
+            
+        if errors:
+            for error in errors:
+                flash(error, "danger")
+            return render_template('kayit.html')
+        
+        try:
+            # Create company
+            from werkzeug.security import generate_password_hash
+            
+            company = Company(
+                ad=firma_adi,
+                email=email,
+                telefon=telefon,
+                yetkili_adi=yetkili_adi,
+                kredi=0,
+                aktif=False  # Admin onayı gerekli
+            )
+            db.session.add(company)
+            db.session.flush()  # Get company ID
+            
+            # Create user
+            user = User(
+                ad=yetkili_adi,
+                email=email,
+                sifre_hash=generate_password_hash(sifre),
+                rol='customer',
+                sirket_id=company.id,
+                aktif=False  # Admin onayı gerekli
+            )
+            db.session.add(user)
+            db.session.commit()
+            
+            flash("Kayıt başarılı! Hesabınız admin onayından sonra aktif olacaktır.", "success")
+            
+            # Send notification to admin (optional)
+            try:
+                from app.tasks.email_tasks import send_admin_notification
+                send_admin_notification.delay(
+                    subject="Yeni Şirket Kaydı",
+                    message=f"Yeni şirket kaydı: {firma_adi} - {email}"
+                )
+            except:
+                pass
+            
+            return redirect(url_for('auth.login'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash("Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.", "danger")
+            import logging
+            logging.error(f"Registration error: {e}")
+            return render_template('kayit.html')
+    
+    return render_template('kayit.html')
+
+
+@auth_bp.route('/iletisim', methods=['GET', 'POST'])
+def iletisim():
+    """İletişim sayfası"""
+    if request.method == 'POST':
+        ad_soyad = request.form.get('ad_soyad', '').strip()
+        email = request.form.get('email', '').strip()
+        konu = request.form.get('konu', '').strip()
+        mesaj = request.form.get('mesaj', '').strip()
+        
+        if not all([ad_soyad, email, konu, mesaj]):
+            flash("Lütfen tüm alanları doldurun.", "warning")
+            return render_template('iletisim.html')
+        
+        # Send email or save to database
+        try:
+            from app.tasks.email_tasks import send_contact_email
+            send_contact_email.delay(
+                name=ad_soyad,
+                email=email,
+                subject=konu,
+                message=mesaj
+            )
+            flash("Mesajınız başarıyla gönderildi. En kısa sürede size dönüş yapacağız.", "success")
+        except:
+            # Fallback: just show success (log the message)
+            import logging
+            logging.info(f"Contact form: {ad_soyad} - {email} - {konu}: {mesaj}")
+            flash("Mesajınız alındı. En kısa sürede size dönüş yapacağız.", "success")
+        
+        return redirect(url_for('auth.iletisim'))
+    
+    return render_template('iletisim.html')
+
