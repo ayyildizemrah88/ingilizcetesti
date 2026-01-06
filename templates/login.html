@@ -1,215 +1,141 @@
 {% extends "base.html" %}
-{% block title %}Giriş - Skills Test Center{% endblock %}
+
+{% block title %}Giriş Yap - Skills Test Center{% endblock %}
 
 {% block content %}
 <style>
-    .login-page {
-        /* DEĞİŞTİRİLDİ: Açık sarı arka plan */
-        background: linear-gradient(135deg, #FFFACD 0%, #FFF8DC 100%);
+    /* Login sayfası için özel stiller */
+    .login-section {
         min-height: 100vh;
+        background: linear-gradient(135deg, #ffe6f0 0%, #fff0f5 50%, #ffe6f0 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 2rem;
+        padding: 2rem 0;
     }
 
-    .login-container {
-        background: white;
+    .login-card {
+        background: #ffffff;
         border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
         padding: 3rem;
+        max-width: 450px;
         width: 100%;
-        max-width: 420px;
-        box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2);
     }
 
-    .login-header {
-        text-align: center;
-        margin-bottom: 2rem;
+    .login-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
     }
 
-    .login-logo {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-    }
-
-    /* DEĞİŞTİRİLDİ: Siyah yazı */
-    .login-title {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #333;
-        margin-bottom: 0.5rem;
-    }
-
-    .login-subtitle {
-        color: #555;
-        font-size: 0.95rem;
-    }
-
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
-
-    .form-label {
-        display: block;
-        margin-bottom: 0.5rem;
-        font-weight: 600;
-        color: #333;
+    .login-icon i {
+        font-size: 2rem;
+        color: white;
     }
 
     .form-control {
-        width: 100%;
-        padding: 0.9rem 1rem;
-        border: 2px solid #e1e5eb;
         border-radius: 10px;
-        font-size: 1rem;
-        transition: border-color 0.3s ease;
-        box-sizing: border-box;
+        padding: 0.875rem 1rem;
+        border: 2px solid #e9ecef;
+        transition: all 0.3s ease;
     }
 
     .form-control:focus {
-        outline: none;
-        border-color: #667eea;
+        border-color: #ff6b9d;
+        box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.15);
     }
 
     .btn-login {
-        width: 100%;
-        padding: 1rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
         border: none;
         border-radius: 10px;
-        font-size: 1.1rem;
+        padding: 0.875rem;
         font-weight: 600;
-        cursor: pointer;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        transition: all 0.3s ease;
     }
 
     .btn-login:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-    }
-
-    .login-footer {
-        text-align: center;
-        margin-top: 2rem;
-    }
-
-    .login-footer a {
-        color: #667eea;
-        text-decoration: none;
-        font-weight: 500;
-    }
-
-    .login-footer a:hover {
-        text-decoration: underline;
-    }
-
-    .alert {
-        padding: 1rem;
-        border-radius: 10px;
-        margin-bottom: 1.5rem;
-    }
-
-    .alert-danger {
-        background: #ffe0e0;
-        color: #d63031;
-        border: 1px solid #fab1b1;
-    }
-
-    .alert-success {
-        background: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
-    }
-
-    .alert-info {
-        background: #d1ecf1;
-        color: #0c5460;
-        border: 1px solid #bee5eb;
-    }
-
-    .divider {
-        display: flex;
-        align-items: center;
-        margin: 1.5rem 0;
-    }
-
-    .divider::before,
-    .divider::after {
-        content: '';
-        flex: 1;
-        border-bottom: 1px solid #e1e5eb;
-    }
-
-    .divider span {
-        padding: 0 1rem;
-        color: #666;
-        font-size: 0.9rem;
-    }
-
-    .quick-links {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-    }
-
-    .quick-link {
-        padding: 0.7rem 1.2rem;
-        background: #f8f9fa;
-        border-radius: 8px;
-        color: #333;
-        text-decoration: none;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-    }
-
-    .quick-link:hover {
-        background: #e9ecef;
+        box-shadow: 0 5px 20px rgba(255, 107, 157, 0.4);
     }
 </style>
 
-<div class="login-page">
-    <div class="login-container">
-        <div class="login-header">
-            <div class="login-logo">🎓</div>
-            <h1 class="login-title">Giriş Yap</h1>
-            <p class="login-subtitle">Hesabınıza giriş yapın</p>
+<div class="login-section">
+    <div class="login-card">
+        <!-- Logo / Icon -->
+        <div class="login-icon">
+            <i class="fas fa-graduation-cap"></i>
         </div>
 
+        <!-- Title -->
+        <h1 class="h3 text-center mb-2">Giriş Yap</h1>
+        <p class="text-muted text-center mb-4">Hesabınıza giriş yapın</p>
+
+        <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
-        <div class="alert alert-{{ category }}">{{ message }}</div>
+        <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show"
+            role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
         {% endfor %}
         {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('auth.login') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-            <div class="form-group">
-                <label class="form-label" for="email">E-posta Adresi</label>
+        <!-- Login Form -->
+        <form action="{{ url_for('auth.login') }}" method="POST">
+            <div class="mb-3">
+                <label for="email" class="form-label">E-posta Adresi</label>
                 <input type="email" class="form-control" id="email" name="email" placeholder="ornek@sirket.com" required
-                    autofocus>
+                    autocomplete="email">
             </div>
 
-            <div class="form-group">
-                <label class="form-label" for="sifre">Şifre</label>
-                <input type="password" class="form-control" id="sifre" name="sifre" placeholder="••••••••" required>
+            <div class="mb-3">
+                <label for="sifre" class="form-label">Şifre</label>
+                <input type="password" class="form-control" id="sifre" name="sifre" placeholder="••••••••" required
+                    autocomplete="current-password">
             </div>
 
-            <button type="submit" class="btn-login">Giriş Yap</button>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="remember" name="remember">
+                    <label class="form-check-label text-muted" for="remember">
+                        Beni hatırla
+                    </label>
+                </div>
+                <a href="{{ url_for('auth.forgot_password') }}" class="text-decoration-none" style="color: #ff6b9d;">
+                    Şifrenizi mi unuttunuz?
+                </a>
+            </div>
+
+            <div class="d-grid mb-4">
+                <button type="submit" class="btn btn-login text-white btn-lg">
+                    <i class="fas fa-sign-in-alt me-2"></i>Giriş Yap
+                </button>
+            </div>
         </form>
 
-        <div class="login-footer">
-            <p><a href="{{ url_for('auth.forgot_password') }}">Şifrenizi mi unuttunuz?</a></p>
+        <!-- Divider -->
+        <div class="text-center mb-4">
+            <span class="text-muted">veya</span>
         </div>
 
-        <div class="divider"><span>veya</span></div>
-
-        <div class="quick-links">
-            <a href="{{ url_for('candidate_auth.sinav_giris') }}" class="quick-link">📝 Sınav Girişi</a>
-            <a href="{{ url_for('main.index') }}" class="quick-link">🏠 Ana Sayfa</a>
+        <!-- Alternative Actions -->
+        <div class="d-grid gap-2">
+            <a href="{{ url_for('candidate_auth.sinav_giris') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-clipboard-check me-2"></i>Aday Sınav Girişi
+            </a>
+            <a href="{{ url_for('main.index') }}" class="btn btn-link text-muted">
+                <i class="fas fa-arrow-left me-2"></i>Ana Sayfaya Dön
+            </a>
         </div>
     </div>
 </div>
