@@ -1,92 +1,135 @@
 {% extends "base.html" %}
 
-{% block title %}Kayıt Ol - Skills Test Center{% endblock %}
+{% block title %}Kurumsal Bilgi Talebi - Skills Test Center{% endblock %}
 
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-md-7 col-lg-6">
-            <div class="card shadow">
-                <div class="card-header bg-gradient text-white text-center py-4"
-                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <h3 class="mb-0">
-                        <i class="fas fa-user-plus me-2"></i>Kurumsal Kayıt
-                    </h3>
-                    <p class="mb-0 mt-2 opacity-75">Şirketiniz için hesap oluşturun</p>
+        <div class="col-lg-8">
+            <!-- Hero Section -->
+            <div class="text-center mb-5">
+                <h1 class="display-5 fw-bold text-primary mb-3">
+                    <i class="fas fa-building me-3"></i>Kurumsal Bilgi Talebi
+                </h1>
+                <p class="lead text-muted">
+                    Şirketiniz için Skills Test Center hakkında bilgi almak için formu doldurun
+                </p>
+            </div>
+
+            <!-- Info Alert -->
+            <div class="alert alert-info border-0 shadow-sm mb-4">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-info-circle fa-2x me-3"></i>
+                    <div>
+                        <h6 class="mb-1">Nasıl Çalışır?</h6>
+                        <p class="mb-0 small">
+                            Kurumsal hesaplar, ekibimiz tarafından oluşturulmaktadır.
+                            Formu doldurduktan sonra size en kısa sürede dönüş yapacağız
+                            ve hesabınızı aktif hale getireceğiz.
+                        </p>
+                    </div>
                 </div>
-                <div class="card-body p-4">
-                    <form method="POST" action="{{ url_for('auth.register') }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+            </div>
 
-                        <h5 class="mb-3"><i class="fas fa-building me-2"></i>Şirket Bilgileri</h5>
+            <!-- Registration Form Card -->
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white py-4">
+                    <h2 class="h4 mb-0 text-center">
+                        <i class="fas fa-paper-plane me-2"></i>Bilgi Talep Formu
+                    </h2>
+                </div>
+                <div class="card-body p-5">
+                    <form action="{{ url_for('auth.register') }}" method="POST">
+                        <div class="row g-4">
+                            <!-- Firma Adı -->
+                            <div class="col-12">
+                                <label for="firma_adi" class="form-label">
+                                    <i class="fas fa-building me-2 text-primary"></i>Firma Adı *
+                                </label>
+                                <input type="text" class="form-control form-control-lg" id="firma_adi" name="firma_adi"
+                                    placeholder="Şirketinizin adı" required>
+                            </div>
 
-                        <div class="mb-3">
-                            <label for="sirket_adi" class="form-label">Şirket Adı *</label>
-                            <input type="text" class="form-control" id="sirket_adi" name="sirket_adi"
-                                placeholder="Şirket adınızı girin" required>
-                        </div>
+                            <!-- Email -->
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope me-2 text-primary"></i>Kurumsal E-posta *
+                                </label>
+                                <input type="email" class="form-control form-control-lg" id="email" name="email"
+                                    placeholder="info@sirketiniz.com" required>
+                            </div>
 
-                        <div class="mb-3">
-                            <label for="telefon" class="form-label">Telefon</label>
-                            <input type="tel" class="form-control" id="telefon" name="telefon"
-                                placeholder="+90 5XX XXX XX XX">
-                        </div>
+                            <!-- Telefon -->
+                            <div class="col-md-6">
+                                <label for="telefon" class="form-label">
+                                    <i class="fas fa-phone me-2 text-primary"></i>Telefon
+                                </label>
+                                <input type="tel" class="form-control form-control-lg" id="telefon" name="telefon"
+                                    placeholder="+90 5XX XXX XX XX">
+                            </div>
 
-                        <hr class="my-4">
+                            <!-- Mesaj -->
+                            <div class="col-12">
+                                <label for="mesaj" class="form-label">
+                                    <i class="fas fa-comment me-2 text-primary"></i>Mesajınız
+                                </label>
+                                <textarea class="form-control" id="mesaj" name="mesaj" rows="4"
+                                    placeholder="Tahmini aday sayınız, ihtiyaçlarınız veya sorularınız..."></textarea>
+                            </div>
 
-                        <h5 class="mb-3"><i class="fas fa-user me-2"></i>İletişim Bilgileri</h5>
-
-                        <div class="mb-3">
-                            <label for="ad_soyad" class="form-label">Ad Soyad *</label>
-                            <input type="text" class="form-control" id="ad_soyad" name="ad_soyad"
-                                placeholder="Adınızı ve soyadınızı girin" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="email" class="form-label">E-posta Adresi *</label>
-                            <input type="email" class="form-control" id="email" name="email"
-                                placeholder="ornek@sirket.com" required>
-                        </div>
-
-                        <hr class="my-4">
-
-                        <h5 class="mb-3"><i class="fas fa-lock me-2"></i>Şifre</h5>
-
-                        <div class="mb-3">
-                            <label for="sifre" class="form-label">Şifre *</label>
-                            <input type="password" class="form-control" id="sifre" name="sifre"
-                                placeholder="En az 6 karakter" minlength="6" required>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="sifre_tekrar" class="form-label">Şifre Tekrar *</label>
-                            <input type="password" class="form-control" id="sifre_tekrar" name="sifre_tekrar"
-                                placeholder="Şifrenizi tekrar girin" minlength="6" required>
-                        </div>
-
-                        <div class="alert alert-warning">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Kayıt başvurunuz incelendikten sonra hesabınız aktif edilecektir.
-                            Onay e-postası gönderilecektir.
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-paper-plane me-1"></i> Kayıt Başvurusu Gönder
-                            </button>
-                            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left me-1"></i> Giriş Sayfasına Dön
-                            </a>
+                            <!-- Submit Button -->
+                            <div class="col-12 mt-4">
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg py-3">
+                                        <i class="fas fa-paper-plane me-2"></i>Bilgi Talebi Gönder
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </div>
             </div>
 
-            <div class="text-center mt-4">
+            <!-- Features Section -->
+            <div class="row g-4 mt-5">
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="bg-primary bg-opacity-10 rounded-circle p-4 d-inline-block mb-3">
+                            <i class="fas fa-shield-alt text-primary fa-2x"></i>
+                        </div>
+                        <h5>Güvenli Platform</h5>
+                        <p class="text-muted small">Gelişmiş güvenlik ve gözetim sistemleri</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="bg-success bg-opacity-10 rounded-circle p-4 d-inline-block mb-3">
+                            <i class="fas fa-chart-bar text-success fa-2x"></i>
+                        </div>
+                        <h5>Detaylı Raporlar</h5>
+                        <p class="text-muted small">CEFR seviyeli sonuç analizleri</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="bg-info bg-opacity-10 rounded-circle p-4 d-inline-block mb-3">
+                            <i class="fas fa-headset text-info fa-2x"></i>
+                        </div>
+                        <h5>7/24 Destek</h5>
+                        <p class="text-muted small">Teknik destek ve yardım</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Login Link -->
+            <div class="text-center mt-5">
                 <p class="text-muted">
-                    Hızlı başlangıç için
-                    <a href="{{ url_for('auth.demo_olustur') }}">demo hesabı oluşturun</a>
+                    Zaten hesabınız var mı?
+                    <a href="{{ url_for('auth.login') }}" class="text-primary fw-bold">Giriş Yapın</a>
                 </p>
+                <a href="{{ url_for('main.index') }}" class="btn btn-link text-muted">
+                    <i class="fas fa-arrow-left me-2"></i>Ana Sayfaya Dön
+                </a>
             </div>
         </div>
     </div>
