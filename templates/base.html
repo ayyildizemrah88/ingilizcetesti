@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ session.get('lang', 'tr') }}"
     class="{% if accessibility.high_contrast %}high-contrast{% endif %} {% if accessibility.large_text %}large-text{% endif %} {% if accessibility.reduced_motion %}reduced-motion{% endif %} {% if accessibility.dyslexia_friendly %}dyslexia-friendly{% endif %} {% if accessibility.colorblind_mode %}colorblind-{{ accessibility.colorblind_mode }}{% endif %}">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,57 +12,97 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Accessibility CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         :root {
-            --primary-color: #0d6efd;
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
             --success-color: #198754;
             --warning-color: #ffc107;
             --danger-color: #dc3545;
+            /* AÇIK PEMBE ARKA PLAN RENKLERİ */
+            --bg-start: #ffeef8;
+            --bg-end: #f8e1f4;
         }
+
         body {
-            /* DEĞİŞTİRİLDİ: Açık sarı arka plan rengi */
-            background: linear-gradient(135deg, #FFFACD 0%, #FFF8DC 100%);
+            /* AÇIK PEMBE GRADIENT ARKA PLAN */
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
             min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+
         .card {
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: none;
         }
+
         .navbar {
             box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
         }
+
         .btn {
             border-radius: 10px;
             padding: 10px 25px;
+            font-weight: 500;
         }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd6, #6a4190);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
         .form-control,
         .form-select {
             border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            padding: 12px 16px;
         }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        }
+
         .table {
             border-radius: 10px;
             overflow: hidden;
         }
+
         .badge {
             border-radius: 20px;
+            padding: 6px 12px;
         }
+
         /* Dark mode */
         .dark-mode body {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
         }
+
         .dark-mode .card {
             background: #1e1e2d;
             color: #fff;
         }
+
         .dark-mode .table {
             color: #fff;
         }
-        /* ========================================
-           ANA SAYFA BUTONU - YENİ EKLENDİ
-           ======================================== */
+
+        /* ===================================
+           ANA SAYFA BUTONU - SABİT FLOATING
+           =================================== */
         .home-button-fixed {
             position: fixed;
             bottom: 20px;
@@ -70,10 +111,10 @@
             width: 50px;
             height: 50px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -81,16 +122,19 @@
             transition: all 0.3s ease;
             text-decoration: none;
         }
+
         .home-button-fixed:hover {
             transform: scale(1.1);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
             color: white;
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
         }
+
         .home-button-fixed:focus {
             outline: 3px solid #c4b5fd;
             outline-offset: 2px;
         }
+
         .home-button-tooltip {
             position: absolute;
             left: 60px;
@@ -104,28 +148,58 @@
             visibility: hidden;
             transition: all 0.3s ease;
         }
+
         .home-button-fixed:hover .home-button-tooltip {
             opacity: 1;
             visibility: visible;
         }
+
         /* Dark mode için */
         .dark-mode .home-button-fixed {
             background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
         }
+
         /* Accessibility toolbar'ın solunda görünsün */
         .accessibility-toggle {
             right: 20px !important;
             left: auto !important;
         }
+
+        /* Flash Messages */
+        .alert {
+            border-radius: 12px;
+            border: none;
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            color: #065f46;
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+            color: #991b1b;
+        }
+
+        .alert-warning {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #92400e;
+        }
+
+        .alert-info {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            color: #1e40af;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
+
 <body class="{% if session.get('theme') == 'dark' %}dark-mode{% endif %}">
     <!-- Skip Link for Screen Readers -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
-    <!-- ========================================
+    <!-- ===================================
          ANA SAYFA BUTONU - SABİT FLOATING
-         ======================================== -->
+         =================================== -->
     <a href="/" class="home-button-fixed" title="Ana Sayfaya Dön" aria-label="Ana Sayfaya Dön">
         <i class="bi bi-house-door-fill" aria-hidden="true"></i>
         <span class="home-button-tooltip">🏠 Ana Sayfa</span>
@@ -170,10 +244,12 @@
         <div role="alert" aria-live="polite">
             {% for category, message in messages %}
             <div class="alert alert-{{ category }} alert-dismissible fade show">
-                {% if category == 'success' %}<i class="bi bi-check-circle" aria-hidden="true"></i>{% endif %}
-                {% if category == 'danger' %}<i class="bi bi-exclamation-triangle" aria-hidden="true"></i>{% endif %}
-                {% if category == 'warning' %}<i class="bi bi-exclamation-circle" aria-hidden="true"></i>{% endif %}
-                {% if category == 'info' %}<i class="bi bi-info-circle" aria-hidden="true"></i>{% endif %}
+                {% if category == 'success' %}<i class="bi bi-check-circle me-2" aria-hidden="true"></i>{% endif %}
+                {% if category == 'danger' %}<i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>{% endif
+                %}
+                {% if category == 'warning' %}<i class="bi bi-exclamation-circle me-2" aria-hidden="true"></i>{% endif
+                %}
+                {% if category == 'info' %}<i class="bi bi-info-circle me-2" aria-hidden="true"></i>{% endif %}
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
             </div>
@@ -213,7 +289,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Accessibility toggle function
-        // DÜZELTİLDİ: URL /international/accessibility/toggle olarak değiştirildi
         function toggleAccessibility(feature) {
             fetch('/international/accessibility/toggle', {
                 method: 'POST',
@@ -225,7 +300,6 @@
             })
                 .then(response => response.json())
                 .then(data => {
-                    // Reload to apply changes
                     location.reload();
                 })
                 .catch(error => {
@@ -238,7 +312,7 @@
             if (e.altKey && e.key === 'a') {
                 document.getElementById('accessibility-toggle').click();
             }
-            // Alt + H to go home - YENİ EKLENDİ
+            // Alt + H to go home
             if (e.altKey && e.key === 'h') {
                 window.location.href = '/';
             }
@@ -246,4 +320,5 @@
     </script>
     {% block extra_js %}{% endblock %}
 </body>
+
 </html>
