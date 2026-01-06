@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Main Routes - Homepage and public pages
-YENİ DOSYA - Ana sayfa (/) route'u için
 GitHub: app/routes/main.py
 """
 from flask import Blueprint, render_template, session
@@ -15,16 +14,32 @@ def index():
     return render_template('index.html')
 
 
+@main_bp.route('/hakkimizda')
+def hakkimizda():
+    """Hakkımızda sayfası (Türkçe URL)"""
+    return render_template('hakkimizda.html')
+
+
 @main_bp.route('/about')
 def about():
-    """Hakkımızda sayfası"""
-    return render_template('about.html')
+    """Hakkımızda sayfası (İngilizce URL)"""
+    return render_template('hakkimizda.html')
+
+
+@main_bp.route('/demo-sinav')
+def demo_sinav():
+    """
+    Demo sınav bilgi sayfası
+    NOT: Gerçek demo sınav sadece admin panelinden başlatılabilir
+    Bu sayfa sadece bilgilendirme amaçlıdır
+    """
+    return render_template('demo_sinav.html')
 
 
 @main_bp.route('/contact')
 def contact():
     """İletişim sayfası"""
-    return render_template('contact.html')
+    return render_template('iletisim.html')
 
 
 @main_bp.route('/privacy')
