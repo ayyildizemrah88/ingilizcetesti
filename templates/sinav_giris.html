@@ -3,299 +3,130 @@
 {% block title %}Sınav Girişi - Skills Test Center{% endblock %}
 
 {% block content %}
-<div class="auth-container">
-    <div class="auth-card">
-        <div class="auth-header">
-            <div class="auth-logo">
-                <i class="fas fa-clipboard-check"></i>
-            </div>
-            <h1>Sınav Girişi</h1>
-            <p>Giriş kodunuz ile sınava başlayın</p>
-        </div>
-
-        <form method="POST" action="{{ url_for('auth.sinav_giris') }}" class="auth-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-            <div class="form-group">
-                <label for="tc_kimlik">
-                    <i class="fas fa-id-card"></i> TC Kimlik No
-                </label>
-                <input type="text" id="tc_kimlik" name="tc_kimlik" class="form-control" placeholder="12345678901"
-                    required maxlength="11" pattern="[0-9]{11}" autocomplete="off">
-            </div>
-
-            <div class="form-group">
-                <label for="giris_kodu">
-                    <i class="fas fa-key"></i> Giriş Kodu
-                </label>
-                <input type="text" id="giris_kodu" name="giris_kodu" class="form-control code-input"
-                    placeholder="ABCD1234" required maxlength="8" autocomplete="off"
-                    style="text-transform: uppercase; letter-spacing: 3px; font-weight: bold;">
-            </div>
-
-            <div class="info-box">
-                <p><i class="fas fa-info-circle"></i> Giriş kodunuzu davet e-postanızda bulabilirsiniz.</p>
-            </div>
-
-            <button type="submit" class="btn btn-primary btn-submit">
-                <i class="fas fa-play-circle"></i> Sınava Başla
-            </button>
-        </form>
-
-        <div class="auth-divider">
-            <span>veya</span>
-        </div>
-
-        <div class="demo-section">
-            <p>Deneme sınavı yapmak ister misiniz?</p>
-            <a href="{{ url_for('auth.demo_login') }}" class="btn btn-demo">
-                <i class="fas fa-graduation-cap"></i> Demo Sınav
-            </a>
-        </div>
-
-        <div class="auth-footer">
-            <a href="{{ url_for('main.index') }}">
-                <i class="fas fa-home"></i> Ana Sayfaya Dön
-            </a>
-        </div>
-    </div>
-</div>
-
 <style>
-    .auth-container {
+    .exam-entry-section {
         min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        padding: 20px;
+        padding: 2rem 0;
     }
 
-    .auth-card {
-        background: white;
+    .exam-entry-card {
+        background: #ffffff;
         border-radius: 20px;
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-        padding: 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 3rem;
+        max-width: 450px;
         width: 100%;
-        max-width: 420px;
-        animation: slideUp 0.5s ease-out;
     }
 
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .auth-header {
-        text-align: center;
-        margin-bottom: 30px;
-    }
-
-    .auth-logo {
-        width: 80px;
-        height: 80px;
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
+    .exam-icon {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto 20px;
-        box-shadow: 0 10px 30px rgba(79, 172, 254, 0.4);
+        margin: 0 auto 1.5rem;
     }
 
-    .auth-logo i {
-        font-size: 36px;
+    .exam-icon i {
+        font-size: 2.5rem;
         color: white;
-    }
-
-    .auth-header h1 {
-        font-size: 28px;
-        color: #1a1a2e;
-        margin-bottom: 8px;
-        font-weight: 700;
-    }
-
-    .auth-header p {
-        color: #666;
-        font-size: 14px;
-    }
-
-    .auth-form .form-group {
-        margin-bottom: 20px;
-    }
-
-    .auth-form label {
-        display: block;
-        font-weight: 600;
-        color: #333;
-        margin-bottom: 8px;
-        font-size: 14px;
-    }
-
-    .auth-form label i {
-        margin-right: 8px;
-        color: #4facfe;
-    }
-
-    .auth-form .form-control {
-        width: 100%;
-        padding: 14px 16px;
-        border: 2px solid #e0e0e0;
-        border-radius: 10px;
-        font-size: 15px;
-        transition: all 0.3s ease;
-        box-sizing: border-box;
-    }
-
-    .auth-form .form-control:focus {
-        border-color: #4facfe;
-        outline: none;
-        box-shadow: 0 0 0 4px rgba(79, 172, 254, 0.15);
     }
 
     .code-input {
+        font-size: 1.5rem;
         text-align: center;
-        font-size: 20px !important;
-        font-family: 'Courier New', monospace;
+        letter-spacing: 0.5rem;
+        text-transform: uppercase;
+        font-weight: bold;
     }
 
-    .info-box {
-        background: #e3f2fd;
-        border: 1px solid #90caf9;
-        border-radius: 10px;
-        padding: 12px 15px;
-        margin-bottom: 24px;
-    }
-
-    .info-box p {
-        color: #1565c0;
-        font-size: 13px;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .btn-submit {
-        width: 100%;
-        padding: 14px;
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
-        color: white;
+    .btn-start-exam {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border: none;
         border-radius: 10px;
-        font-size: 16px;
+        padding: 1rem;
         font-weight: 600;
-        cursor: pointer;
+        font-size: 1.1rem;
         transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
     }
 
-    .btn-submit:hover {
+    .btn-start-exam:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 25px rgba(79, 172, 254, 0.4);
-    }
-
-    .auth-divider {
-        text-align: center;
-        margin: 24px 0;
-        position: relative;
-    }
-
-    .auth-divider::before,
-    .auth-divider::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        width: 40%;
-        height: 1px;
-        background: #e0e0e0;
-    }
-
-    .auth-divider::before {
-        left: 0;
-    }
-
-    .auth-divider::after {
-        right: 0;
-    }
-
-    .auth-divider span {
-        background: white;
-        padding: 0 15px;
-        color: #999;
-        font-size: 13px;
-    }
-
-    .demo-section {
-        text-align: center;
-    }
-
-    .demo-section p {
-        color: #666;
-        font-size: 14px;
-        margin-bottom: 12px;
-    }
-
-    .btn-demo {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 24px;
-        background: #f8f9fa;
-        color: #4facfe;
-        border: 2px solid #4facfe;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.3s ease;
-    }
-
-    .btn-demo:hover {
-        background: #4facfe;
-        color: white;
-    }
-
-    .auth-footer {
-        text-align: center;
-        margin-top: 24px;
-        padding-top: 20px;
-        border-top: 1px solid #eee;
-    }
-
-    .auth-footer a {
-        color: #888;
-        text-decoration: none;
-        font-size: 14px;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .auth-footer a:hover {
-        color: #4facfe;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
     }
 </style>
 
-<script>
-    // TC Kimlik sadece rakam
-    document.getElementById('tc_kimlik').addEventListener('input', function (e) {
-        this.value = this.value.replace(/[^0-9]/g, '');
-    });
+<div class="exam-entry-section">
+    <div class="exam-entry-card">
+        <!-- Icon -->
+        <div class="exam-icon">
+            <i class="fas fa-clipboard-check"></i>
+        </div>
 
-    // Giriş kodu büyük harf
-    document.getElementById('giris_kodu').addEventListener('input', function (e) {
-        this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    });
-</script>
+        <!-- Title -->
+        <h1 class="h3 text-center mb-2">Sınav Girişi</h1>
+        <p class="text-muted text-center mb-4">Sınav giriş kodunuzu girin</p>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show"
+            role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <!-- Entry Form -->
+        <form action="{{ url_for('auth.sinav_giris') }}" method="POST">
+            <!-- CSRF Token -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-4">
+                <label for="giris_kodu" class="form-label text-center d-block">Giriş Kodu</label>
+                <input type="text" class="form-control form-control-lg code-input" id="giris_kodu" name="giris_kodu"
+                    placeholder="XXXXXXXX" maxlength="8" required autocomplete="off">
+                <div class="form-text text-center mt-2">
+                    Size verilen 8 karakterlik kodu girin
+                </div>
+            </div>
+
+            <div class="d-grid mb-4">
+                <button type="submit" class="btn btn-start-exam text-white btn-lg">
+                    <i class="fas fa-play me-2"></i>Sınava Başla
+                </button>
+            </div>
+        </form>
+
+        <!-- Info Box -->
+        <div class="alert alert-info border-0 small mb-4">
+            <i class="fas fa-info-circle me-2"></i>
+            Sınav başladıktan sonra süre işlemeye başlayacaktır. Lütfen stabil bir internet bağlantınız olduğundan emin
+            olun.
+        </div>
+
+        <!-- Alternative Actions -->
+        <div class="text-center">
+            <p class="text-muted small mb-2">Kurumsal hesabınız mı var?</p>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-sign-in-alt me-2"></i>Kurumsal Giriş
+            </a>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="{{ url_for('main.index') }}" class="btn btn-link text-muted btn-sm">
+                <i class="fas fa-arrow-left me-2"></i>Ana Sayfaya Dön
+            </a>
+        </div>
+    </div>
+</div>
 {% endblock %}

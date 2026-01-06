@@ -92,6 +92,9 @@
 
         <!-- Login Form -->
         <form action="{{ url_for('auth.login') }}" method="POST">
+            <!-- CSRF Token -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             <div class="mb-3">
                 <label for="email" class="form-label">E-posta Adresi</label>
                 <input type="email" class="form-control" id="email" name="email" placeholder="ornek@sirket.com" required

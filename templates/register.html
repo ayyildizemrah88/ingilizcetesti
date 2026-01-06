@@ -31,6 +31,19 @@
                 </div>
             </div>
 
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show"
+                role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
             <!-- Registration Form Card -->
             <div class="card shadow-lg border-0">
                 <div class="card-header bg-primary text-white py-4">
@@ -40,6 +53,9 @@
                 </div>
                 <div class="card-body p-5">
                     <form action="{{ url_for('auth.register') }}" method="POST">
+                        <!-- CSRF Token -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                         <div class="row g-4">
                             <!-- Firma Adı -->
                             <div class="col-12">
