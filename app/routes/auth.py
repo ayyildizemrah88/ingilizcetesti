@@ -32,10 +32,10 @@ def login():
             return render_template('login.html')
         
         try:
-            from app.models import Kullanici
+            from app.models import User
             from app import db
             
-            kullanici = Kullanici.query.filter_by(email=email).first()
+            kullanici = User.query.filter_by(email=email).first()
             
             if kullanici and check_password_hash(kullanici.sifre_hash, sifre):
                 # Hesap aktif mi kontrol et
@@ -192,10 +192,10 @@ def forgot_password():
             return render_template('forgot_password.html')
         
         try:
-            from app.models import Kullanici, PasswordResetToken
+            from app.models import User, PasswordResetToken
             from app import db
             
-            kullanici = Kullanici.query.filter_by(email=email).first()
+            kullanici = User.query.filter_by(email=email).first()
             
             if kullanici:
                 # Token oluştur
@@ -203,11 +203,11 @@ def forgot_password():
                 expires_at = datetime.utcnow() + timedelta(hours=1)
                 
                 # Eski tokenleri sil
-                PasswordResetToken.query.filter_by(kullanici_id=kullanici.id).delete()
+                PasswordResetToken.query.filter_by(user_id=kullanici.id).delete()
                 
                 # Yeni token kaydet
                 reset_token = PasswordResetToken(
-                    kullanici_id=kullanici.id,
+                    user_id=kullanici.id,
                     token=token,
                     expires_at=expires_at
                 )
@@ -238,7 +238,7 @@ def forgot_password():
 def reset_password(token):
     """Şifre sıfırlama"""
     try:
-        from app.models import Kullanici, PasswordResetToken
+        from app.models import User, PasswordResetToken
         from app import db
         
         reset_token = PasswordResetToken.query.filter_by(token=token).first()
@@ -260,7 +260,7 @@ def reset_password(token):
                 return render_template('reset_password.html', token=token)
             
             # Şifreyi güncelle
-            kullanici = Kullanici.query.get(reset_token.kullanici_id)
+            kullanici = User.query.get(reset_token.user_id)
             if kullanici:
                 kullanici.sifre_hash = generate_password_hash(yeni_sifre)
                 db.session.delete(reset_token)
