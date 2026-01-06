@@ -27,6 +27,7 @@ def about():
 
 
 @main_bp.route('/demo-sinav')
+@main_bp.route('/demo')
 def demo_sinav():
     """
     Demo sınav bilgi sayfası
