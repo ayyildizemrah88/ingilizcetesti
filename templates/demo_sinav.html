@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Demo Sınav Hakkında - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Hero Section -->
+            <div class="text-center mb-5">
+                <div class="mb-4">
+                    <span class="badge bg-info fs-6 px-4 py-2">
+                        <i class="fas fa-info-circle me-2"></i>Bilgilendirme
+                    </span>
+                </div>
+                <h1 class="display-4 fw-bold text-primary mb-3">
+                    Demo Sınav
+                </h1>
+                <p class="lead text-muted">
+                    Skills Test Center demo sınavı hakkında bilgi edinin
+                </p>
+            </div>
+
+            <!-- Info Card -->
+            <div class="card shadow-lg border-0 mb-5">
+                <div class="card-header bg-primary text-white py-4">
+                    <h2 class="h3 mb-0 text-center">
+                        <i class="fas fa-clipboard-check me-2"></i>İngilizce Yeterlilik Demo Testi
+                    </h2>
+                </div>
+                <div class="card-body p-5">
+                    <div class="row g-4 mb-5">
+                        <div class="col-md-4 text-center">
+                            <div class="bg-light rounded-circle p-4 d-inline-block mb-3">
+                                <i class="fas fa-question-circle text-primary fa-3x"></i>
+                            </div>
+                            <h5>10 Soru</h5>
+                            <p class="text-muted small">Çoktan seçmeli</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="bg-light rounded-circle p-4 d-inline-block mb-3">
+                                <i class="fas fa-clock text-success fa-3x"></i>
+                            </div>
+                            <h5>15 Dakika</h5>
+                            <p class="text-muted small">Sınav süresi</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="bg-light rounded-circle p-4 d-inline-block mb-3">
+                                <i class="fas fa-trophy text-warning fa-3x"></i>
+                            </div>
+                            <h5>Anında Sonuç</h5>
+                            <p class="text-muted small">Detaylı rapor</p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning border-0 mb-4">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-lock fa-2x me-3"></i>
+                            <div>
+                                <h6 class="mb-1">Demo Sınav Nasıl Başlatılır?</h6>
+                                <p class="mb-0 small">
+                                    Demo sınav, kurumsal müşterilerimize özel olarak sunulmaktadır.
+                                    Demo sınav talep etmek için lütfen bizimle iletişime geçin.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info border-0 mb-4">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-building fa-2x me-3"></i>
+                            <div>
+                                <h6 class="mb-1">Kurumsal Müşteriler İçin</h6>
+                                <p class="mb-0 small">
+                                    Şirketiniz için demo hesabı oluşturmak veya platformumuzu
+                                    denemek için iletişim formunu kullanabilirsiniz.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CTA Section -->
+            <div class="row g-4 mb-5">
+                <div class="col-md-6">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body p-4 text-center">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-envelope me-2"></i>İletişime Geçin
+                            </h5>
+                            <p class="text-muted mb-3">
+                                Demo sınav talebi veya sorularınız için bize ulaşın.
+                            </p>
+                            <a href="{{ url_for('auth.iletisim') }}" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-2"></i>İletişim Formu
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body p-4 text-center">
+                            <h5 class="text-success mb-3">
+                                <i class="fas fa-user-plus me-2"></i>Kurumsal Kayıt
+                            </h5>
+                            <p class="text-muted mb-3">
+                                Şirketiniz için hesap oluşturmak ister misiniz?
+                            </p>
+                            <a href="{{ url_for('auth.register') }}" class="btn btn-success">
+                                <i class="fas fa-building me-2"></i>Kayıt Formu
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Back to Home -->
+            <div class="text-center">
+                <a href="{{ url_for('main.index') }}" class="btn btn-link text-muted">
+                    <i class="fas fa-arrow-left me-2"></i>Ana Sayfaya Dön
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
