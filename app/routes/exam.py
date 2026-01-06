@@ -1,701 +1,574 @@
 # -*- coding: utf-8 -*-
 """
-Admin Routes - Super Admin Panel
-GitHub: app/routes/admin.py
-Skills Test Center - Admin Management System
+Exam Routes - Exam interface and flow
+DÜZELTME: Demo modu desteği eklendi
+GitHub: app/routes/exam.py
 """
-
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
 from functools import wraps
-from datetime import datetime, timedelta
-import json
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
+from app.extensions import db
+import random
+from datetime import datetime
 
-admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+exam_bp = Blueprint('exam', __name__)
 
 
-# ============================================
-# DECORATORS
-# ============================================
+def exam_required(f):
+    """Require active exam session - FIXED: candidate_auth.sinav_giris"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'aday_id' not in session:
+            flash("Lütfen sınav giriş kodunuzu girin.", "warning")
+            return redirect(url_for('candidate_auth.sinav_giris'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def login_required(f):
+    """Require admin login"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'kullanici_id' not in session:
+            flash("Lütfen giriş yapın.", "warning")
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return decorated
+
 
 def superadmin_required(f):
-    """Super admin yetkisi kontrolü"""
+    """Only superadmin can access"""
     @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'kullanici_id' not in session:
-            flash('Bu sayfaya erişmek için giriş yapmalısınız.', 'warning')
-            return redirect(url_for('auth.login'))
+    def decorated(*args, **kwargs):
         if session.get('rol') != 'superadmin':
-            flash('Bu sayfaya erişim yetkiniz yok.', 'danger')
-            return redirect(url_for('main.index'))
+            flash("Bu işlem sadece süper admin tarafından yapılabilir.", "danger")
+            return redirect(url_for('admin.dashboard'))
         return f(*args, **kwargs)
-    return decorated_function
+    return decorated
 
 
-# ============================================
-# DASHBOARD
-# ============================================
+# ══════════════════════════════════════════════════════════════
+# SINAV SAYFALARI
+# ══════════════════════════════════════════════════════════════
 
-@admin_bp.route('/')
-@admin_bp.route('/dashboard')
-@superadmin_required
-def dashboard():
-    """Admin dashboard"""
-    from app.extensions import db
-    from app.models import User, Company, Candidate
+@exam_bp.route('/')
+@exam_bp.route('/sinav')
+@exam_required
+def sinav():
+    """Main exam page - displays current question"""
+    from app.models import Candidate, Question, ExamAnswer
+    
+    aday_id = session.get('aday_id')
+    sinav_modu = session.get('sinav_modu', 'gercek')
+    
+    # ══════════════════════════════════════════════════════════════
+    # DEMO MODU: Veritabanı sorgusu yapmadan demo sınav göster
+    # ══════════════════════════════════════════════════════════════
+    if sinav_modu == 'demo' or aday_id == 'demo':
+        return render_demo_exam()
+    
+    # ══════════════════════════════════════════════════════════════
+    # GERÇEK SINAV: Aday ID'nin integer olduğunu kontrol et
+    # ══════════════════════════════════════════════════════════════
+    try:
+        aday_id = int(aday_id)
+    except (ValueError, TypeError):
+        session.clear()
+        flash("Geçersiz sınav oturumu. Lütfen tekrar giriş yapın.", "warning")
+        return redirect(url_for('candidate_auth.sinav_giris'))
+    
+    candidate = Candidate.query.get(aday_id)
+    
+    if not candidate:
+        session.clear()
+        flash("Aday bulunamadı. Lütfen tekrar giriş yapın.", "warning")
+        return redirect(url_for('candidate_auth.sinav_giris'))
+    
+    # Sınav başlama tarihi kontrolü
+    if not candidate.baslama_tarihi:
+        candidate.baslama_tarihi = datetime.utcnow()
+        candidate.sinav_durumu = 'devam_ediyor'
+        db.session.commit()
+    
+    # Süre kontrolü
+    elapsed = datetime.utcnow() - candidate.baslama_tarihi
+    sinav_suresi = candidate.sinav_suresi or 30  # Default 30 dakika
+    remaining = (sinav_suresi * 60) - elapsed.total_seconds()
+    
+    if remaining <= 0:
+        return redirect(url_for('exam.sinav_bitti'))
+    
+    # Cevaplanan soruları al
+    answered_ids = [a.soru_id for a in ExamAnswer.query.filter_by(aday_id=aday_id).all()]
+    
+    # Soru limiti kontrolü
+    soru_limiti = candidate.soru_limiti or 25
+    if len(answered_ids) >= soru_limiti:
+        return redirect(url_for('exam.sinav_bitti'))
+    
+    # Sonraki soruyu seç
+    question = select_next_question(candidate, answered_ids)
+    
+    if not question:
+        return redirect(url_for('exam.sinav_bitti'))
+    
+    # SECURITY: Store active question ID to prevent manipulation
+    session['active_question_id'] = question.id
+    session['question_started_at'] = datetime.utcnow().isoformat()
+    
+    soru_no = len(answered_ids) + 1
+    
+    return render_template('sinav.html',
+                          soru=question,
+                          soru_no=soru_no,
+                          toplam=soru_limiti,
+                          kalan_sure=int(remaining),
+                          soru_suresi=candidate.soru_suresi or 0,
+                          is_demo=False)
+
+
+def render_demo_exam():
+    """Demo sınavı render et - veritabanı kullanmadan"""
+    from app.models import Question
+    
+    # Demo soru sayısını session'dan al veya başlat
+    demo_soru_no = session.get('demo_soru_no', 1)
+    demo_cevaplar = session.get('demo_cevaplar', [])
+    
+    # Demo sınav 10 soru
+    if demo_soru_no > 10:
+        return redirect(url_for('exam.demo_sonuc'))
+    
+    # Demo sorular - rastgele veritabanından veya sabit sorular
+    try:
+        # Önce veritabanından rastgele soru almayı dene
+        question = Question.query.filter_by(is_active=True).order_by(db.func.random()).first()
+        
+        if question:
+            session['demo_active_question_id'] = question.id
+        else:
+            # Veritabanında soru yoksa demo soru oluştur
+            question = create_demo_question(demo_soru_no)
+            session['demo_active_question_id'] = 'demo'
+            
+    except Exception as e:
+        current_app.logger.warning(f"Demo soru alınamadı: {e}")
+        question = create_demo_question(demo_soru_no)
+        session['demo_active_question_id'] = 'demo'
+    
+    return render_template('sinav.html',
+                          soru=question,
+                          soru_no=demo_soru_no,
+                          toplam=10,
+                          kalan_sure=1800,  # 30 dakika (demo için sabit)
+                          soru_suresi=0,
+                          is_demo=True)
+
+
+def create_demo_question(soru_no):
+    """Veritabanı olmadan demo soru oluştur"""
+    demo_sorular = [
+        {
+            'id': 'demo',
+            'soru_metni': 'She _____ to the office every day.',
+            'secenekler': '{"A": "go", "B": "goes", "C": "going", "D": "gone"}',
+            'dogru_cevap': 'B',
+            'zorluk': 'A2'
+        },
+        {
+            'id': 'demo',
+            'soru_metni': 'I have been living here _____ 2010.',
+            'secenekler': '{"A": "for", "B": "since", "C": "from", "D": "at"}',
+            'dogru_cevap': 'B',
+            'zorluk': 'B1'
+        },
+        {
+            'id': 'demo',
+            'soru_metni': 'If I _____ rich, I would travel the world.',
+            'secenekler': '{"A": "am", "B": "was", "C": "were", "D": "be"}',
+            'dogru_cevap': 'C',
+            'zorluk': 'B2'
+        },
+        {
+            'id': 'demo',
+            'soru_metni': 'The book _____ by millions of people.',
+            'secenekler': '{"A": "has read", "B": "has been read", "C": "is reading", "D": "reads"}',
+            'dogru_cevap': 'B',
+            'zorluk': 'B2'
+        },
+        {
+            'id': 'demo',
+            'soru_metni': 'What _____ you doing when I called?',
+            'secenekler': '{"A": "are", "B": "was", "C": "were", "D": "did"}',
+            'dogru_cevap': 'C',
+            'zorluk': 'A2'
+        },
+        {
+            'id': 'demo',
+            'soru_metni': 'He suggested _____ a new approach.',
+            'secenekler': '{"A": "to try", "B": "trying", "C": "try", "D": "tried"}',
+            'dogru_cevap': 'B',
+            'zorluk': 'B1'
+        },
+        {
+            'id': 'demo',
+            'soru_metni': 'The meeting _____ postponed until next week.',
+            'secenekler': '{"A": "is", "B": "has", "C": "was", "D": "been"}',
+            'dogru_cevap': 'C',
+            'zorluk': 'B1'
+        },
+        {
+            'id': 'demo',
+            'soru_metni': '_____ you ever visited Paris?',
+            'secenekler': '{"A": "Did", "B": "Have", "C": "Are", "D": "Do"}',
+            'dogru_cevap': 'B',
+            'zorluk': 'A2'
+        },
+        {
+            'id': 'demo',
+            'soru_metni': 'I wish I _____ more time to finish the project.',
+            'secenekler': '{"A": "have", "B": "had", "C": "has", "D": "having"}',
+            'dogru_cevap': 'B',
+            'zorluk': 'B2'
+        },
+        {
+            'id': 'demo',
+            'soru_metni': 'She is _____ intelligent than her brother.',
+            'secenekler': '{"A": "most", "B": "more", "C": "much", "D": "many"}',
+            'dogru_cevap': 'B',
+            'zorluk': 'A2'
+        }
+    ]
+    
+    # Soru numarasına göre soru seç
+    idx = (soru_no - 1) % len(demo_sorular)
+    soru_data = demo_sorular[idx]
+    
+    # Mock Question object oluştur
+    class MockQuestion:
+        def __init__(self, data):
+            self.id = data['id']
+            self.soru_metni = data['soru_metni']
+            self.secenekler = data['secenekler']
+            self.dogru_cevap = data['dogru_cevap']
+            self.zorluk = data['zorluk']
+            self.soru_tipi = 'SECMELI'
+    
+    return MockQuestion(soru_data)
+
+
+def select_next_question(candidate, answered_ids):
+    """Select next question using CAT algorithm or random"""
+    from app.models import Question
+    
+    # Query available questions
+    query = Question.query.filter(
+        Question.is_active == True
+    )
+    
+    # Şirket ID varsa filtrele
+    if candidate.sirket_id:
+        # Şirkete özel veya genel soruları al
+        query = query.filter(
+            db.or_(
+                Question.sirket_id == candidate.sirket_id,
+                Question.sirket_id == None
+            )
+        )
+    
+    if answered_ids:
+        query = query.filter(~Question.id.in_(answered_ids))
+    
+    # Filter by current difficulty (CAT)
+    difficulty = candidate.current_difficulty or 'B1'
+    questions_at_level = query.filter_by(zorluk=difficulty).all()
+    
+    if questions_at_level:
+        return random.choice(questions_at_level)
+    
+    # Fallback to any available question
+    all_questions = query.all()
+    if all_questions:
+        return random.choice(all_questions)
+    
+    return None
+
+
+# ══════════════════════════════════════════════════════════════
+# CEVAP GÖNDERİMİ
+# ══════════════════════════════════════════════════════════════
+
+@exam_bp.route('/sinav', methods=['POST'])
+@exam_required
+def sinav_cevap():
+    """Submit answer and get next question"""
+    from app.models import Candidate, Question, ExamAnswer
+    
+    aday_id = session.get('aday_id')
+    sinav_modu = session.get('sinav_modu', 'gercek')
+    
+    # ══════════════════════════════════════════════════════════════
+    # DEMO MODU: Veritabanına kaydetmeden devam et
+    # ══════════════════════════════════════════════════════════════
+    if sinav_modu == 'demo' or aday_id == 'demo':
+        return handle_demo_answer()
+    
+    # ══════════════════════════════════════════════════════════════
+    # GERÇEK SINAV
+    # ══════════════════════════════════════════════════════════════
+    try:
+        aday_id = int(aday_id)
+    except (ValueError, TypeError):
+        session.clear()
+        flash("Geçersiz sınav oturumu.", "warning")
+        return redirect(url_for('candidate_auth.sinav_giris'))
+    
+    soru_id = request.form.get('soru_id', type=int)
+    cevap = request.form.get('cevap', '').upper()
+    
+    # SECURITY: Validate question ID matches session
+    active_question_id = session.get('active_question_id')
+    if not active_question_id or soru_id != active_question_id:
+        flash("Geçersiz soru ID. Lütfen tekrar deneyin.", "warning")
+        return redirect(url_for('exam.sinav'))
+    
+    # Get question
+    question = Question.query.get(soru_id)
+    if not question:
+        return redirect(url_for('exam.sinav'))
+    
+    # Check answer
+    is_correct = cevap == question.dogru_cevap.upper()
+    
+    # Save answer
+    answer = ExamAnswer(
+        aday_id=aday_id,
+        soru_id=soru_id,
+        verilen_cevap=cevap,
+        dogru_mu=is_correct
+    )
+    db.session.add(answer)
+    
+    # Update CAT difficulty
+    candidate = Candidate.query.get(aday_id)
+    if candidate:
+        update_cat_difficulty(candidate, question.zorluk, is_correct)
+    
+    # Clear active question from session
+    session.pop('active_question_id', None)
+    session.pop('question_started_at', None)
+    
+    db.session.commit()
+    
+    return redirect(url_for('exam.sinav'))
+
+
+def handle_demo_answer():
+    """Demo cevabını işle"""
+    cevap = request.form.get('cevap', '').upper()
+    
+    # Demo cevapları kaydet
+    demo_cevaplar = session.get('demo_cevaplar', [])
+    demo_cevaplar.append(cevap)
+    session['demo_cevaplar'] = demo_cevaplar
+    
+    # Soru numarasını artır
+    demo_soru_no = session.get('demo_soru_no', 1)
+    session['demo_soru_no'] = demo_soru_no + 1
+    
+    # Son soru mu?
+    if demo_soru_no >= 10:
+        return redirect(url_for('exam.demo_sonuc'))
+    
+    return redirect(url_for('exam.sinav'))
+
+
+def update_cat_difficulty(candidate, question_difficulty, is_correct):
+    """Update candidate difficulty level based on answer"""
+    difficulty_levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+    
+    current = candidate.current_difficulty or 'B1'
+    if current not in difficulty_levels:
+        current = 'B1'
+    
+    current_idx = difficulty_levels.index(current)
+    
+    if is_correct and current_idx < len(difficulty_levels) - 1:
+        candidate.current_difficulty = difficulty_levels[current_idx + 1]
+    elif not is_correct and current_idx > 0:
+        candidate.current_difficulty = difficulty_levels[current_idx - 1]
+
+
+# ══════════════════════════════════════════════════════════════
+# SINAV BİTİŞ
+# ══════════════════════════════════════════════════════════════
+
+@exam_bp.route('/sinav-bitti')
+@exam_required
+def sinav_bitti():
+    """Exam finished - show results"""
+    from app.models import Candidate, ExamAnswer
+    
+    aday_id = session.get('aday_id')
+    sinav_modu = session.get('sinav_modu', 'gercek')
+    
+    # Demo modu için demo sonuç sayfasına yönlendir
+    if sinav_modu == 'demo' or aday_id == 'demo':
+        return redirect(url_for('exam.demo_sonuc'))
     
     try:
-        # İstatistikler
-        stats = {
-            'toplam_sirket': Company.query.count(),
-            'aktif_sirket': Company.query.filter_by(is_active=True).count(),
-            'toplam_kullanici': User.query.count(),
-            'toplam_aday': Candidate.query.count(),
-            'bekleyen_aday': Candidate.query.filter_by(sinav_durumu='beklemede').count(),
-            'tamamlanan_sinav': Candidate.query.filter_by(sinav_durumu='tamamlandi').count(),
-        }
-        
-        # Son aktiviteler
-        son_adaylar = Candidate.query.order_by(Candidate.id.desc()).limit(5).all()
-        son_sirketler = Company.query.order_by(Company.id.desc()).limit(5).all()
-        
-        return render_template('admin/dashboard.html', 
-                             stats=stats,
-                             son_adaylar=son_adaylar,
-                             son_sirketler=son_sirketler)
-    except Exception as e:
-        current_app.logger.error(f"Dashboard error: {e}")
-        return render_template('admin/dashboard.html', stats={}, son_adaylar=[], son_sirketler=[])
+        aday_id = int(aday_id)
+    except (ValueError, TypeError):
+        session.clear()
+        return redirect(url_for('candidate_auth.sinav_giris'))
+    
+    candidate = Candidate.query.get(aday_id)
+    
+    if not candidate:
+        session.clear()
+        return redirect(url_for('candidate_auth.sinav_giris'))
+    
+    # Sınavı tamamla ve sonuçları hesapla
+    if candidate.sinav_durumu != 'tamamlandi':
+        calculate_exam_results(candidate)
+    
+    return render_template('sinav_sonuc.html', 
+                          aday=candidate,
+                          is_demo=False)
 
 
-# ============================================
-# ŞİRKET YÖNETİMİ
-# ============================================
-
-@admin_bp.route('/sirketler')
-@superadmin_required
-def sirketler():
-    """Şirket listesi"""
-    from app.models import Company
+@exam_bp.route('/demo-sonuc')
+def demo_sonuc():
+    """Demo sınav sonucu"""
+    demo_cevaplar = session.get('demo_cevaplar', [])
+    demo_soru_no = session.get('demo_soru_no', 1)
     
-    page = request.args.get('page', 1, type=int)
-    per_page = 20
+    # Basit hesaplama
+    dogru_sayisi = len(demo_cevaplar)  # Demo için tüm cevapları doğru say
+    toplam_soru = max(demo_soru_no - 1, 1)
     
-    sirketler = Company.query.order_by(Company.id.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
+    # Sonuç verisi oluştur
+    sonuc = {
+        'ad_soyad': session.get('aday_ad', 'Demo Kullanıcı'),
+        'dogru_sayisi': dogru_sayisi,
+        'toplam_soru': toplam_soru,
+        'puan': int((dogru_sayisi / toplam_soru) * 100) if toplam_soru > 0 else 0,
+        'seviye': 'B1',  # Demo için sabit seviye
+        'is_demo': True
+    }
     
-    return render_template('admin/sirketler.html', sirketler=sirketler)
-
-
-@admin_bp.route('/sirket/<int:sirket_id>')
-@superadmin_required
-def sirket_detay(sirket_id):
-    """Şirket detayı"""
-    from app.models import Company, Candidate
+    # Demo session'ı temizle
+    session.pop('demo_soru_no', None)
+    session.pop('demo_cevaplar', None)
+    session.pop('demo_active_question_id', None)
     
-    sirket = Company.query.get_or_404(sirket_id)
-    adaylar = Candidate.query.filter_by(sirket_id=sirket_id).all()
-    
-    return render_template('admin/sirket_detay.html', sirket=sirket, adaylar=adaylar)
+    return render_template('demo_sonuc.html', sonuc=sonuc)
 
 
-@admin_bp.route('/sirket/<int:sirket_id>/duzenle', methods=['GET', 'POST'])
-@superadmin_required
-def sirket_duzenle(sirket_id):
-    """Şirket düzenleme"""
-    from app.extensions import db
-    from app.models import Company
+def calculate_exam_results(candidate):
+    """Sınav sonuçlarını hesapla ve kaydet"""
+    from app.models import ExamAnswer
     
-    sirket = Company.query.get_or_404(sirket_id)
+    answers = ExamAnswer.query.filter_by(aday_id=candidate.id).all()
     
-    if request.method == 'POST':
-        sirket.isim = request.form.get('isim', sirket.isim)
-        sirket.email = request.form.get('email', sirket.email)
-        sirket.telefon = request.form.get('telefon', sirket.telefon)
-        sirket.adres = request.form.get('adres', sirket.adres)
-        sirket.kredi = int(request.form.get('kredi', sirket.kredi or 0))
-        
+    if not answers:
+        candidate.puan = 0
+        candidate.seviye_sonuc = 'A1'
+        candidate.sinav_durumu = 'tamamlandi'
+        candidate.bitis_tarihi = datetime.utcnow()
         db.session.commit()
-        flash('Şirket bilgileri güncellendi.', 'success')
-        return redirect(url_for('admin.sirketler'))
+        return
     
-    return render_template('admin/sirket_duzenle.html', sirket=sirket)
-
-
-@admin_bp.route('/sirket/<int:sirket_id>/toggle', methods=['POST'])
-@superadmin_required
-def sirket_toggle(sirket_id):
-    """Şirket aktif/pasif durumu değiştir"""
-    from app.extensions import db
-    from app.models import Company
+    # Doğru cevap sayısı
+    dogru_sayisi = sum(1 for a in answers if a.dogru_mu)
+    toplam = len(answers)
     
-    sirket = Company.query.get_or_404(sirket_id)
-    sirket.is_active = not sirket.is_active
-    db.session.commit()
+    # Puan hesapla
+    puan = int((dogru_sayisi / toplam) * 100) if toplam > 0 else 0
+    candidate.puan = puan
     
-    durum = 'aktif' if sirket.is_active else 'pasif'
-    flash(f'{sirket.isim} şirketi {durum} yapıldı.', 'success')
+    # Seviye belirle
+    if puan >= 90:
+        candidate.seviye_sonuc = 'C2'
+    elif puan >= 80:
+        candidate.seviye_sonuc = 'C1'
+    elif puan >= 70:
+        candidate.seviye_sonuc = 'B2'
+    elif puan >= 60:
+        candidate.seviye_sonuc = 'B1'
+    elif puan >= 50:
+        candidate.seviye_sonuc = 'A2'
+    else:
+        candidate.seviye_sonuc = 'A1'
     
-    return redirect(url_for('admin.sirketler'))
-
-
-@admin_bp.route('/sirket/<int:sirket_id>/sil', methods=['POST'])
-@superadmin_required
-def sirket_sil(sirket_id):
-    """Şirket silme"""
-    from app.extensions import db
-    from app.models import Company
-    
-    sirket = Company.query.get_or_404(sirket_id)
-    sirket_adi = sirket.isim
-    
-    db.session.delete(sirket)
-    db.session.commit()
-    
-    flash(f'{sirket_adi} şirketi silindi.', 'success')
-    return redirect(url_for('admin.sirketler'))
-
-
-# ============================================
-# KREDİ YÖNETİMİ
-# ============================================
-
-@admin_bp.route('/krediler')
-@superadmin_required
-def krediler():
-    """Kredi yönetimi sayfası"""
-    from app.models import Company
-    
-    sirketler = Company.query.filter_by(is_active=True).order_by(Company.isim).all()
-    return render_template('admin/krediler.html', sirketler=sirketler)
-
-
-@admin_bp.route('/kredi-ekle', methods=['POST'])
-@superadmin_required
-def kredi_ekle():
-    """Şirkete kredi ekle"""
-    from app.extensions import db
-    from app.models import Company
-    
-    sirket_id = request.form.get('sirket_id', type=int)
-    miktar = request.form.get('miktar', type=int)
-    
-    if not sirket_id or not miktar:
-        flash('Geçersiz istek.', 'danger')
-        return redirect(url_for('admin.krediler'))
-    
-    sirket = Company.query.get_or_404(sirket_id)
-    sirket.kredi = (sirket.kredi or 0) + miktar
-    db.session.commit()
-    
-    flash(f'{sirket.isim} şirketine {miktar} kredi eklendi.', 'success')
-    return redirect(url_for('admin.krediler'))
-
-
-# ============================================
-# KULLANICI YÖNETİMİ
-# ============================================
-
-@admin_bp.route('/kullanicilar')
-@superadmin_required
-def kullanicilar():
-    """Kullanıcı listesi"""
-    from app.models import User
-    
-    page = request.args.get('page', 1, type=int)
-    kullanicilar = User.query.order_by(User.id.desc()).paginate(
-        page=page, per_page=20, error_out=False
-    )
-    
-    return render_template('admin/kullanicilar.html', kullanicilar=kullanicilar)
-
-
-@admin_bp.route('/kullanici/<int:kullanici_id>/toggle', methods=['POST'])
-@superadmin_required
-def kullanici_toggle(kullanici_id):
-    """Kullanıcı aktif/pasif durumu değiştir"""
-    from app.extensions import db
-    from app.models import User
-    
-    user = User.query.get_or_404(kullanici_id)
-    user.is_active = not user.is_active
-    db.session.commit()
-    
-    durum = 'aktif' if user.is_active else 'pasif'
-    flash(f'{user.email} kullanıcısı {durum} yapıldı.', 'success')
-    
-    return redirect(url_for('admin.kullanicilar'))
-
-
-# ============================================
-# ADAY YÖNETİMİ
-# ============================================
-
-@admin_bp.route('/adaylar')
-@superadmin_required
-def adaylar():
-    """Tüm adaylar listesi"""
-    from app.models import Candidate
-    
-    page = request.args.get('page', 1, type=int)
-    durum = request.args.get('durum', '')
-    
-    query = Candidate.query
-    
-    if durum:
-        query = query.filter_by(sinav_durumu=durum)
-    
-    adaylar = query.order_by(Candidate.id.desc()).paginate(
-        page=page, per_page=20, error_out=False
-    )
-    
-    return render_template('admin/adaylar.html', adaylar=adaylar, durum=durum)
-
-
-@admin_bp.route('/aday/<int:aday_id>')
-@superadmin_required
-def aday_detay(aday_id):
-    """Aday detayı"""
-    from app.models import Candidate
-    
-    aday = Candidate.query.get_or_404(aday_id)
-    return render_template('admin/aday_detay.html', aday=aday)
-
-
-@admin_bp.route('/aday/<int:aday_id>/sinav-sifirla', methods=['POST'])
-@superadmin_required
-def sinav_sifirla(aday_id):
-    """Sınavı sıfırla"""
-    from app.extensions import db
-    from app.models import Candidate
-    
-    aday = Candidate.query.get_or_404(aday_id)
-    
-    aday.sinav_durumu = 'beklemede'
-    aday.puan = None
-    aday.seviye_sonuc = None
-    aday.baslangic_tarihi = None
-    aday.bitis_tarihi = None
+    candidate.sinav_durumu = 'tamamlandi'
+    candidate.bitis_tarihi = datetime.utcnow()
     
     db.session.commit()
-    flash(f'{aday.ad_soyad} adayının sınavı sıfırlandı.', 'success')
+
+
+# ══════════════════════════════════════════════════════════════
+# SINAV YÖNETİMİ (ADMIN)
+# ══════════════════════════════════════════════════════════════
+
+@exam_bp.route('/admin/reset/<int:aday_id>', methods=['POST'])
+@login_required
+@superadmin_required
+def reset_exam(aday_id):
+    """Reset exam for a candidate"""
+    from app.models import Candidate, ExamAnswer
     
+    candidate = Candidate.query.get_or_404(aday_id)
+    
+    # Cevapları sil
+    ExamAnswer.query.filter_by(aday_id=aday_id).delete()
+    
+    # Aday durumunu sıfırla
+    candidate.sinav_durumu = 'beklemede'
+    candidate.baslama_tarihi = None
+    candidate.bitis_tarihi = None
+    candidate.puan = None
+    candidate.seviye_sonuc = None
+    candidate.current_difficulty = 'B1'
+    
+    db.session.commit()
+    
+    flash(f"{candidate.ad_soyad} adayının sınavı sıfırlandı.", "success")
     return redirect(url_for('admin.aday_detay', aday_id=aday_id))
 
 
-# ============================================
-# SORU YÖNETİMİ
-# ============================================
-
-@admin_bp.route('/sorular')
+@exam_bp.route('/admin/extend-time/<int:aday_id>', methods=['POST'])
+@login_required
 @superadmin_required
-def sorular():
-    """Soru listesi"""
-    from app.models import Question
+def extend_time(aday_id):
+    """Extend exam time for a candidate"""
+    from app.models import Candidate
     
-    page = request.args.get('page', 1, type=int)
-    seviye = request.args.get('seviye', '')
+    candidate = Candidate.query.get_or_404(aday_id)
+    extra_minutes = request.form.get('extra_minutes', 10, type=int)
     
-    query = Question.query
-    
-    if seviye:
-        query = query.filter_by(seviye=seviye)
-    
-    sorular = query.order_by(Question.id.desc()).paginate(
-        page=page, per_page=20, error_out=False
-    )
-    
-    return render_template('admin/sorular.html', sorular=sorular, seviye=seviye)
-
-
-@admin_bp.route('/soru/ekle', methods=['GET', 'POST'])
-@superadmin_required
-def soru_ekle():
-    """Yeni soru ekle"""
-    from app.extensions import db
-    from app.models import Question
-    
-    if request.method == 'POST':
-        soru = Question(
-            soru_metni=request.form.get('soru_metni'),
-            seviye=request.form.get('seviye'),
-            kategori=request.form.get('kategori', 'grammar'),
-            secenekler=json.dumps({
-                'A': request.form.get('secenek_a'),
-                'B': request.form.get('secenek_b'),
-                'C': request.form.get('secenek_c'),
-                'D': request.form.get('secenek_d')
-            }),
-            dogru_cevap=request.form.get('dogru_cevap'),
-            is_active=True
-        )
-        
-        db.session.add(soru)
-        db.session.commit()
-        
-        flash('Soru başarıyla eklendi.', 'success')
-        return redirect(url_for('admin.sorular'))
-    
-    return render_template('admin/soru_ekle.html')
-
-
-@admin_bp.route('/soru/<int:soru_id>/duzenle', methods=['GET', 'POST'])
-@superadmin_required
-def soru_duzenle(soru_id):
-    """Soru düzenleme"""
-    from app.extensions import db
-    from app.models import Question
-    
-    soru = Question.query.get_or_404(soru_id)
-    
-    if request.method == 'POST':
-        soru.soru_metni = request.form.get('soru_metni')
-        soru.seviye = request.form.get('seviye')
-        soru.kategori = request.form.get('kategori', 'grammar')
-        soru.secenekler = json.dumps({
-            'A': request.form.get('secenek_a'),
-            'B': request.form.get('secenek_b'),
-            'C': request.form.get('secenek_c'),
-            'D': request.form.get('secenek_d')
-        })
-        soru.dogru_cevap = request.form.get('dogru_cevap')
-        
-        db.session.commit()
-        flash('Soru güncellendi.', 'success')
-        return redirect(url_for('admin.sorular'))
-    
-    # Seçenekleri parse et
-    secenekler = {}
-    if soru.secenekler:
-        try:
-            secenekler = json.loads(soru.secenekler)
-        except:
-            pass
-    
-    return render_template('admin/soru_duzenle.html', soru=soru, secenekler=secenekler)
-
-
-@admin_bp.route('/soru/<int:soru_id>/sil', methods=['POST'])
-@superadmin_required
-def soru_sil(soru_id):
-    """Soru silme"""
-    from app.extensions import db
-    from app.models import Question
-    
-    soru = Question.query.get_or_404(soru_id)
-    db.session.delete(soru)
+    candidate.sinav_suresi = (candidate.sinav_suresi or 30) + extra_minutes
     db.session.commit()
     
-    flash('Soru silindi.', 'success')
-    return redirect(url_for('admin.sorular'))
+    flash(f"{candidate.ad_soyad} adayının sınav süresi {extra_minutes} dakika uzatıldı.", "success")
+    return redirect(url_for('admin.aday_detay', aday_id=aday_id))
 
 
-# ============================================
-# ŞABLON YÖNETİMİ
-# ============================================
+# ══════════════════════════════════════════════════════════════
+# SINAV ÇIKIŞ
+# ══════════════════════════════════════════════════════════════
 
-@admin_bp.route('/sablonlar')
-@superadmin_required
-def sablonlar():
-    """Sınav şablonları listesi"""
-    from app.models import ExamTemplate
+@exam_bp.route('/cikis')
+def sinav_cikis():
+    """Sınavdan çık"""
+    # Sadece sınav session'larını temizle
+    session.pop('aday_id', None)
+    session.pop('aday_ad', None)
+    session.pop('sinav_modu', None)
+    session.pop('active_question_id', None)
+    session.pop('question_started_at', None)
+    session.pop('demo_soru_no', None)
+    session.pop('demo_cevaplar', None)
+    session.pop('demo_active_question_id', None)
     
-    sablonlar = ExamTemplate.query.order_by(ExamTemplate.id.desc()).all()
-    return render_template('admin/sablonlar.html', sablonlar=sablonlar)
-
-
-@admin_bp.route('/sablon/ekle', methods=['GET', 'POST'])
-@superadmin_required
-def sablon_ekle():
-    """Yeni şablon ekle"""
-    from app.extensions import db
-    from app.models import ExamTemplate
-    
-    if request.method == 'POST':
-        sablon = ExamTemplate(
-            isim=request.form.get('isim'),
-            sure=int(request.form.get('sure', 30)),
-            soru_sayisi=int(request.form.get('soru_sayisi', 25)),
-            seviyeler=request.form.get('seviyeler', 'A1,A2,B1,B2,C1,C2'),
-            is_active=True
-        )
-        
-        db.session.add(sablon)
-        db.session.commit()
-        
-        flash('Şablon başarıyla oluşturuldu.', 'success')
-        return redirect(url_for('admin.sablonlar'))
-    
-    return render_template('admin/sablon_ekle.html')
-
-
-@admin_bp.route('/sablon/<int:sablon_id>/duzenle', methods=['GET', 'POST'])
-@superadmin_required
-def sablon_duzenle(sablon_id):
-    """Şablon düzenleme"""
-    from app.extensions import db
-    from app.models import ExamTemplate
-    
-    sablon = ExamTemplate.query.get_or_404(sablon_id)
-    
-    if request.method == 'POST':
-        sablon.isim = request.form.get('isim')
-        sablon.sure = int(request.form.get('sure', 30))
-        sablon.soru_sayisi = int(request.form.get('soru_sayisi', 25))
-        sablon.seviyeler = request.form.get('seviyeler')
-        
-        db.session.commit()
-        flash('Şablon güncellendi.', 'success')
-        return redirect(url_for('admin.sablonlar'))
-    
-    return render_template('admin/sablon_duzenle.html', sablon=sablon)
-
-
-@admin_bp.route('/sablon/<int:sablon_id>/sil', methods=['POST'])
-@superadmin_required
-def sablon_sil(sablon_id):
-    """Şablon silme"""
-    from app.extensions import db
-    from app.models import ExamTemplate
-    
-    sablon = ExamTemplate.query.get_or_404(sablon_id)
-    db.session.delete(sablon)
-    db.session.commit()
-    
-    flash('Şablon silindi.', 'success')
-    return redirect(url_for('admin.sablonlar'))
-
-
-# ============================================
-# RAPORLAR
-# ============================================
-
-@admin_bp.route('/raporlar')
-@superadmin_required
-def raporlar():
-    """Platform raporları"""
-    from app.models import Company, Candidate
-    
-    # Genel istatistikler
-    stats = {
-        'toplam_sirket': Company.query.count(),
-        'aktif_sirket': Company.query.filter_by(is_active=True).count(),
-        'toplam_aday': Candidate.query.count(),
-        'tamamlanan_sinav': Candidate.query.filter_by(sinav_durumu='tamamlandi').count(),
-        'bekleyen_sinav': Candidate.query.filter_by(sinav_durumu='beklemede').count(),
-    }
-    
-    # Seviye dağılımı
-    seviye_dagilimi = {}
-    for seviye in ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']:
-        seviye_dagilimi[seviye] = Candidate.query.filter_by(
-            sinav_durumu='tamamlandi',
-            seviye_sonuc=seviye
-        ).count()
-    
-    return render_template('admin/raporlar.html', 
-                         stats=stats, 
-                         seviye_dagilimi=seviye_dagilimi)
-
-
-@admin_bp.route('/super-rapor')
-@superadmin_required
-def super_rapor():
-    """Detaylı platform raporu"""
-    from app.models import Company, Candidate, User
-    
-    # Şirket bazlı raporlar
-    sirketler = Company.query.all()
-    sirket_raporlari = []
-    
-    for sirket in sirketler:
-        aday_sayisi = Candidate.query.filter_by(sirket_id=sirket.id).count()
-        tamamlanan = Candidate.query.filter_by(
-            sirket_id=sirket.id, 
-            sinav_durumu='tamamlandi'
-        ).count()
-        
-        sirket_raporlari.append({
-            'sirket': sirket,
-            'aday_sayisi': aday_sayisi,
-            'tamamlanan': tamamlanan,
-            'oran': (tamamlanan / aday_sayisi * 100) if aday_sayisi > 0 else 0
-        })
-    
-    return render_template('admin/super_rapor.html', 
-                         sirket_raporlari=sirket_raporlari)
-
-
-# ============================================
-# AYARLAR
-# ============================================
-
-@admin_bp.route('/ayarlar', methods=['GET', 'POST'])
-@superadmin_required
-def ayarlar():
-    """Platform ayarları"""
-    from app.extensions import db
-    from app.models import Setting
-    
-    if request.method == 'POST':
-        # Ayarları güncelle
-        for key in request.form:
-            setting = Setting.query.filter_by(key=key).first()
-            if setting:
-                setting.value = request.form.get(key)
-            else:
-                setting = Setting(key=key, value=request.form.get(key))
-                db.session.add(setting)
-        
-        db.session.commit()
-        flash('Ayarlar güncellendi.', 'success')
-        return redirect(url_for('admin.ayarlar'))
-    
-    # Mevcut ayarları getir
-    settings = {}
-    for setting in Setting.query.all():
-        settings[setting.key] = setting.value
-    
-    return render_template('admin/ayarlar.html', settings=settings)
-
-
-# ============================================
-# LOGLAR / AUDIT
-# ============================================
-
-@admin_bp.route('/logs')
-@superadmin_required
-def logs():
-    """Sistem logları"""
-    from app.models import AuditLog
-    
-    page = request.args.get('page', 1, type=int)
-    
-    try:
-        logs = AuditLog.query.order_by(AuditLog.id.desc()).paginate(
-            page=page, per_page=50, error_out=False
-        )
-    except:
-        logs = None
-    
-    return render_template('admin/logs.html', logs=logs)
-
-
-# ============================================
-# ANALİTİK
-# ============================================
-
-@admin_bp.route('/analytics')
-@admin_bp.route('/analytics/dashboard')
-@superadmin_required
-def analytics_dashboard():
-    """Analitik dashboard"""
-    from app.models import Candidate, Company
-    
-    # Son 30 günlük veriler
-    today = datetime.now().date()
-    last_30_days = today - timedelta(days=30)
-    
-    stats = {
-        'gunluk_sinav': [],
-        'seviye_dagilimi': {}
-    }
-    
-    return render_template('admin/analytics_dashboard.html', stats=stats)
-
-
-# ============================================
-# VERİ YÖNETİMİ
-# ============================================
-
-@admin_bp.route('/data-management')
-@superadmin_required
-def data_management():
-    """Veri yönetimi"""
-    return render_template('admin/data_management.html')
-
-
-@admin_bp.route('/backup', methods=['POST'])
-@superadmin_required
-def backup():
-    """Veritabanı yedekleme"""
-    flash('Yedekleme başlatıldı. İndirme linki email ile gönderilecek.', 'info')
-    return redirect(url_for('admin.data_management'))
-
-
-# ============================================
-# EMAIL TEST
-# ============================================
-
-@admin_bp.route('/email-test', methods=['GET', 'POST'])
-@superadmin_required
-def email_test():
-    """Email sistemini test et"""
-    if request.method == 'POST':
-        test_email = request.form.get('email')
-        
-        if test_email:
-            try:
-                from app.routes.auth import send_email
-                
-                html_content = """
-                <h1>🎉 Test Email Başarılı!</h1>
-                <p>Bu email, Skills Test Center email sisteminin test edilmesi için gönderilmiştir.</p>
-                <p>✅ Email sisteminiz düzgün çalışıyor!</p>
-                """
-                
-                result = send_email(test_email, "Skills Test Center - Email Test", html_content)
-                
-                if result:
-                    flash(f'Test emaili {test_email} adresine gönderildi!', 'success')
-                else:
-                    flash('Email gönderilemedi. SMTP ayarlarını kontrol edin.', 'danger')
-                    
-            except Exception as e:
-                current_app.logger.error(f"Email test error: {e}")
-                flash(f'Hata: {str(e)}', 'danger')
-        else:
-            flash('Lütfen bir email adresi girin.', 'warning')
-    
-    return render_template('admin/email_test.html')
-
-
-# ============================================
-# API ENDPOINTS
-# ============================================
-
-@admin_bp.route('/api/stats')
-@superadmin_required
-def api_stats():
-    """API: Genel istatistikler"""
-    from app.models import Company, Candidate, User
-    
-    return jsonify({
-        'success': True,
-        'data': {
-            'sirket_sayisi': Company.query.count(),
-            'kullanici_sayisi': User.query.count(),
-            'aday_sayisi': Candidate.query.count(),
-            'tamamlanan_sinav': Candidate.query.filter_by(sinav_durumu='tamamlandi').count()
-        }
-    })
-
-
-@admin_bp.route('/api/sirket/<int:sirket_id>/kredi', methods=['POST'])
-@superadmin_required
-def api_kredi_guncelle(sirket_id):
-    """API: Şirket kredisi güncelle"""
-    from app.extensions import db
-    from app.models import Company
-    
-    data = request.get_json()
-    miktar = data.get('miktar', 0)
-    
-    sirket = Company.query.get_or_404(sirket_id)
-    sirket.kredi = (sirket.kredi or 0) + miktar
-    db.session.commit()
-    
-    return jsonify({
-        'success': True,
-        'yeni_kredi': sirket.kredi
-    })
+    flash("Sınavdan çıkış yaptınız.", "info")
+    return redirect(url_for('main.index'))
