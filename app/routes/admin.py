@@ -2,700 +2,415 @@
 """
 Admin Routes - Super Admin Panel
 GitHub: app/routes/admin.py
-Skills Test Center - Admin Management System
 """
-
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from functools import wraps
-from datetime import datetime, timedelta
-import json
+from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 
-# ============================================
-# DECORATORS
-# ============================================
-
 def superadmin_required(f):
-    """Super admin yetkisi kontrolü"""
+    """Super admin yetkisi gerektiren route'lar için dekoratör"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'kullanici_id' not in session:
             flash('Bu sayfaya erişmek için giriş yapmalısınız.', 'warning')
             return redirect(url_for('auth.login'))
-        if session.get('rol') != 'superadmin':
+        
+        rol = session.get('rol', '')
+        if rol not in ['superadmin', 'super_admin', 'admin']:
             flash('Bu sayfaya erişim yetkiniz yok.', 'danger')
             return redirect(url_for('main.index'))
+        
         return f(*args, **kwargs)
     return decorated_function
 
-
-# ============================================
-# DASHBOARD
-# ============================================
 
 @admin_bp.route('/')
 @admin_bp.route('/dashboard')
 @superadmin_required
 def dashboard():
-    """Admin dashboard"""
-    from app.extensions import db
-    from app.models import User, Company, Candidate
-    
+    """Admin dashboard - Ana panel"""
     try:
-        # İstatistikler
+        from app.models import Sirket, Kullanici, Soru, Aday
+        from app import db
+        
         stats = {
-            'toplam_sirket': Company.query.count(),
-            'aktif_sirket': Company.query.filter_by(is_active=True).count(),
-            'toplam_kullanici': User.query.count(),
-            'toplam_aday': Candidate.query.count(),
-            'bekleyen_aday': Candidate.query.filter_by(sinav_durumu='beklemede').count(),
-            'tamamlanan_sinav': Candidate.query.filter_by(sinav_durumu='tamamlandi').count(),
+            'toplam_sirket': Sirket.query.count() if Sirket else 0,
+            'toplam_kullanici': Kullanici.query.count() if Kullanici else 0,
+            'toplam_soru': Soru.query.count() if Soru else 0,
+            'toplam_aday': Aday.query.count() if Aday else 0,
         }
         
-        # Son aktiviteler
-        son_adaylar = Candidate.query.order_by(Candidate.id.desc()).limit(5).all()
-        son_sirketler = Company.query.order_by(Company.id.desc()).limit(5).all()
+        son_sirketler = Sirket.query.order_by(Sirket.id.desc()).limit(5).all() if Sirket else []
+        son_adaylar = Aday.query.order_by(Aday.id.desc()).limit(5).all() if Aday else []
         
-        return render_template('admin/dashboard.html', 
+        return render_template('dashboard.html',
                              stats=stats,
+                             son_sirketler=son_sirketler,
                              son_adaylar=son_adaylar,
-                             son_sirketler=son_sirketler)
+                             aday_sayisi=stats.get('toplam_aday', 0),
+                             soru_sayisi=stats.get('toplam_soru', 0),
+                             sirket_sayisi=stats.get('toplam_sirket', 0))
     except Exception as e:
-        current_app.logger.error(f"Dashboard error: {e}")
-        return render_template('admin/dashboard.html', stats={}, son_adaylar=[], son_sirketler=[])
+        logger.error(f"Dashboard error: {e}")
+        return render_template('dashboard.html',
+                             stats={},
+                             son_sirketler=[],
+                             son_adaylar=[],
+                             aday_sayisi=0,
+                             soru_sayisi=0,
+                             sirket_sayisi=0)
 
 
-# ============================================
-# ŞİRKET YÖNETİMİ
-# ============================================
+# ==================== ŞİRKET YÖNETİMİ ====================
 
 @admin_bp.route('/sirketler')
 @superadmin_required
 def sirketler():
     """Şirket listesi"""
-    from app.models import Company
-    
-    page = request.args.get('page', 1, type=int)
-    per_page = 20
-    
-    sirketler = Company.query.order_by(Company.id.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-    
-    return render_template('admin/sirketler.html', sirketler=sirketler)
+    try:
+        from app.models import Sirket
+        sirketler = Sirket.query.order_by(Sirket.id.desc()).all()
+        return render_template('sirketler.html', sirketler=sirketler)
+    except Exception as e:
+        logger.error(f"Sirketler error: {e}")
+        flash('Şirketler yüklenirken bir hata oluştu.', 'danger')
+        return render_template('sirketler.html', sirketler=[])
 
 
 @admin_bp.route('/sirket/<int:sirket_id>')
 @superadmin_required
 def sirket_detay(sirket_id):
-    """Şirket detayı"""
-    from app.models import Company, Candidate
-    
-    sirket = Company.query.get_or_404(sirket_id)
-    adaylar = Candidate.query.filter_by(sirket_id=sirket_id).all()
-    
-    return render_template('admin/sirket_detay.html', sirket=sirket, adaylar=adaylar)
-
-
-@admin_bp.route('/sirket/<int:sirket_id>/duzenle', methods=['GET', 'POST'])
-@superadmin_required
-def sirket_duzenle(sirket_id):
-    """Şirket düzenleme"""
-    from app.extensions import db
-    from app.models import Company
-    
-    sirket = Company.query.get_or_404(sirket_id)
-    
-    if request.method == 'POST':
-        sirket.isim = request.form.get('isim', sirket.isim)
-        sirket.email = request.form.get('email', sirket.email)
-        sirket.telefon = request.form.get('telefon', sirket.telefon)
-        sirket.adres = request.form.get('adres', sirket.adres)
-        sirket.kredi = int(request.form.get('kredi', sirket.kredi or 0))
-        
-        db.session.commit()
-        flash('Şirket bilgileri güncellendi.', 'success')
+    """Şirket detay sayfası"""
+    try:
+        from app.models import Sirket
+        sirket = Sirket.query.get_or_404(sirket_id)
+        return render_template('sirket_detay.html', sirket=sirket)
+    except Exception as e:
+        logger.error(f"Sirket detay error: {e}")
+        flash('Şirket bulunamadı.', 'danger')
         return redirect(url_for('admin.sirketler'))
-    
-    return render_template('admin/sirket_duzenle.html', sirket=sirket)
 
 
-@admin_bp.route('/sirket/<int:sirket_id>/toggle', methods=['POST'])
+@admin_bp.route('/sirket/ekle', methods=['GET', 'POST'])
 @superadmin_required
-def sirket_toggle(sirket_id):
-    """Şirket aktif/pasif durumu değiştir"""
-    from app.extensions import db
-    from app.models import Company
+def sirket_ekle():
+    """Yeni şirket ekleme"""
+    if request.method == 'POST':
+        try:
+            from app.models import Sirket
+            from app import db
+            
+            yeni_sirket = Sirket(
+                ad=request.form.get('ad'),
+                email=request.form.get('email'),
+                telefon=request.form.get('telefon'),
+                adres=request.form.get('adres'),
+                is_active=True
+            )
+            db.session.add(yeni_sirket)
+            db.session.commit()
+            flash('Şirket başarıyla eklendi.', 'success')
+            return redirect(url_for('admin.sirketler'))
+        except Exception as e:
+            logger.error(f"Sirket ekle error: {e}")
+            flash('Şirket eklenirken bir hata oluştu.', 'danger')
     
-    sirket = Company.query.get_or_404(sirket_id)
-    sirket.is_active = not sirket.is_active
-    db.session.commit()
-    
-    durum = 'aktif' if sirket.is_active else 'pasif'
-    flash(f'{sirket.isim} şirketi {durum} yapıldı.', 'success')
-    
-    return redirect(url_for('admin.sirketler'))
+    return render_template('sirket_ekle.html')
 
 
-@admin_bp.route('/sirket/<int:sirket_id>/sil', methods=['POST'])
+@admin_bp.route('/sirket/sil/<int:sirket_id>', methods=['POST'])
 @superadmin_required
 def sirket_sil(sirket_id):
     """Şirket silme"""
-    from app.extensions import db
-    from app.models import Company
+    try:
+        from app.models import Sirket
+        from app import db
+        
+        sirket = Sirket.query.get_or_404(sirket_id)
+        db.session.delete(sirket)
+        db.session.commit()
+        flash('Şirket başarıyla silindi.', 'success')
+    except Exception as e:
+        logger.error(f"Sirket sil error: {e}")
+        flash('Şirket silinirken bir hata oluştu.', 'danger')
     
-    sirket = Company.query.get_or_404(sirket_id)
-    sirket_adi = sirket.isim
-    
-    db.session.delete(sirket)
-    db.session.commit()
-    
-    flash(f'{sirket_adi} şirketi silindi.', 'success')
     return redirect(url_for('admin.sirketler'))
 
 
-# ============================================
-# KREDİ YÖNETİMİ
-# ============================================
-
-@admin_bp.route('/krediler')
-@superadmin_required
-def krediler():
-    """Kredi yönetimi sayfası"""
-    from app.models import Company
-    
-    sirketler = Company.query.filter_by(is_active=True).order_by(Company.isim).all()
-    return render_template('admin/krediler.html', sirketler=sirketler)
-
-
-@admin_bp.route('/kredi-ekle', methods=['POST'])
-@superadmin_required
-def kredi_ekle():
-    """Şirkete kredi ekle"""
-    from app.extensions import db
-    from app.models import Company
-    
-    sirket_id = request.form.get('sirket_id', type=int)
-    miktar = request.form.get('miktar', type=int)
-    
-    if not sirket_id or not miktar:
-        flash('Geçersiz istek.', 'danger')
-        return redirect(url_for('admin.krediler'))
-    
-    sirket = Company.query.get_or_404(sirket_id)
-    sirket.kredi = (sirket.kredi or 0) + miktar
-    db.session.commit()
-    
-    flash(f'{sirket.isim} şirketine {miktar} kredi eklendi.', 'success')
-    return redirect(url_for('admin.krediler'))
-
-
-# ============================================
-# KULLANICI YÖNETİMİ
-# ============================================
+# ==================== KULLANICI YÖNETİMİ ====================
 
 @admin_bp.route('/kullanicilar')
 @superadmin_required
 def kullanicilar():
     """Kullanıcı listesi"""
-    from app.models import User
-    
-    page = request.args.get('page', 1, type=int)
-    kullanicilar = User.query.order_by(User.id.desc()).paginate(
-        page=page, per_page=20, error_out=False
-    )
-    
-    return render_template('admin/kullanicilar.html', kullanicilar=kullanicilar)
+    try:
+        from app.models import Kullanici
+        kullanicilar = Kullanici.query.order_by(Kullanici.id.desc()).all()
+        return render_template('kullanicilar.html', kullanicilar=kullanicilar)
+    except Exception as e:
+        logger.error(f"Kullanicilar error: {e}")
+        flash('Kullanıcılar yüklenirken bir hata oluştu.', 'danger')
+        return render_template('kullanicilar.html', kullanicilar=[])
 
 
-@admin_bp.route('/kullanici/<int:kullanici_id>/toggle', methods=['POST'])
-@superadmin_required
-def kullanici_toggle(kullanici_id):
-    """Kullanıcı aktif/pasif durumu değiştir"""
-    from app.extensions import db
-    from app.models import User
-    
-    user = User.query.get_or_404(kullanici_id)
-    user.is_active = not user.is_active
-    db.session.commit()
-    
-    durum = 'aktif' if user.is_active else 'pasif'
-    flash(f'{user.email} kullanıcısı {durum} yapıldı.', 'success')
-    
-    return redirect(url_for('admin.kullanicilar'))
-
-
-# ============================================
-# ADAY YÖNETİMİ
-# ============================================
+# ==================== ADAY YÖNETİMİ ====================
 
 @admin_bp.route('/adaylar')
 @superadmin_required
 def adaylar():
-    """Tüm adaylar listesi"""
-    from app.models import Candidate
-    
-    page = request.args.get('page', 1, type=int)
-    durum = request.args.get('durum', '')
-    
-    query = Candidate.query
-    
-    if durum:
-        query = query.filter_by(sinav_durumu=durum)
-    
-    adaylar = query.order_by(Candidate.id.desc()).paginate(
-        page=page, per_page=20, error_out=False
-    )
-    
-    return render_template('admin/adaylar.html', adaylar=adaylar, durum=durum)
+    """Aday listesi"""
+    try:
+        from app.models import Aday
+        adaylar = Aday.query.order_by(Aday.id.desc()).all()
+        return render_template('adaylar.html', adaylar=adaylar)
+    except Exception as e:
+        logger.error(f"Adaylar error: {e}")
+        flash('Adaylar yüklenirken bir hata oluştu.', 'danger')
+        return render_template('adaylar.html', adaylar=[])
 
 
 @admin_bp.route('/aday/<int:aday_id>')
 @superadmin_required
 def aday_detay(aday_id):
-    """Aday detayı"""
-    from app.models import Candidate
-    
-    aday = Candidate.query.get_or_404(aday_id)
-    return render_template('admin/aday_detay.html', aday=aday)
+    """Aday detay sayfası"""
+    try:
+        from app.models import Aday
+        aday = Aday.query.get_or_404(aday_id)
+        return render_template('aday_detay.html', aday=aday)
+    except Exception as e:
+        logger.error(f"Aday detay error: {e}")
+        flash('Aday bulunamadı.', 'danger')
+        return redirect(url_for('admin.adaylar'))
 
 
-@admin_bp.route('/aday/<int:aday_id>/sinav-sifirla', methods=['POST'])
-@superadmin_required
-def sinav_sifirla(aday_id):
-    """Sınavı sıfırla"""
-    from app.extensions import db
-    from app.models import Candidate
-    
-    aday = Candidate.query.get_or_404(aday_id)
-    
-    aday.sinav_durumu = 'beklemede'
-    aday.puan = None
-    aday.seviye_sonuc = None
-    aday.baslangic_tarihi = None
-    aday.bitis_tarihi = None
-    
-    db.session.commit()
-    flash(f'{aday.ad_soyad} adayının sınavı sıfırlandı.', 'success')
-    
-    return redirect(url_for('admin.aday_detay', aday_id=aday_id))
-
-
-# ============================================
-# SORU YÖNETİMİ
-# ============================================
+# ==================== SORU YÖNETİMİ ====================
 
 @admin_bp.route('/sorular')
 @superadmin_required
 def sorular():
     """Soru listesi"""
-    from app.models import Question
-    
-    page = request.args.get('page', 1, type=int)
-    seviye = request.args.get('seviye', '')
-    
-    query = Question.query
-    
-    if seviye:
-        query = query.filter_by(seviye=seviye)
-    
-    sorular = query.order_by(Question.id.desc()).paginate(
-        page=page, per_page=20, error_out=False
-    )
-    
-    return render_template('admin/sorular.html', sorular=sorular, seviye=seviye)
+    try:
+        from app.models import Soru
+        sorular = Soru.query.order_by(Soru.id.desc()).all()
+        return render_template('sorular.html', sorular=sorular)
+    except Exception as e:
+        logger.error(f"Sorular error: {e}")
+        flash('Sorular yüklenirken bir hata oluştu.', 'danger')
+        return render_template('sorular.html', sorular=[])
 
 
 @admin_bp.route('/soru/ekle', methods=['GET', 'POST'])
 @superadmin_required
 def soru_ekle():
-    """Yeni soru ekle"""
-    from app.extensions import db
-    from app.models import Question
-    
+    """Yeni soru ekleme"""
     if request.method == 'POST':
-        soru = Question(
-            soru_metni=request.form.get('soru_metni'),
-            seviye=request.form.get('seviye'),
-            kategori=request.form.get('kategori', 'grammar'),
-            secenekler=json.dumps({
-                'A': request.form.get('secenek_a'),
-                'B': request.form.get('secenek_b'),
-                'C': request.form.get('secenek_c'),
-                'D': request.form.get('secenek_d')
-            }),
-            dogru_cevap=request.form.get('dogru_cevap'),
-            is_active=True
-        )
-        
-        db.session.add(soru)
-        db.session.commit()
-        
-        flash('Soru başarıyla eklendi.', 'success')
-        return redirect(url_for('admin.sorular'))
-    
-    return render_template('admin/soru_ekle.html')
-
-
-@admin_bp.route('/soru/<int:soru_id>/duzenle', methods=['GET', 'POST'])
-@superadmin_required
-def soru_duzenle(soru_id):
-    """Soru düzenleme"""
-    from app.extensions import db
-    from app.models import Question
-    
-    soru = Question.query.get_or_404(soru_id)
-    
-    if request.method == 'POST':
-        soru.soru_metni = request.form.get('soru_metni')
-        soru.seviye = request.form.get('seviye')
-        soru.kategori = request.form.get('kategori', 'grammar')
-        soru.secenekler = json.dumps({
-            'A': request.form.get('secenek_a'),
-            'B': request.form.get('secenek_b'),
-            'C': request.form.get('secenek_c'),
-            'D': request.form.get('secenek_d')
-        })
-        soru.dogru_cevap = request.form.get('dogru_cevap')
-        
-        db.session.commit()
-        flash('Soru güncellendi.', 'success')
-        return redirect(url_for('admin.sorular'))
-    
-    # Seçenekleri parse et
-    secenekler = {}
-    if soru.secenekler:
         try:
-            secenekler = json.loads(soru.secenekler)
-        except:
-            pass
+            from app.models import Soru
+            from app import db
+            
+            yeni_soru = Soru(
+                soru_metni=request.form.get('soru_metni'),
+                secenek_a=request.form.get('secenek_a'),
+                secenek_b=request.form.get('secenek_b'),
+                secenek_c=request.form.get('secenek_c'),
+                secenek_d=request.form.get('secenek_d'),
+                dogru_cevap=request.form.get('dogru_cevap'),
+                zorluk=request.form.get('zorluk', 'orta'),
+                kategori=request.form.get('kategori')
+            )
+            db.session.add(yeni_soru)
+            db.session.commit()
+            flash('Soru başarıyla eklendi.', 'success')
+            return redirect(url_for('admin.sorular'))
+        except Exception as e:
+            logger.error(f"Soru ekle error: {e}")
+            flash('Soru eklenirken bir hata oluştu.', 'danger')
     
-    return render_template('admin/soru_duzenle.html', soru=soru, secenekler=secenekler)
+    return render_template('soru_ekle.html')
 
 
-@admin_bp.route('/soru/<int:soru_id>/sil', methods=['POST'])
-@superadmin_required
-def soru_sil(soru_id):
-    """Soru silme"""
-    from app.extensions import db
-    from app.models import Question
-    
-    soru = Question.query.get_or_404(soru_id)
-    db.session.delete(soru)
-    db.session.commit()
-    
-    flash('Soru silindi.', 'success')
-    return redirect(url_for('admin.sorular'))
-
-
-# ============================================
-# ŞABLON YÖNETİMİ
-# ============================================
+# ==================== ŞABLON YÖNETİMİ ====================
 
 @admin_bp.route('/sablonlar')
 @superadmin_required
 def sablonlar():
     """Sınav şablonları listesi"""
-    from app.models import ExamTemplate
-    
-    sablonlar = ExamTemplate.query.order_by(ExamTemplate.id.desc()).all()
-    return render_template('admin/sablonlar.html', sablonlar=sablonlar)
+    try:
+        from app.models import SinavSablonu
+        sablonlar = SinavSablonu.query.order_by(SinavSablonu.id.desc()).all()
+        return render_template('sablonlar.html', sablonlar=sablonlar)
+    except Exception as e:
+        logger.error(f"Sablonlar error: {e}")
+        flash('Şablonlar yüklenirken bir hata oluştu.', 'danger')
+        return render_template('sablonlar.html', sablonlar=[])
 
 
 @admin_bp.route('/sablon/ekle', methods=['GET', 'POST'])
 @superadmin_required
 def sablon_ekle():
-    """Yeni şablon ekle"""
-    from app.extensions import db
-    from app.models import ExamTemplate
-    
+    """Yeni şablon ekleme"""
     if request.method == 'POST':
-        sablon = ExamTemplate(
-            isim=request.form.get('isim'),
-            sure=int(request.form.get('sure', 30)),
-            soru_sayisi=int(request.form.get('soru_sayisi', 25)),
-            seviyeler=request.form.get('seviyeler', 'A1,A2,B1,B2,C1,C2'),
-            is_active=True
-        )
-        
-        db.session.add(sablon)
-        db.session.commit()
-        
-        flash('Şablon başarıyla oluşturuldu.', 'success')
-        return redirect(url_for('admin.sablonlar'))
+        try:
+            from app.models import SinavSablonu
+            from app import db
+            
+            yeni_sablon = SinavSablonu(
+                ad=request.form.get('ad'),
+                aciklama=request.form.get('aciklama'),
+                sure=int(request.form.get('sure', 60)),
+                soru_sayisi=int(request.form.get('soru_sayisi', 10))
+            )
+            db.session.add(yeni_sablon)
+            db.session.commit()
+            flash('Şablon başarıyla eklendi.', 'success')
+            return redirect(url_for('admin.sablonlar'))
+        except Exception as e:
+            logger.error(f"Sablon ekle error: {e}")
+            flash('Şablon eklenirken bir hata oluştu.', 'danger')
     
-    return render_template('admin/sablon_ekle.html')
+    return render_template('sablon_ekle.html')
 
 
-@admin_bp.route('/sablon/<int:sablon_id>/duzenle', methods=['GET', 'POST'])
-@superadmin_required
-def sablon_duzenle(sablon_id):
-    """Şablon düzenleme"""
-    from app.extensions import db
-    from app.models import ExamTemplate
-    
-    sablon = ExamTemplate.query.get_or_404(sablon_id)
-    
-    if request.method == 'POST':
-        sablon.isim = request.form.get('isim')
-        sablon.sure = int(request.form.get('sure', 30))
-        sablon.soru_sayisi = int(request.form.get('soru_sayisi', 25))
-        sablon.seviyeler = request.form.get('seviyeler')
-        
-        db.session.commit()
-        flash('Şablon güncellendi.', 'success')
-        return redirect(url_for('admin.sablonlar'))
-    
-    return render_template('admin/sablon_duzenle.html', sablon=sablon)
-
-
-@admin_bp.route('/sablon/<int:sablon_id>/sil', methods=['POST'])
-@superadmin_required
-def sablon_sil(sablon_id):
-    """Şablon silme"""
-    from app.extensions import db
-    from app.models import ExamTemplate
-    
-    sablon = ExamTemplate.query.get_or_404(sablon_id)
-    db.session.delete(sablon)
-    db.session.commit()
-    
-    flash('Şablon silindi.', 'success')
-    return redirect(url_for('admin.sablonlar'))
-
-
-# ============================================
-# RAPORLAR
-# ============================================
+# ==================== RAPORLAR ====================
 
 @admin_bp.route('/raporlar')
 @superadmin_required
 def raporlar():
-    """Platform raporları"""
-    from app.models import Company, Candidate
-    
-    # Genel istatistikler
-    stats = {
-        'toplam_sirket': Company.query.count(),
-        'aktif_sirket': Company.query.filter_by(is_active=True).count(),
-        'toplam_aday': Candidate.query.count(),
-        'tamamlanan_sinav': Candidate.query.filter_by(sinav_durumu='tamamlandi').count(),
-        'bekleyen_sinav': Candidate.query.filter_by(sinav_durumu='beklemede').count(),
-    }
-    
-    # Seviye dağılımı
-    seviye_dagilimi = {}
-    for seviye in ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']:
-        seviye_dagilimi[seviye] = Candidate.query.filter_by(
-            sinav_durumu='tamamlandi',
-            seviye_sonuc=seviye
-        ).count()
-    
-    return render_template('admin/raporlar.html', 
-                         stats=stats, 
-                         seviye_dagilimi=seviye_dagilimi)
+    """Raporlar sayfası"""
+    return render_template('raporlar.html')
 
 
 @admin_bp.route('/super-rapor')
 @superadmin_required
 def super_rapor():
-    """Detaylı platform raporu"""
-    from app.models import Company, Candidate, User
-    
-    # Şirket bazlı raporlar
-    sirketler = Company.query.all()
-    sirket_raporlari = []
-    
-    for sirket in sirketler:
-        aday_sayisi = Candidate.query.filter_by(sirket_id=sirket.id).count()
-        tamamlanan = Candidate.query.filter_by(
-            sirket_id=sirket.id, 
-            sinav_durumu='tamamlandi'
-        ).count()
+    """Platform geneli rapor"""
+    try:
+        from app.models import Sirket, Kullanici, Soru, Aday
         
-        sirket_raporlari.append({
-            'sirket': sirket,
-            'aday_sayisi': aday_sayisi,
-            'tamamlanan': tamamlanan,
-            'oran': (tamamlanan / aday_sayisi * 100) if aday_sayisi > 0 else 0
-        })
-    
-    return render_template('admin/super_rapor.html', 
-                         sirket_raporlari=sirket_raporlari)
+        stats = {
+            'toplam_sirket': Sirket.query.count() if Sirket else 0,
+            'toplam_kullanici': Kullanici.query.count() if Kullanici else 0,
+            'toplam_soru': Soru.query.count() if Soru else 0,
+            'toplam_aday': Aday.query.count() if Aday else 0,
+        }
+        
+        return render_template('super_rapor.html', stats=stats)
+    except Exception as e:
+        logger.error(f"Super rapor error: {e}")
+        return render_template('super_rapor.html', stats={})
 
 
-# ============================================
-# AYARLAR
-# ============================================
+# ==================== KREDİ YÖNETİMİ ====================
 
-@admin_bp.route('/ayarlar', methods=['GET', 'POST'])
+@admin_bp.route('/krediler')
 @superadmin_required
-def ayarlar():
-    """Platform ayarları"""
-    from app.extensions import db
-    from app.models import Setting
-    
-    if request.method == 'POST':
-        # Ayarları güncelle
-        for key in request.form:
-            setting = Setting.query.filter_by(key=key).first()
-            if setting:
-                setting.value = request.form.get(key)
-            else:
-                setting = Setting(key=key, value=request.form.get(key))
-                db.session.add(setting)
+def krediler():
+    """Kredi yönetimi"""
+    try:
+        from app.models import Sirket
+        sirketler = Sirket.query.order_by(Sirket.id.desc()).all()
+        return render_template('krediler.html', sirketler=sirketler)
+    except Exception as e:
+        logger.error(f"Krediler error: {e}")
+        flash('Krediler yüklenirken bir hata oluştu.', 'danger')
+        return render_template('krediler.html', sirketler=[])
+
+
+@admin_bp.route('/kredi/ekle/<int:sirket_id>', methods=['POST'])
+@superadmin_required
+def kredi_ekle(sirket_id):
+    """Şirkete kredi ekleme"""
+    try:
+        from app.models import Sirket
+        from app import db
+        
+        sirket = Sirket.query.get_or_404(sirket_id)
+        miktar = int(request.form.get('miktar', 0))
+        
+        if hasattr(sirket, 'kredi'):
+            sirket.kredi = (sirket.kredi or 0) + miktar
         
         db.session.commit()
-        flash('Ayarlar güncellendi.', 'success')
-        return redirect(url_for('admin.ayarlar'))
+        flash(f'{miktar} kredi başarıyla eklendi.', 'success')
+    except Exception as e:
+        logger.error(f"Kredi ekle error: {e}")
+        flash('Kredi eklenirken bir hata oluştu.', 'danger')
     
-    # Mevcut ayarları getir
-    settings = {}
-    for setting in Setting.query.all():
-        settings[setting.key] = setting.value
-    
-    return render_template('admin/ayarlar.html', settings=settings)
+    return redirect(url_for('admin.krediler'))
 
 
-# ============================================
-# LOGLAR / AUDIT
-# ============================================
+# ==================== AYARLAR ====================
+
+@admin_bp.route('/ayarlar')
+@superadmin_required
+def ayarlar():
+    """Sistem ayarları"""
+    return render_template('ayarlar.html')
+
+
+# ==================== VERİ YÖNETİMİ ====================
+
+@admin_bp.route('/veri-yonetimi')
+@superadmin_required
+def veri_yonetimi():
+    """Veri yönetimi sayfası"""
+    return render_template('veri_yonetimi.html')
+
+
+@admin_bp.route('/fraud-heatmap')
+@superadmin_required
+def fraud_heatmap():
+    """Fraud heatmap"""
+    return render_template('fraud_heatmap.html')
+
 
 @admin_bp.route('/logs')
 @superadmin_required
 def logs():
-    """Sistem logları"""
-    from app.models import AuditLog
-    
-    page = request.args.get('page', 1, type=int)
-    
+    """Admin logları"""
     try:
-        logs = AuditLog.query.order_by(AuditLog.id.desc()).paginate(
-            page=page, per_page=50, error_out=False
-        )
-    except:
-        logs = None
-    
-    return render_template('admin/logs.html', logs=logs)
+        from app.models import AuditLog
+        logs = AuditLog.query.order_by(AuditLog.id.desc()).limit(100).all()
+        return render_template('logs.html', logs=logs)
+    except Exception as e:
+        logger.error(f"Logs error: {e}")
+        return render_template('logs.html', logs=[])
 
 
-# ============================================
-# ANALİTİK
-# ============================================
+# ==================== DEMO OLUŞTURMA ====================
 
-@admin_bp.route('/analytics')
-@admin_bp.route('/analytics/dashboard')
+@admin_bp.route('/demo-olustur', methods=['GET', 'POST'])
 @superadmin_required
-def analytics_dashboard():
-    """Analitik dashboard"""
-    from app.models import Candidate, Company
-    
-    # Son 30 günlük veriler
-    today = datetime.now().date()
-    last_30_days = today - timedelta(days=30)
-    
-    stats = {
-        'gunluk_sinav': [],
-        'seviye_dagilimi': {}
-    }
-    
-    return render_template('admin/analytics_dashboard.html', stats=stats)
-
-
-# ============================================
-# VERİ YÖNETİMİ
-# ============================================
-
-@admin_bp.route('/data-management')
-@superadmin_required
-def data_management():
-    """Veri yönetimi"""
-    return render_template('admin/data_management.html')
-
-
-@admin_bp.route('/backup', methods=['POST'])
-@superadmin_required
-def backup():
-    """Veritabanı yedekleme"""
-    flash('Yedekleme başlatıldı. İndirme linki email ile gönderilecek.', 'info')
-    return redirect(url_for('admin.data_management'))
-
-
-# ============================================
-# EMAIL TEST
-# ============================================
-
-@admin_bp.route('/email-test', methods=['GET', 'POST'])
-@superadmin_required
-def email_test():
-    """Email sistemini test et"""
+def demo_olustur():
+    """Hızlı demo şirket ve aday oluşturma"""
     if request.method == 'POST':
-        test_email = request.form.get('email')
-        
-        if test_email:
-            try:
-                from app.routes.auth import send_email
-                
-                html_content = """
-                <h1>🎉 Test Email Başarılı!</h1>
-                <p>Bu email, Skills Test Center email sisteminin test edilmesi için gönderilmiştir.</p>
-                <p>✅ Email sisteminiz düzgün çalışıyor!</p>
-                """
-                
-                result = send_email(test_email, "Skills Test Center - Email Test", html_content)
-                
-                if result:
-                    flash(f'Test emaili {test_email} adresine gönderildi!', 'success')
-                else:
-                    flash('Email gönderilemedi. SMTP ayarlarını kontrol edin.', 'danger')
-                    
-            except Exception as e:
-                current_app.logger.error(f"Email test error: {e}")
-                flash(f'Hata: {str(e)}', 'danger')
-        else:
-            flash('Lütfen bir email adresi girin.', 'warning')
+        try:
+            from app.models import Sirket, Kullanici, Aday
+            from app import db
+            import secrets
+            
+            # Demo şirket oluştur
+            demo_sirket = Sirket(
+                ad=f"Demo Şirket {datetime.now().strftime('%H%M%S')}",
+                email=f"demo{secrets.token_hex(4)}@example.com",
+                is_active=True,
+                kredi=100
+            )
+            db.session.add(demo_sirket)
+            db.session.flush()
+            
+            flash('Demo şirket başarıyla oluşturuldu.', 'success')
+            db.session.commit()
+            
+            return redirect(url_for('admin.sirketler'))
+        except Exception as e:
+            logger.error(f"Demo olustur error: {e}")
+            flash('Demo oluşturulurken bir hata oluştu.', 'danger')
     
-    return render_template('admin/email_test.html')
-
-
-# ============================================
-# API ENDPOINTS
-# ============================================
-
-@admin_bp.route('/api/stats')
-@superadmin_required
-def api_stats():
-    """API: Genel istatistikler"""
-    from app.models import Company, Candidate, User
-    
-    return jsonify({
-        'success': True,
-        'data': {
-            'sirket_sayisi': Company.query.count(),
-            'kullanici_sayisi': User.query.count(),
-            'aday_sayisi': Candidate.query.count(),
-            'tamamlanan_sinav': Candidate.query.filter_by(sinav_durumu='tamamlandi').count()
-        }
-    })
-
-
-@admin_bp.route('/api/sirket/<int:sirket_id>/kredi', methods=['POST'])
-@superadmin_required
-def api_kredi_guncelle(sirket_id):
-    """API: Şirket kredisi güncelle"""
-    from app.extensions import db
-    from app.models import Company
-    
-    data = request.get_json()
-    miktar = data.get('miktar', 0)
-    
-    sirket = Company.query.get_or_404(sirket_id)
-    sirket.kredi = (sirket.kredi or 0) + miktar
-    db.session.commit()
-    
-    return jsonify({
-        'success': True,
-        'yeni_kredi': sirket.kredi
-    })
+    return render_template('demo_olustur.html')
