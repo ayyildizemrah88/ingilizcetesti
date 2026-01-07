@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Kullanım Şartları - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <h1 class="text-center mb-4">
+                        <i class="fas fa-file-contract text-primary me-2"></i>
+                        Kullanım Şartları
+                    </h1>
+                    <p class="text-muted text-center mb-5">Son güncelleme: Ocak 2026</p>
+
+                    <section class="mb-5">
+                        <h2 class="h4 text-primary mb-3">1. Genel Hükümler</h2>
+                        <p>Skills Test Center platformunu ("Platform") kullanarak, aşağıdaki kullanım şartlarını kabul etmiş sayılırsınız. Bu şartları kabul etmiyorsanız, platformu kullanmayınız.</p>
+                    </section>
+
+                    <section class="mb-5">
+                        <h2 class="h4 text-primary mb-3">2. Hizmet Tanımı</h2>
+                        <p>Skills Test Center, kurumsal müşterilere ve adaylara online sınav ve değerlendirme hizmetleri sunan bir platformdur. Hizmetlerimiz şunları içerir:</p>
+                        <ul class="list-unstyled ps-4">
+                            <li><i class="fas fa-check text-success me-2"></i>Online İngilizce yeterlilik sınavları</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Kurumsal sınav yönetimi</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Aday değerlendirme ve raporlama</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Dijital sertifika hizmetleri</li>
+                        </ul>
+                    </section>
+
+                    <section class="mb-5">
+                        <h2 class="h4 text-primary mb-3">3. Kullanıcı Sorumlulukları</h2>
+                        <p>Platform kullanıcıları aşağıdaki kurallara uymakla yükümlüdür:</p>
+                        <ul>
+                            <li>Doğru ve güncel bilgi sağlamak</li>
+                            <li>Hesap güvenliğini korumak</li>
+                            <li>Sınav kurallarına uymak</li>
+                            <li>Kopya çekmemek ve hile yapmamak</li>
+                            <li>Üçüncü şahısların haklarına saygı göstermek</li>
+                        </ul>
+                    </section>
+
+                    <section class="mb-5">
+                        <h2 class="h4 text-primary mb-3">4. Sınav Kuralları</h2>
+                        <p>Sınav esnasında aşağıdaki kurallar geçerlidir:</p>
+                        <ul>
+                            <li>Sınav süresince yardımcı materyal kullanılamaz</li>
+                            <li>Sınav ekranından ayrılmak yasaktır</li>
+                            <li>Sınav soruları gizlidir ve paylaşılamaz</li>
+                            <li>Kural ihlalinde sınav iptal edilir</li>
+                        </ul>
+                    </section>
+
+                    <section class="mb-5">
+                        <h2 class="h4 text-primary mb-3">5. Fikri Mülkiyet</h2>
+                        <p>Platformdaki tüm içerikler, sınav soruları, tasarımlar ve yazılımlar Skills Test Center'ın mülkiyetindedir. İzinsiz kopyalama, dağıtma veya ticari kullanım yasaktır.</p>
+                    </section>
+
+                    <section class="mb-5">
+                        <h2 class="h4 text-primary mb-3">6. Gizlilik</h2>
+                        <p>Kişisel verilerinizin işlenmesi hakkında detaylı bilgi için <a href="{{ url_for('main.privacy') }}">Gizlilik Politikası</a> sayfamızı inceleyiniz.</p>
+                    </section>
+
+                    <section class="mb-5">
+                        <h2 class="h4 text-primary mb-3">7. Sorumluluk Sınırı</h2>
+                        <p>Platform, teknik aksaklıklar veya üçüncü taraf hizmetlerden kaynaklanan sorunlardan dolayı sorumluluk kabul etmez. Ancak, hizmet kalitesini sürekli iyileştirmek için çalışmaktayız.</p>
+                    </section>
+
+                    <section class="mb-5">
+                        <h2 class="h4 text-primary mb-3">8. Değişiklikler</h2>
+                        <p>Bu kullanım şartları önceden haber verilmeksizin değiştirilebilir. Güncel şartları düzenli olarak kontrol etmeniz önerilir.</p>
+                    </section>
+
+                    <section class="mb-5">
+                        <h2 class="h4 text-primary mb-3">9. İletişim</h2>
+                        <p>Sorularınız için <a href="{{ url_for('auth.iletisim') }}">iletişim sayfamız</a> üzerinden bize ulaşabilirsiniz.</p>
+                    </section>
+
+                    <div class="text-center mt-5">
+                        <a href="{{ url_for('main.index') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-home me-2"></i>Ana Sayfaya Dön
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
