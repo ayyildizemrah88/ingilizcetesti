@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 One-time superadmin creation script
-Run with: python scripts/create_admin.py
 """
+import sys
+import os
+
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from app import create_app
 from app.extensions import db
 from app.models import User
