@@ -2,7 +2,7 @@
 """
 Admin Routes - Super Admin Panel
 GitHub: app/routes/admin.py
-FIXED: Correct model names and db import
+FIXED: Correct template names and robust error handling
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from functools import wraps
@@ -28,6 +28,15 @@ def superadmin_required(f):
 @superadmin_required
 def dashboard():
     """Admin dashboard - Ana panel"""
+    stats = {
+        'toplam_sirket': 0,
+        'toplam_kullanici': 0,
+        'toplam_soru': 0,
+        'toplam_aday': 0,
+    }
+    son_sirketler = []
+    son_adaylar = []
+    
     try:
         from app.models import Company, User, Question, Candidate
         stats = {
@@ -38,35 +47,29 @@ def dashboard():
         }
         son_sirketler = Company.query.order_by(Company.id.desc()).limit(5).all()
         son_adaylar = Candidate.query.order_by(Candidate.id.desc()).limit(5).all()
-        return render_template('dashboard.html',
-                             stats=stats,
-                             son_sirketler=son_sirketler,
-                             son_adaylar=son_adaylar,
-                             aday_sayisi=stats.get('toplam_aday', 0),
-                             soru_sayisi=stats.get('toplam_soru', 0),
-                             sirket_sayisi=stats.get('toplam_sirket', 0))
     except Exception as e:
         logger.error(f"Dashboard error: {e}")
-        return render_template('dashboard.html',
-                             stats={},
-                             son_sirketler=[],
-                             son_adaylar=[],
-                             aday_sayisi=0,
-                             soru_sayisi=0,
-                             sirket_sayisi=0)
+    return render_template('dashboard.html',
+                         stats=stats,
+                         son_sirketler=son_sirketler,
+                         son_adaylar=son_adaylar,
+                         aday_sayisi=stats.get('toplam_aday', 0),
+                         soru_sayisi=stats.get('toplam_soru', 0),
+                         sirket_sayisi=stats.get('toplam_sirket', 0))
 # ==================== ŞİRKET YÖNETİMİ ====================
 @admin_bp.route('/sirketler')
 @superadmin_required
 def sirketler():
     """Şirket listesi"""
+    sirketler = []
     try:
         from app.models import Company
         sirketler = Company.query.order_by(Company.id.desc()).all()
-        return render_template('sirketler.html', sirketler=sirketler)
     except Exception as e:
         logger.error(f"Sirketler error: {e}")
         flash('Şirketler yüklenirken bir hata oluştu.', 'danger')
-        return render_template('sirketler.html', sirketler=[])
+    
+    return render_template('sirketler.html', sirketler=sirketler)
 @admin_bp.route('/sirket/<int:sirket_id>')
 @superadmin_required
 def sirket_detay(sirket_id):
@@ -88,7 +91,7 @@ def sirket_ekle():
             from app.models import Company
             from app.extensions import db
             yeni_sirket = Company(
-                isim=request.form.get('ad'),
+                isim=request.form.get('ad') or request.form.get('isim'),
                 email=request.form.get('email'),
                 telefon=request.form.get('telefon'),
                 adres=request.form.get('adres'),
@@ -101,7 +104,7 @@ def sirket_ekle():
         except Exception as e:
             logger.error(f"Sirket ekle error: {e}")
             flash('Şirket eklenirken bir hata oluştu.', 'danger')
-    return render_template('sirket_ekle.html')
+    return render_template('sirket_form.html')
 @admin_bp.route('/sirket/sil/<int:sirket_id>', methods=['POST'])
 @superadmin_required
 def sirket_sil(sirket_id):
@@ -122,27 +125,61 @@ def sirket_sil(sirket_id):
 @superadmin_required
 def kullanicilar():
     """Kullanıcı listesi"""
+    kullanicilar = []
     try:
         from app.models import User
         kullanicilar = User.query.order_by(User.id.desc()).all()
-        return render_template('kullanicilar.html', kullanicilar=kullanicilar)
     except Exception as e:
         logger.error(f"Kullanicilar error: {e}")
         flash('Kullanıcılar yüklenirken bir hata oluştu.', 'danger')
-        return render_template('kullanicilar.html', kullanicilar=[])
+    
+    return render_template('kullanicilar.html', kullanicilar=kullanicilar)
+@admin_bp.route('/kullanici/ekle', methods=['GET', 'POST'])
+@superadmin_required
+def kullanici_ekle():
+    """Yeni kullanıcı ekleme"""
+    sirketler = []
+    try:
+        from app.models import Company
+        sirketler = Company.query.all()
+    except:
+        pass
+    
+    if request.method == 'POST':
+        try:
+            from app.models import User
+            from app.extensions import db
+            from werkzeug.security import generate_password_hash
+            yeni_kullanici = User(
+                email=request.form.get('email'),
+                sifre_hash=generate_password_hash(request.form.get('sifre', 'password123')),
+                ad_soyad=request.form.get('ad_soyad'),
+                rol=request.form.get('rol', 'customer'),
+                sirket_id=request.form.get('sirket_id') or None,
+                is_active=True
+            )
+            db.session.add(yeni_kullanici)
+            db.session.commit()
+            flash('Kullanıcı başarıyla eklendi.', 'success')
+            return redirect(url_for('admin.kullanicilar'))
+        except Exception as e:
+            logger.error(f"Kullanici ekle error: {e}")
+            flash('Kullanıcı eklenirken bir hata oluştu.', 'danger')
+    return render_template('kullanici_form.html', sirketler=sirketler)
 # ==================== ADAY YÖNETİMİ ====================
 @admin_bp.route('/adaylar')
 @superadmin_required
 def adaylar():
     """Aday listesi"""
+    adaylar = []
     try:
         from app.models import Candidate
         adaylar = Candidate.query.order_by(Candidate.id.desc()).all()
-        return render_template('adaylar.html', adaylar=adaylar)
     except Exception as e:
         logger.error(f"Adaylar error: {e}")
         flash('Adaylar yüklenirken bir hata oluştu.', 'danger')
-        return render_template('adaylar.html', adaylar=[])
+    
+    return render_template('adaylar.html', adaylar=adaylar)
 @admin_bp.route('/aday/<int:aday_id>')
 @superadmin_required
 def aday_detay(aday_id):
@@ -160,14 +197,15 @@ def aday_detay(aday_id):
 @superadmin_required
 def sorular():
     """Soru listesi"""
+    sorular = []
     try:
         from app.models import Question
         sorular = Question.query.order_by(Question.id.desc()).all()
-        return render_template('sorular.html', sorular=sorular)
     except Exception as e:
         logger.error(f"Sorular error: {e}")
         flash('Sorular yüklenirken bir hata oluştu.', 'danger')
-        return render_template('sorular.html', sorular=[])
+    
+    return render_template('sorular.html', sorular=sorular)
 @admin_bp.route('/soru/ekle', methods=['GET', 'POST'])
 @superadmin_required
 def soru_ekle():
@@ -193,20 +231,21 @@ def soru_ekle():
         except Exception as e:
             logger.error(f"Soru ekle error: {e}")
             flash('Soru eklenirken bir hata oluştu.', 'danger')
-    return render_template('soru_ekle.html')
+    return render_template('soru_form.html')
 # ==================== ŞABLON YÖNETİMİ ====================
 @admin_bp.route('/sablonlar')
 @superadmin_required
 def sablonlar():
     """Sınav şablonları listesi"""
+    sablonlar = []
     try:
         from app.models import ExamTemplate
         sablonlar = ExamTemplate.query.order_by(ExamTemplate.id.desc()).all()
-        return render_template('sablonlar.html', sablonlar=sablonlar)
     except Exception as e:
         logger.error(f"Sablonlar error: {e}")
         flash('Şablonlar yüklenirken bir hata oluştu.', 'danger')
-        return render_template('sablonlar.html', sablonlar=[])
+    
+    return render_template('sablonlar.html', sablonlar=sablonlar)
 @admin_bp.route('/sablon/ekle', methods=['GET', 'POST'])
 @superadmin_required
 def sablon_ekle():
@@ -228,7 +267,7 @@ def sablon_ekle():
         except Exception as e:
             logger.error(f"Sablon ekle error: {e}")
             flash('Şablon eklenirken bir hata oluştu.', 'danger')
-    return render_template('sablon_ekle.html')
+    return render_template('sablon_form.html')
 # ==================== RAPORLAR ====================
 @admin_bp.route('/raporlar')
 @superadmin_required
@@ -239,6 +278,12 @@ def raporlar():
 @superadmin_required
 def super_rapor():
     """Platform geneli rapor"""
+    stats = {
+        'toplam_sirket': 0,
+        'toplam_kullanici': 0,
+        'toplam_soru': 0,
+        'toplam_aday': 0,
+    }
     try:
         from app.models import Company, User, Question, Candidate
         stats = {
@@ -247,23 +292,23 @@ def super_rapor():
             'toplam_soru': Question.query.count(),
             'toplam_aday': Candidate.query.count(),
         }
-        return render_template('super_rapor.html', stats=stats)
     except Exception as e:
         logger.error(f"Super rapor error: {e}")
-        return render_template('super_rapor.html', stats={})
+    return render_template('super_rapor.html', stats=stats)
 # ==================== KREDİ YÖNETİMİ ====================
 @admin_bp.route('/krediler')
 @superadmin_required
 def krediler():
     """Kredi yönetimi"""
+    sirketler = []
     try:
         from app.models import Company
         sirketler = Company.query.order_by(Company.id.desc()).all()
-        return render_template('krediler.html', sirketler=sirketler)
     except Exception as e:
         logger.error(f"Krediler error: {e}")
         flash('Krediler yüklenirken bir hata oluştu.', 'danger')
-        return render_template('krediler.html', sirketler=[])
+    
+    return render_template('krediler.html', sirketler=sirketler)
 @admin_bp.route('/kredi/ekle/<int:sirket_id>', methods=['POST'])
 @superadmin_required
 def kredi_ekle(sirket_id):
@@ -302,13 +347,14 @@ def fraud_heatmap():
 @superadmin_required
 def logs():
     """Admin logları"""
+    logs = []
     try:
         from app.models import AuditLog
         logs = AuditLog.query.order_by(AuditLog.id.desc()).limit(100).all()
-        return render_template('logs.html', logs=logs)
     except Exception as e:
         logger.error(f"Logs error: {e}")
-        return render_template('logs.html', logs=[])
+    
+    return render_template('admin_logs.html', logs=logs)
 # ==================== DEMO OLUŞTURMA ====================
 @admin_bp.route('/demo-olustur', methods=['GET', 'POST'])
 @superadmin_required
