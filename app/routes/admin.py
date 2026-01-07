@@ -2,7 +2,7 @@
 """
 Admin Routes - Super Admin Panel
 GitHub: app/routes/admin.py
-FIXED: Correct template names and robust error handling
+FIXED: All missing routes added for template compatibility
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from functools import wraps
@@ -23,6 +23,7 @@ def superadmin_required(f):
             return redirect(url_for('main.index'))
         return f(*args, **kwargs)
     return decorated_function
+# ==================== DASHBOARD ====================
 @admin_bp.route('/')
 @admin_bp.route('/dashboard')
 @superadmin_required
@@ -68,7 +69,6 @@ def sirketler():
     except Exception as e:
         logger.error(f"Sirketler error: {e}")
         flash('Şirketler yüklenirken bir hata oluştu.', 'danger')
-    
     return render_template('sirketler.html', sirketler=sirketler)
 @admin_bp.route('/sirket/<int:sirket_id>')
 @superadmin_required
@@ -105,6 +105,29 @@ def sirket_ekle():
             logger.error(f"Sirket ekle error: {e}")
             flash('Şirket eklenirken bir hata oluştu.', 'danger')
     return render_template('sirket_form.html')
+@admin_bp.route('/sirket/duzenle/<int:id>', methods=['GET', 'POST'])
+@superadmin_required
+def sirket_duzenle(id):
+    """Şirket düzenleme"""
+    try:
+        from app.models import Company
+        from app.extensions import db
+        sirket = Company.query.get_or_404(id)
+        
+        if request.method == 'POST':
+            sirket.isim = request.form.get('ad') or request.form.get('isim') or sirket.isim
+            sirket.email = request.form.get('email') or sirket.email
+            sirket.telefon = request.form.get('telefon') or sirket.telefon
+            sirket.adres = request.form.get('adres') or sirket.adres
+            db.session.commit()
+            flash('Şirket başarıyla güncellendi.', 'success')
+            return redirect(url_for('admin.sirketler'))
+            
+        return render_template('sirket_form.html', sirket=sirket)
+    except Exception as e:
+        logger.error(f"Sirket duzenle error: {e}")
+        flash('Şirket düzenlenirken bir hata oluştu.', 'danger')
+        return redirect(url_for('admin.sirketler'))
 @admin_bp.route('/sirket/sil/<int:sirket_id>', methods=['POST'])
 @superadmin_required
 def sirket_sil(sirket_id):
@@ -132,7 +155,6 @@ def kullanicilar():
     except Exception as e:
         logger.error(f"Kullanicilar error: {e}")
         flash('Kullanıcılar yüklenirken bir hata oluştu.', 'danger')
-    
     return render_template('kullanicilar.html', kullanicilar=kullanicilar)
 @admin_bp.route('/kullanici/ekle', methods=['GET', 'POST'])
 @superadmin_required
@@ -149,15 +171,14 @@ def kullanici_ekle():
         try:
             from app.models import User
             from app.extensions import db
-            from werkzeug.security import generate_password_hash
             yeni_kullanici = User(
                 email=request.form.get('email'),
-                sifre_hash=generate_password_hash(request.form.get('sifre', 'password123')),
                 ad_soyad=request.form.get('ad_soyad'),
                 rol=request.form.get('rol', 'customer'),
                 sirket_id=request.form.get('sirket_id') or None,
                 is_active=True
             )
+            yeni_kullanici.set_password(request.form.get('sifre', 'password123'))
             db.session.add(yeni_kullanici)
             db.session.commit()
             flash('Kullanıcı başarıyla eklendi.', 'success')
@@ -166,6 +187,53 @@ def kullanici_ekle():
             logger.error(f"Kullanici ekle error: {e}")
             flash('Kullanıcı eklenirken bir hata oluştu.', 'danger')
     return render_template('kullanici_form.html', sirketler=sirketler)
+@admin_bp.route('/kullanici/duzenle/<int:id>', methods=['GET', 'POST'])
+@superadmin_required
+def kullanici_duzenle(id):
+    """Kullanıcı düzenleme"""
+    sirketler = []
+    try:
+        from app.models import Company
+        sirketler = Company.query.all()
+    except:
+        pass
+        
+    try:
+        from app.models import User
+        from app.extensions import db
+        kullanici = User.query.get_or_404(id)
+        
+        if request.method == 'POST':
+            kullanici.email = request.form.get('email') or kullanici.email
+            kullanici.ad_soyad = request.form.get('ad_soyad') or kullanici.ad_soyad
+            kullanici.rol = request.form.get('rol') or kullanici.rol
+            kullanici.sirket_id = request.form.get('sirket_id') or kullanici.sirket_id
+            if request.form.get('sifre'):
+                kullanici.set_password(request.form.get('sifre'))
+            db.session.commit()
+            flash('Kullanıcı başarıyla güncellendi.', 'success')
+            return redirect(url_for('admin.kullanicilar'))
+            
+        return render_template('kullanici_form.html', kullanici=kullanici, sirketler=sirketler)
+    except Exception as e:
+        logger.error(f"Kullanici duzenle error: {e}")
+        flash('Kullanıcı düzenlenirken bir hata oluştu.', 'danger')
+        return redirect(url_for('admin.kullanicilar'))
+@admin_bp.route('/kullanici/sil/<int:id>', methods=['POST'])
+@superadmin_required
+def kullanici_sil(id):
+    """Kullanıcı silme"""
+    try:
+        from app.models import User
+        from app.extensions import db
+        kullanici = User.query.get_or_404(id)
+        db.session.delete(kullanici)
+        db.session.commit()
+        flash('Kullanıcı başarıyla silindi.', 'success')
+    except Exception as e:
+        logger.error(f"Kullanici sil error: {e}")
+        flash('Kullanıcı silinirken bir hata oluştu.', 'danger')
+    return redirect(url_for('admin.kullanicilar'))
 # ==================== ADAY YÖNETİMİ ====================
 @admin_bp.route('/adaylar')
 @superadmin_required
@@ -178,8 +246,39 @@ def adaylar():
     except Exception as e:
         logger.error(f"Adaylar error: {e}")
         flash('Adaylar yüklenirken bir hata oluştu.', 'danger')
-    
     return render_template('adaylar.html', adaylar=adaylar)
+@admin_bp.route('/aday/ekle', methods=['GET', 'POST'])
+@superadmin_required
+def aday_ekle():
+    """Yeni aday ekleme"""
+    sirketler = []
+    sablonlar = []
+    try:
+        from app.models import Company, ExamTemplate
+        sirketler = Company.query.all()
+        sablonlar = ExamTemplate.query.all()
+    except:
+        pass
+    
+    if request.method == 'POST':
+        try:
+            from app.models import Candidate
+            from app.extensions import db
+            yeni_aday = Candidate(
+                ad_soyad=request.form.get('ad_soyad'),
+                email=request.form.get('email'),
+                telefon=request.form.get('telefon'),
+                sirket_id=request.form.get('sirket_id') or None,
+                sablon_id=request.form.get('sablon_id') or None
+            )
+            db.session.add(yeni_aday)
+            db.session.commit()
+            flash('Aday başarıyla eklendi.', 'success')
+            return redirect(url_for('admin.adaylar'))
+        except Exception as e:
+            logger.error(f"Aday ekle error: {e}")
+            flash('Aday eklenirken bir hata oluştu.', 'danger')
+    return render_template('aday_form.html', sirketler=sirketler, sablonlar=sablonlar)
 @admin_bp.route('/aday/<int:aday_id>')
 @superadmin_required
 def aday_detay(aday_id):
@@ -192,6 +291,21 @@ def aday_detay(aday_id):
         logger.error(f"Aday detay error: {e}")
         flash('Aday bulunamadı.', 'danger')
         return redirect(url_for('admin.adaylar'))
+@admin_bp.route('/aday/sil/<int:id>', methods=['POST'])
+@superadmin_required
+def aday_sil(id):
+    """Aday silme"""
+    try:
+        from app.models import Candidate
+        from app.extensions import db
+        aday = Candidate.query.get_or_404(id)
+        db.session.delete(aday)
+        db.session.commit()
+        flash('Aday başarıyla silindi.', 'success')
+    except Exception as e:
+        logger.error(f"Aday sil error: {e}")
+        flash('Aday silinirken bir hata oluştu.', 'danger')
+    return redirect(url_for('admin.adaylar'))
 # ==================== SORU YÖNETİMİ ====================
 @admin_bp.route('/sorular')
 @superadmin_required
@@ -204,7 +318,6 @@ def sorular():
     except Exception as e:
         logger.error(f"Sorular error: {e}")
         flash('Sorular yüklenirken bir hata oluştu.', 'danger')
-    
     return render_template('sorular.html', sorular=sorular)
 @admin_bp.route('/soru/ekle', methods=['GET', 'POST'])
 @superadmin_required
@@ -232,6 +345,48 @@ def soru_ekle():
             logger.error(f"Soru ekle error: {e}")
             flash('Soru eklenirken bir hata oluştu.', 'danger')
     return render_template('soru_form.html')
+@admin_bp.route('/soru/duzenle/<int:id>', methods=['GET', 'POST'])
+@superadmin_required
+def soru_duzenle(id):
+    """Soru düzenleme"""
+    try:
+        from app.models import Question
+        from app.extensions import db
+        soru = Question.query.get_or_404(id)
+        
+        if request.method == 'POST':
+            soru.soru_metni = request.form.get('soru_metni') or soru.soru_metni
+            soru.secenek_a = request.form.get('secenek_a') or soru.secenek_a
+            soru.secenek_b = request.form.get('secenek_b') or soru.secenek_b
+            soru.secenek_c = request.form.get('secenek_c') or soru.secenek_c
+            soru.secenek_d = request.form.get('secenek_d') or soru.secenek_d
+            soru.dogru_cevap = request.form.get('dogru_cevap') or soru.dogru_cevap
+            soru.zorluk = request.form.get('zorluk') or soru.zorluk
+            soru.kategori = request.form.get('kategori') or soru.kategori
+            db.session.commit()
+            flash('Soru başarıyla güncellendi.', 'success')
+            return redirect(url_for('admin.sorular'))
+            
+        return render_template('soru_form.html', soru=soru)
+    except Exception as e:
+        logger.error(f"Soru duzenle error: {e}")
+        flash('Soru düzenlenirken bir hata oluştu.', 'danger')
+        return redirect(url_for('admin.sorular'))
+@admin_bp.route('/soru/sil/<int:id>', methods=['POST'])
+@superadmin_required
+def soru_sil(id):
+    """Soru silme"""
+    try:
+        from app.models import Question
+        from app.extensions import db
+        soru = Question.query.get_or_404(id)
+        db.session.delete(soru)
+        db.session.commit()
+        flash('Soru başarıyla silindi.', 'success')
+    except Exception as e:
+        logger.error(f"Soru sil error: {e}")
+        flash('Soru silinirken bir hata oluştu.', 'danger')
+    return redirect(url_for('admin.sorular'))
 # ==================== ŞABLON YÖNETİMİ ====================
 @admin_bp.route('/sablonlar')
 @superadmin_required
@@ -244,9 +399,9 @@ def sablonlar():
     except Exception as e:
         logger.error(f"Sablonlar error: {e}")
         flash('Şablonlar yüklenirken bir hata oluştu.', 'danger')
-    
     return render_template('sablonlar.html', sablonlar=sablonlar)
 @admin_bp.route('/sablon/ekle', methods=['GET', 'POST'])
+@admin_bp.route('/sablon/yeni', methods=['GET', 'POST'])
 @superadmin_required
 def sablon_ekle():
     """Yeni şablon ekleme"""
@@ -268,6 +423,50 @@ def sablon_ekle():
             logger.error(f"Sablon ekle error: {e}")
             flash('Şablon eklenirken bir hata oluştu.', 'danger')
     return render_template('sablon_form.html')
+# Alias for sablon_yeni -> sablon_ekle
+@admin_bp.route('/sablon-yeni', methods=['GET', 'POST'])
+@superadmin_required
+def sablon_yeni():
+    """Alias for sablon_ekle"""
+    return redirect(url_for('admin.sablon_ekle'))
+@admin_bp.route('/sablon/duzenle/<int:id>', methods=['GET', 'POST'])
+@superadmin_required
+def sablon_duzenle(id):
+    """Şablon düzenleme"""
+    try:
+        from app.models import ExamTemplate
+        from app.extensions import db
+        sablon = ExamTemplate.query.get_or_404(id)
+        
+        if request.method == 'POST':
+            sablon.ad = request.form.get('ad') or sablon.ad
+            sablon.aciklama = request.form.get('aciklama') or sablon.aciklama
+            sablon.sure = int(request.form.get('sure', sablon.sure))
+            sablon.soru_sayisi = int(request.form.get('soru_sayisi', sablon.soru_sayisi))
+            db.session.commit()
+            flash('Şablon başarıyla güncellendi.', 'success')
+            return redirect(url_for('admin.sablonlar'))
+            
+        return render_template('sablon_form.html', sablon=sablon)
+    except Exception as e:
+        logger.error(f"Sablon duzenle error: {e}")
+        flash('Şablon düzenlenirken bir hata oluştu.', 'danger')
+        return redirect(url_for('admin.sablonlar'))
+@admin_bp.route('/sablon/sil/<int:id>', methods=['POST'])
+@superadmin_required
+def sablon_sil(id):
+    """Şablon silme"""
+    try:
+        from app.models import ExamTemplate
+        from app.extensions import db
+        sablon = ExamTemplate.query.get_or_404(id)
+        db.session.delete(sablon)
+        db.session.commit()
+        flash('Şablon başarıyla silindi.', 'success')
+    except Exception as e:
+        logger.error(f"Sablon sil error: {e}")
+        flash('Şablon silinirken bir hata oluştu.', 'danger')
+    return redirect(url_for('admin.sablonlar'))
 # ==================== RAPORLAR ====================
 @admin_bp.route('/raporlar')
 @superadmin_required
@@ -307,7 +506,6 @@ def krediler():
     except Exception as e:
         logger.error(f"Krediler error: {e}")
         flash('Krediler yüklenirken bir hata oluştu.', 'danger')
-    
     return render_template('krediler.html', sirketler=sirketler)
 @admin_bp.route('/kredi/ekle/<int:sirket_id>', methods=['POST'])
 @superadmin_required
@@ -343,7 +541,9 @@ def veri_yonetimi():
 def fraud_heatmap():
     """Fraud heatmap"""
     return render_template('fraud_heatmap.html')
+# ==================== LOGLAR ====================
 @admin_bp.route('/logs')
+@admin_bp.route('/loglar')
 @superadmin_required
 def logs():
     """Admin logları"""
@@ -353,8 +553,13 @@ def logs():
         logs = AuditLog.query.order_by(AuditLog.id.desc()).limit(100).all()
     except Exception as e:
         logger.error(f"Logs error: {e}")
-    
     return render_template('admin_logs.html', logs=logs)
+# Alias for loglar -> logs
+@admin_bp.route('/log-listesi')
+@superadmin_required
+def loglar():
+    """Alias for logs"""
+    return redirect(url_for('admin.logs'))
 # ==================== DEMO OLUŞTURMA ====================
 @admin_bp.route('/demo-olustur', methods=['GET', 'POST'])
 @superadmin_required
