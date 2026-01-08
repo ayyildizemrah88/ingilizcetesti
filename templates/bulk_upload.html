@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Toplu Aday Yükleme - Admin Panel{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin.adaylar') }}">Adaylar</a></li>
+                    <li class="breadcrumb-item active">Toplu Yükleme</li>
+                </ol>
+            </nav>
+            <h2><i class="bi bi-cloud-upload me-2"></i>Toplu Aday Yükleme</h2>
+            <p class="text-muted">Excel veya CSV dosyası ile birden fazla aday ekleyin</p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Dosya Yükle</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="form-label">Şirket Seçin</label>
+                            <select name="sirket_id" class="form-select" required>
+                                <option value="">-- Şirket Seçin --</option>
+                                {% for sirket in sirketler %}
+                                <option value="{{ sirket.id }}">{{ sirket.isim or sirket.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Sınav Şablonu (Opsiyonel)</label>
+                            <select name="sablon_id" class="form-select">
+                                <option value="">-- Şablon Seçin --</option>
+                                {% for sablon in sablonlar %}
+                                <option value="{{ sablon.id }}">{{ sablon.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Dosya Seçin (Excel veya CSV)</label>
+                            <input type="file" name="dosya" class="form-control" accept=".xlsx,.xls,.csv" required>
+                            <small class="text-muted">Desteklenen formatlar: .xlsx, .xls, .csv</small>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-cloud-upload me-1"></i>Yükle
+                            </button>
+                            <a href="{{ url_for('admin.adaylar') }}" class="btn btn-secondary">İptal</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Dosya Formatı</h5>
+                </div>
+                <div class="card-body">
+                    <p>Excel/CSV dosyanız şu sütunları içermelidir:</p>
+                    <ul>
+                        <li><strong>ad_soyad</strong> - Aday adı soyadı</li>
+                        <li><strong>email</strong> - E-posta adresi</li>
+                        <li><strong>telefon</strong> - Telefon (opsiyonel)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
