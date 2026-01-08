@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Şirket Kredi Ekle - Admin Panel{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin.sirketler') }}">Şirketler</a></li>
+                    <li class="breadcrumb-item active">Kredi Ekle</li>
+                </ol>
+            </nav>
+            <h2><i class="bi bi-coin me-2"></i>Şirkete Kredi Ekle</h2>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">{{ sirket.isim or sirket.ad or 'Şirket' }}</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Mevcut Kredi:</strong>
+                        <span class="badge bg-info">{{ sirket.kredi or 0 }}</span>
+                    </p>
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Eklenecek Kredi Miktarı</label>
+                            <input type="number" name="miktar" class="form-control" min="1" value="10" required>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-circle me-1"></i>Kredi Ekle
+                            </button>
+                            <a href="{{ url_for('admin.sirketler') }}" class="btn btn-secondary">İptal</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
