@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Kredi Yönetimi - Admin Panel{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-0"><i class="bi bi-coin me-2"></i>Kredi Yönetimi</h2>
+            <p class="text-muted">Şirketlere kredi yükleyin ve yönetin</p>
+        </div>
+    </div>
+    {% if sirketler %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-building me-2"></i>Şirket Kredi Durumu</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Şirket Adı</th>
+                                    <th>Email</th>
+                                    <th>Mevcut Kredi</th>
+                                    <th>Durum</th>
+                                    <th class="text-center">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sirket in sirketler %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ sirket.isim or sirket.ad or 'İsimsiz' }}</strong>
+                                    </td>
+                                    <td>{{ sirket.email or '-' }}</td>
+                                    <td>
+                                        <span
+                                            class="badge bg-{{ 'success' if (sirket.kredi or 0) > 10 else 'warning' if (sirket.kredi or 0) > 0 else 'danger' }}">
+                                            {{ sirket.kredi or 0 }} Kredi
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if sirket.is_active %}
+                                        <span class="badge bg-success">Aktif</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Pasif</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                            data-bs-target="#krediModal{{ sirket.id }}">
+                                            <i class="bi bi-plus-circle me-1"></i>Kredi Ekle
+                                        </button>
+                                    </td>
+                                </tr>
+                                <!-- Kredi Ekleme Modal -->
+                                <div class="modal fade" id="krediModal{{ sirket.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-primary text-white">
+                                                <h5 class="modal-title">
+                                                    <i class="bi bi-coin me-2"></i>Kredi Ekle
+                                                </h5>
+                                                <button type="button" class="btn-close btn-close-white"
+                                                    data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form method="POST"
+                                                action="{{ url_for('admin.kredi_ekle', sirket_id=sirket.id) }}">
+                                                <div class="modal-body">
+                                                    <p><strong>Şirket:</strong> {{ sirket.isim or sirket.ad }}</p>
+                                                    <p><strong>Mevcut Kredi:</strong> {{ sirket.kredi or 0 }}</p>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Eklenecek Kredi Miktarı</label>
+                                                        <input type="number" name="miktar" class="form-control" min="1"
+                                                            value="10" required>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary"
+                                                        data-bs-dismiss="modal">İptal</button>
+                                                    <button type="submit" class="btn btn-primary">
+                                                        <i class="bi bi-plus-circle me-1"></i>Kredi Ekle
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>Henüz şirket bulunmuyor.
+        <a href="{{ url_for('admin.sirket_ekle') }}" class="alert-link">İlk şirketi ekleyin</a>.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
