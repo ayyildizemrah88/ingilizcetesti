@@ -2,8 +2,9 @@
 """
 Admin Routes - Super Admin Panel
 GitHub: app/routes/admin.py
-FIXED: All missing routes added for template compatibility
-Model names: Company, User, Candidate, ExamTemplate, Question, AuditLog
+COMPREHENSIVE FIX: All missing routes added for template compatibility
+Model names: Company, User, Candidate, ExamTemplate, Question, AuditLog, ExamAnswer
+Candidate fields: ad_soyad, email, cep_no (not telefon), sirket_id, giris_kodu
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from functools import wraps
@@ -417,16 +418,21 @@ def aday_ekle():
         try:
             from app.models import Candidate
             from app.extensions import db
+            import secrets
+            
+            # Generate unique entry code
+            giris_kodu = secrets.token_hex(4).upper()
+            
             yeni_aday = Candidate(
                 ad_soyad=request.form.get('ad_soyad'),
                 email=request.form.get('email'),
-                telefon=request.form.get('telefon'),
+                cep_no=request.form.get('cep_no') or request.form.get('telefon'),
                 sirket_id=request.form.get('sirket_id') or None,
-                sablon_id=request.form.get('sablon_id') or None
+                giris_kodu=giris_kodu
             )
             db.session.add(yeni_aday)
             db.session.commit()
-            flash('Aday başarıyla eklendi.', 'success')
+            flash(f'Aday başarıyla eklendi. Giriş kodu: {giris_kodu}', 'success')
             return redirect(url_for('admin.adaylar'))
         except Exception as e:
             logger.error(f"Aday ekle error: {e}")
@@ -465,6 +471,27 @@ def aday_sil(id):
     return redirect(url_for('admin.adaylar'))
 
 
+@admin_bp.route('/aday/kalici-sil/<int:id>', methods=['POST'])
+@superadmin_required
+def aday_kalici_sil(id):
+    """Aday kalıcı silme - tüm cevapları da siler"""
+    try:
+        from app.models import Candidate, ExamAnswer
+        from app.extensions import db
+        
+        aday = Candidate.query.get_or_404(id)
+        # Önce cevapları sil
+        ExamAnswer.query.filter_by(candidate_id=id).delete()
+        # Sonra adayı sil
+        db.session.delete(aday)
+        db.session.commit()
+        flash('Aday ve tüm verileri kalıcı olarak silindi.', 'success')
+    except Exception as e:
+        logger.error(f"Aday kalici sil error: {e}")
+        flash('Aday silinirken bir hata oluştu.', 'danger')
+    return redirect(url_for('admin.adaylar'))
+
+
 @admin_bp.route('/aday/sinav-sifirla/<int:id>', methods=['POST'])
 @superadmin_required
 def aday_sinav_sifirla(id):
@@ -477,14 +504,17 @@ def aday_sinav_sifirla(id):
         # Sınav cevaplarını sil
         ExamAnswer.query.filter_by(candidate_id=id).delete()
         # Aday durumunu sıfırla
-        if hasattr(aday, 'sinav_durumu'):
-            aday.sinav_durumu = 'bekliyor'
-        if hasattr(aday, 'sinav_tamamlandi'):
-            aday.sinav_tamamlandi = False
-        if hasattr(aday, 'puan'):
-            aday.puan = None
-        if hasattr(aday, 'exam_status'):
-            aday.exam_status = 'pending'
+        aday.sinav_durumu = 'beklemede'
+        aday.puan = 0
+        aday.p_grammar = 0
+        aday.p_vocabulary = 0
+        aday.p_reading = 0
+        aday.p_listening = 0
+        aday.p_writing = 0
+        aday.p_speaking = 0
+        aday.baslama_tarihi = None
+        aday.bitis_tarihi = None
+        aday.seviye_sonuc = None
         db.session.commit()
         flash('Aday sınavı başarıyla sıfırlandı.', 'success')
     except Exception as e:
@@ -499,11 +529,15 @@ def aday_sinav_sifirla(id):
 def toplu_aday_sil():
     """Toplu aday silme"""
     try:
-        from app.models import Candidate
+        from app.models import Candidate, ExamAnswer
         from app.extensions import db
         
         aday_ids = request.form.getlist('aday_ids[]')
         if aday_ids:
+            # Önce cevapları sil
+            for aday_id in aday_ids:
+                ExamAnswer.query.filter_by(candidate_id=aday_id).delete()
+            # Sonra adayları sil
             Candidate.query.filter(Candidate.id.in_(aday_ids)).delete(synchronize_session=False)
             db.session.commit()
             flash(f'{len(aday_ids)} aday başarıyla silindi.', 'success')
@@ -804,24 +838,92 @@ def fraud_heatmap():
 
 # ==================== LOGLAR ====================
 @admin_bp.route('/logs')
-@admin_bp.route('/loglar')
 @superadmin_required
 def logs():
-    """Admin logları"""
-    logs = []
+    """Admin logları - main function"""
+    page = request.args.get('page', 1, type=int)
+    action = request.args.get('action', '')
+    logs_list = []
+    
+    # Create pagination object
+    class LogPagination:
+        def __init__(self):
+            self.page = page
+            self.pages = 1
+            self.has_prev = False
+            self.has_next = False
+            self.prev_num = None
+            self.next_num = None
+    
+    pagination = LogPagination()
+    
     try:
         from app.models import AuditLog
-        logs = AuditLog.query.order_by(AuditLog.id.desc()).limit(100).all()
+        query = AuditLog.query
+        if action:
+            query = query.filter(AuditLog.action == action)
+        logs_data = query.order_by(AuditLog.id.desc()).paginate(
+            page=page, per_page=50, error_out=False
+        )
+        logs_list = logs_data.items
+        pagination.page = logs_data.page
+        pagination.pages = logs_data.pages
+        pagination.has_prev = logs_data.has_prev
+        pagination.has_next = logs_data.has_next
+        pagination.prev_num = logs_data.prev_num
+        pagination.next_num = logs_data.next_num
     except Exception as e:
         logger.error(f"Logs error: {e}")
-    return render_template('admin_logs.html', logs=logs)
+    
+    return render_template('admin_logs.html', logs=logs_list, pagination=pagination)
+
+
+@admin_bp.route('/loglar')
+@superadmin_required
+def loglar():
+    """Admin logları - alias that the template uses"""
+    page = request.args.get('page', 1, type=int)
+    action = request.args.get('action', '')
+    logs_list = []
+    
+    # Create pagination object
+    class LogPagination:
+        def __init__(self):
+            self.page = page
+            self.pages = 1
+            self.has_prev = False
+            self.has_next = False
+            self.prev_num = None
+            self.next_num = None
+    
+    pagination = LogPagination()
+    
+    try:
+        from app.models import AuditLog
+        query = AuditLog.query
+        if action:
+            query = query.filter(AuditLog.action == action)
+        logs_data = query.order_by(AuditLog.id.desc()).paginate(
+            page=page, per_page=50, error_out=False
+        )
+        logs_list = logs_data.items
+        pagination.page = logs_data.page
+        pagination.pages = logs_data.pages
+        pagination.has_prev = logs_data.has_prev
+        pagination.has_next = logs_data.has_next
+        pagination.prev_num = logs_data.prev_num
+        pagination.next_num = logs_data.next_num
+    except Exception as e:
+        logger.error(f"Loglar error: {e}")
+    
+    return render_template('admin_logs.html', logs=logs_list, pagination=pagination)
 
 
 @admin_bp.route('/log-listesi')
 @superadmin_required
 def loglar_liste():
     """Alias for logs"""
-    return redirect(url_for('admin.logs'))
+    return redirect(url_for('admin.loglar'))
 
 
 # ==================== DEMO OLUŞTURMA ====================
