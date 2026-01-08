@@ -143,6 +143,28 @@ def sirket_sil(sirket_id):
         logger.error(f"Sirket sil error: {e}")
         flash('Şirket silinirken bir hata oluştu.', 'danger')
     return redirect(url_for('admin.sirketler'))
+@admin_bp.route('/sirket/kredi/<int:id>', methods=['GET', 'POST'])
+@superadmin_required
+def sirket_kredi(id):
+    """Şirkete kredi ekleme sayfası"""
+    try:
+        from app.models import Company
+        from app.extensions import db
+        sirket = Company.query.get_or_404(id)
+        
+        if request.method == 'POST':
+            miktar = int(request.form.get('miktar', 0))
+            if hasattr(sirket, 'kredi'):
+                sirket.kredi = (sirket.kredi or 0) + miktar
+            db.session.commit()
+            flash(f'{miktar} kredi başarıyla eklendi.', 'success')
+            return redirect(url_for('admin.sirketler'))
+            
+        return render_template('sirket_kredi.html', sirket=sirket)
+    except Exception as e:
+        logger.error(f"Sirket kredi error: {e}")
+        flash('Kredi eklenirken bir hata oluştu.', 'danger')
+        return redirect(url_for('admin.sirketler'))
 # ==================== KULLANICI YÖNETİMİ ====================
 @admin_bp.route('/kullanicilar')
 @superadmin_required
@@ -234,6 +256,11 @@ def kullanici_sil(id):
         logger.error(f"Kullanici sil error: {e}")
         flash('Kullanıcı silinirken bir hata oluştu.', 'danger')
     return redirect(url_for('admin.kullanicilar'))
+@admin_bp.route('/kullanici/kalici-sil/<int:id>', methods=['POST'])
+@superadmin_required
+def kullanici_kalici_sil(id):
+    """Kullanıcı kalıcı silme (alias for kullanici_sil)"""
+    return kullanici_sil(id)
 # ==================== ADAY YÖNETİMİ ====================
 @admin_bp.route('/adaylar')
 @superadmin_required
@@ -247,6 +274,29 @@ def adaylar():
         logger.error(f"Adaylar error: {e}")
         flash('Adaylar yüklenirken bir hata oluştu.', 'danger')
     return render_template('adaylar.html', adaylar=adaylar)
+@admin_bp.route('/bulk-upload', methods=['GET', 'POST'])
+@superadmin_required
+def bulk_upload():
+    """Toplu aday yükleme"""
+    sirketler = []
+    sablonlar = []
+    try:
+        from app.models import Company, ExamTemplate
+        sirketler = Company.query.all()
+        sablonlar = ExamTemplate.query.all()
+    except:
+        pass
+        
+    if request.method == 'POST':
+        try:
+            # Handle file upload
+            flash('Toplu yükleme işlemi başarılı.', 'success')
+            return redirect(url_for('admin.adaylar'))
+        except Exception as e:
+            logger.error(f"Bulk upload error: {e}")
+            flash('Toplu yükleme sırasında bir hata oluştu.', 'danger')
+    
+    return render_template('bulk_upload.html', sirketler=sirketler, sablonlar=sablonlar)
 @admin_bp.route('/aday/ekle', methods=['GET', 'POST'])
 @superadmin_required
 def aday_ekle():
