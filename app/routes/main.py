@@ -2,6 +2,8 @@
 """
 Main Routes - Homepage and public pages
 GitHub: app/routes/main.py
+
+FIX: Added /demo-olustur route that was missing
 """
 from flask import Blueprint, render_template, session
 
@@ -35,6 +37,15 @@ def demo_sinav():
     Bu sayfa sadece bilgilendirme amaçlıdır
     """
     return render_template('demo_sinav.html')
+
+
+@main_bp.route('/demo-olustur')
+def demo_olustur():
+    """
+    Demo sınav oluşturma sayfası
+    Kullanıcıların demo sınav talebinde bulunabilecekleri sayfa
+    """
+    return render_template('demo_olustur.html')
 
 
 @main_bp.route('/contact')
