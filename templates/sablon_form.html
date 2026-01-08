@@ -24,7 +24,7 @@
                 </div>
                 
                 <div class="card-body p-4">
-                    <form method="POST" action="{{ url_for('admin.sablon_kaydet', id=sablon.id if sablon else None) }}" id="sablonForm">
+                    <form method="POST" action="{{ url_for('admin.sablon_ekle', id=sablon.id if sablon else None) }}" id="sablonForm">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         
                         <!-- Temel Bilgiler -->
@@ -38,7 +38,7 @@
                                 <div class="col-md-6">
                                     <label for="isim" class="form-label fw-bold">Şablon Adı <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control form-control-lg" id="isim" name="isim" 
-                                           value="{{ sablon.isim if sablon else '' }}" required
+                                           value="{{ sablon.isim if sablon else '' }}" requifred
                                            placeholder="Örn: Genel İngilizce Sınavı">
                                 </div>
                                 
