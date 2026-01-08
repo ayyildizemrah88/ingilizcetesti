@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Demo Sınav Bilgi - Skills Test Center{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white text-center">
+                    <h3 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Demo Sınav Hakkında
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-exclamation-circle me-2"></i>Bilgilendirme</h5>
+                        <p class="mb-0">Demo sınav, kurumsal müşterilerimize özel olarak sunulmaktadır. Aktif bir demo oturumunuz bulunmamaktadır.</p>
+                    </div>
+                    
+                    <h5 class="mb-3">Demo Sınav Özellikleri:</h5>
+                    <ul class="list-group mb-4">
+                        <li class="list-group-item">
+                            <i class="fas fa-check text-success me-2"></i>
+                            10 örnek soru ile kısa deneme
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Gerçek sınav ortamını deneyimleme
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Anında sonuç ve seviye değerlendirmesi
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-check text-success me-2"></i>
+                            CEFR standartlarına uygun değerlendirme
+                        </li>
+                    </ul>
+                    
+                    <h5 class="mb-3">Demo Sınav İçin:</h5>
+                    <p>Demo sınav başlatmak için lütfen sistem yöneticinize başvurun veya iletişim formumuzu kullanarak talepte bulunun.</p>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                        <a href="{{ url_for('auth.iletisim') }}" class="btn btn-primary me-md-2">
+                            <i class="fas fa-envelope me-2"></i>İletişime Geç
+                        </a>
+                        <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-home me-2"></i>Ana Sayfaya Dön
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
