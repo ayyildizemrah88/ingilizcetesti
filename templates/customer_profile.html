@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Profil - {{ sirket_adi }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-user-circle me-2"></i>Profil Bilgileri</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Profil Formu -->
+                    <form method="POST" action="{{ url_for('customer.profile') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">E-posta</label>
+                                <input type="email" class="form-control" value="{{ user.email }}" disabled>
+                                <small class="text-muted">E-posta adresi değiştirilemez</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Ad Soyad</label>
+                                <input type="text" name="ad_soyad" class="form-control" 
+                                       value="{{ user.ad_soyad or '' }}" placeholder="Ad Soyad">
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Şirket</label>
+                                <input type="text" class="form-control" value="{{ sirket_adi }}" disabled>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Rol</label>
+                                <input type="text" class="form-control" 
+                                       value="{% if user.rol == 'customer' %}Müşteri{% elif user.rol == 'superadmin' %}Super Admin{% else %}{{ user.rol }}{% endif %}" 
+                                       disabled>
+                            </div>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <h5 class="mb-3"><i class="fas fa-key me-2"></i>Şifre Değiştir (Opsiyonel)</h5>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Yeni Şifre</label>
+                                <input type="password" name="yeni_sifre" class="form-control" 
+                                       placeholder="En az 6 karakter">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Şifre Tekrar</label>
+                                <input type="password" name="sifre_tekrar" class="form-control" 
+                                       placeholder="Şifreyi tekrar girin">
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('customer.dashboard') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Geri
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Kaydet
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            {% if company %}
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-building me-2"></i>Şirket Bilgileri</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Şirket Adı:</strong> {{ company.isim }}</p>
+                            <p><strong>E-posta:</strong> {{ company.email or '-' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Telefon:</strong> {{ company.telefon or '-' }}</p>
+                            <p><strong>Kredi:</strong> <span class="badge bg-success">{{ company.kredi or 0 }}</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
