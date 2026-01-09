@@ -2,16 +2,19 @@
 """
 Exam Routes - Exam interface and flow
 GitHub: app/routes/exam.py
-
-DEĞİŞİKLİKLER:
-- Demo sınav public sayfadan kaldırıldı
-- Demo sınav başlatma sadece admin panelinden yapılabilir
+GÜNCELLENDİ:
+- calculate_exam_results fonksiyonuna error handling eklendi
+- sinav_bitti route'una try-except eklendi
+- Bölme hatası koruması eklendi
 """
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
 from app.extensions import db
 import random
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 exam_bp = Blueprint('exam', __name__)
 
@@ -49,9 +52,9 @@ def superadmin_required(f):
     return decorated
 
 
-# ══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 # SINAV SAYFASI
-# ══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 
 @exam_bp.route('/')
 @exam_bp.route('/sinav')
@@ -62,7 +65,6 @@ def sinav():
 
     aday_id = session.get('aday_id')
 
-    # Aday ID'nin integer olduğunu kontrol et
     try:
         aday_id = int(aday_id)
     except (ValueError, TypeError):
@@ -96,6 +98,7 @@ def sinav():
 
     # Soru limiti kontrolü
     soru_limiti = candidate.soru_limiti or 25
+
     if len(answered_ids) >= soru_limiti:
         return redirect(url_for('exam.sinav_bitti'))
 
@@ -124,14 +127,12 @@ def select_next_question(candidate, answered_ids):
     """Select next question using CAT algorithm or random"""
     from app.models import Question
 
-    # Query available questions
     query = Question.query.filter(
         Question.is_active == True
     )
 
     # Şirket ID varsa filtrele
     if candidate.sirket_id:
-        # Şirkete özel veya genel soruları al
         query = query.filter(
             db.or_(
                 Question.sirket_id == candidate.sirket_id,
@@ -151,15 +152,16 @@ def select_next_question(candidate, answered_ids):
 
     # Fallback to any available question
     all_questions = query.all()
+
     if all_questions:
         return random.choice(all_questions)
 
     return None
 
 
-# ══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 # CEVAP GÖNDERME
-# ══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 
 @exam_bp.route('/sinav', methods=['POST'])
 @exam_required
@@ -232,9 +234,9 @@ def update_cat_difficulty(candidate, question_difficulty, is_correct):
         candidate.current_difficulty = difficulty_levels[current_idx - 1]
 
 
-# ══════════════════════════════════════════════════════════════
-# SINAV BİTİŞİ VE SONUÇ
-# ══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
+# SINAV BİTİŞİ VE SONUÇ - HATA DÜZELTİLDİ
+# ═══════════════════════════════════════════════════════════
 
 @exam_bp.route('/sinav-bitti')
 @exam_required
@@ -248,82 +250,160 @@ def sinav_bitti():
         aday_id = int(aday_id)
     except (ValueError, TypeError):
         session.clear()
+        flash("Geçersiz sınav oturumu.", "warning")
         return redirect(url_for('candidate_auth.sinav_giris'))
 
-    candidate = Candidate.query.get(aday_id)
+    try:
+        candidate = Candidate.query.get(aday_id)
 
-    if not candidate:
-        session.clear()
-        return redirect(url_for('candidate_auth.sinav_giris'))
+        if not candidate:
+            session.clear()
+            flash("Aday bulunamadı.", "warning")
+            return redirect(url_for('candidate_auth.sinav_giris'))
 
-    # Sınavı tamamla ve sonuçları hesapla
-    if candidate.sinav_durumu != 'tamamlandi':
-        calculate_exam_results(candidate)
+        # Sınavı tamamla ve sonuçları hesapla
+        if candidate.sinav_durumu != 'tamamlandi':
+            try:
+                calculate_exam_results(candidate)
+            except Exception as calc_error:
+                logger.error(f"Sonuç hesaplama hatası (aday_id={aday_id}): {calc_error}")
+                # Hata olsa bile minimum sonuç ata
+                candidate.sinav_durumu = 'tamamlandi'
+                candidate.bitis_tarihi = datetime.utcnow()
+                if not candidate.puan:
+                    candidate.puan = 0
+                if not candidate.seviye_sonuc:
+                    candidate.seviye_sonuc = 'A1'
+                db.session.commit()
 
-    return render_template('sinav_sonuc.html', 
-                          aday=candidate,
-                          is_demo=False)
+        return render_template('sinav_sonuc.html',
+                              aday=candidate,
+                              is_demo=False)
+
+    except Exception as e:
+        logger.error(f"sinav_bitti hatası (aday_id={aday_id}): {e}")
+        flash("Sonuç sayfası yüklenirken bir hata oluştu.", "danger")
+        return redirect(url_for('main.index'))
 
 
 @exam_bp.route('/sonuc/<giris_kodu>')
 def sonuc(giris_kodu):
     """Sınav sonucu görüntüleme"""
     from app.models import Candidate
-    
+
     candidate = Candidate.query.filter_by(giris_kodu=giris_kodu).first_or_404()
-    
+
     if candidate.sinav_durumu != 'tamamlandi':
         flash('Bu sınav henüz tamamlanmamış.', 'warning')
         return redirect(url_for('main.index'))
-    
+
     return render_template('sinav_sonuc.html', aday=candidate, is_demo=False)
 
 
 def calculate_exam_results(candidate):
-    """Sınav sonuçlarını hesapla ve kaydet"""
+    """
+    Sınav sonuçlarını hesapla ve kaydet
+    GÜNCELLENDİ: Error handling ve edge case kontrolü eklendi
+    """
     from app.models import ExamAnswer
 
-    answers = ExamAnswer.query.filter_by(aday_id=candidate.id).all()
+    try:
+        answers = ExamAnswer.query.filter_by(aday_id=candidate.id).all()
 
-    if not answers:
-        candidate.puan = 0
-        candidate.seviye_sonuc = 'A1'
+        # Cevap yoksa varsayılan değerler ata
+        if not answers:
+            logger.warning(f"Aday {candidate.id} için cevap bulunamadı")
+            candidate.puan = 0
+            candidate.seviye_sonuc = 'A1'
+            candidate.sinav_durumu = 'tamamlandi'
+            candidate.bitis_tarihi = datetime.utcnow()
+            db.session.commit()
+            return
+
+        # Doğru cevap sayısı
+        dogru_sayisi = sum(1 for a in answers if a.dogru_mu)
+        toplam = len(answers)
+
+        # Bölme hatası koruması
+        if toplam > 0:
+            puan = int((dogru_sayisi / toplam) * 100)
+        else:
+            puan = 0
+
+        # Puan sınırları kontrolü
+        puan = max(0, min(100, puan))
+        candidate.puan = puan
+
+        # Seviye belirle
+        if puan >= 90:
+            candidate.seviye_sonuc = 'C2'
+        elif puan >= 80:
+            candidate.seviye_sonuc = 'C1'
+        elif puan >= 70:
+            candidate.seviye_sonuc = 'B2'
+        elif puan >= 60:
+            candidate.seviye_sonuc = 'B1'
+        elif puan >= 50:
+            candidate.seviye_sonuc = 'A2'
+        else:
+            candidate.seviye_sonuc = 'A1'
+
         candidate.sinav_durumu = 'tamamlandi'
         candidate.bitis_tarihi = datetime.utcnow()
+
         db.session.commit()
-        return
+        logger.info(f"Aday {candidate.id} sınav tamamlandı: Puan={puan}, Seviye={candidate.seviye_sonuc}")
 
-    # Doğru cevap sayısı
-    dogru_sayisi = sum(1 for a in answers if a.dogru_mu)
-    toplam = len(answers)
-
-    # Puan hesapla
-    puan = int((dogru_sayisi / toplam) * 100) if toplam > 0 else 0
-    candidate.puan = puan
-
-    # Seviye belirle
-    if puan >= 90:
-        candidate.seviye_sonuc = 'C2'
-    elif puan >= 80:
-        candidate.seviye_sonuc = 'C1'
-    elif puan >= 70:
-        candidate.seviye_sonuc = 'B2'
-    elif puan >= 60:
-        candidate.seviye_sonuc = 'B1'
-    elif puan >= 50:
-        candidate.seviye_sonuc = 'A2'
-    else:
-        candidate.seviye_sonuc = 'A1'
-
-    candidate.sinav_durumu = 'tamamlandi'
-    candidate.bitis_tarihi = datetime.utcnow()
-
-    db.session.commit()
+    except Exception as e:
+        logger.error(f"calculate_exam_results hatası (aday_id={candidate.id}): {e}")
+        # Minimum değerler ata ve kaydet
+        try:
+            candidate.puan = 0
+            candidate.seviye_sonuc = 'A1'
+            candidate.sinav_durumu = 'tamamlandi'
+            candidate.bitis_tarihi = datetime.utcnow()
+            db.session.commit()
+        except Exception as commit_error:
+            logger.error(f"Commit hatası: {commit_error}")
+            db.session.rollback()
+        raise  # Üst katmana hatayı ilet
 
 
-# ══════════════════════════════════════════════════════════════
-# ADMİN FONKSİYONLARI
-# ══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
+# PAUSE / RESUME
+# ═══════════════════════════════════════════════════════════
+
+@exam_bp.route('/sinav/pause', methods=['POST'])
+@exam_required
+def pause_exam():
+    """Sınavı duraklat"""
+    from app.models import Candidate
+
+    aday_id = session.get('aday_id')
+
+    try:
+        aday_id = int(aday_id)
+        candidate = Candidate.query.get(aday_id)
+
+        if not candidate:
+            return jsonify({'status': 'error', 'message': 'Aday bulunamadı'}), 404
+
+        if candidate.sinav_durumu == 'duraklatildi':
+            return jsonify({'status': 'already_paused', 'message': 'Sınav zaten duraklatılmış'})
+
+        candidate.sinav_durumu = 'duraklatildi'
+        db.session.commit()
+
+        return jsonify({'status': 'paused', 'message': 'Sınav duraklatıldı. Kaldığınız yerden devam edebilirsiniz.'})
+
+    except Exception as e:
+        logger.error(f"Pause hatası: {e}")
+        return jsonify({'status': 'error', 'message': 'Duraklatma başarısız'}), 500
+
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN FONKSİYONLARI
+# ═══════════════════════════════════════════════════════════
 
 @exam_bp.route('/admin/reset/<int:aday_id>', methods=['POST'])
 @login_required
@@ -368,26 +448,25 @@ def extend_time(aday_id):
     return redirect(url_for('admin.aday_detay', aday_id=aday_id))
 
 
-# ══════════════════════════════════════════════════════════════
-# DEMO SINAV - SADECE ADMİN PANELİNDEN ERİŞİLEBİLİR
-# ══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
+# DEMO SINAV
+# ═══════════════════════════════════════════════════════════
 
 @exam_bp.route('/admin/demo-baslat', methods=['POST'])
 @login_required
 @superadmin_required
 def start_demo():
-    """Demo sınav başlat - SADECE ADMİN"""
+    """Demo sınav başlat - SADECE ADMIN"""
     ad = request.form.get('ad', 'Demo')
     soyad = request.form.get('soyad', 'Kullanıcı')
     email = request.form.get('email', 'demo@example.com')
-    
-    # Demo session ayarla
+
     session['aday_id'] = 'demo'
     session['aday_ad'] = f"{ad} {soyad}"
     session['sinav_modu'] = 'demo'
     session['demo_soru_no'] = 1
     session['demo_cevaplar'] = []
-    
+
     flash(f'Demo sınav başlatıldı: {ad} {soyad}', 'success')
     return redirect(url_for('exam.demo_sinav'))
 
@@ -396,18 +475,17 @@ def start_demo():
 def demo_sinav():
     """Demo sınav sayfası"""
     sinav_modu = session.get('sinav_modu')
-    
-    # Eğer demo modu aktif değilse, bilgilendirme sayfası göster
+
     if sinav_modu != 'demo':
         return render_template('demo_bilgi.html')
-    
+
     demo_soru_no = session.get('demo_soru_no', 1)
-    
+
     if demo_soru_no > 10:
         return redirect(url_for('exam.demo_sonuc'))
-    
+
     question = create_demo_question(demo_soru_no)
-    
+
     return render_template('sinav.html',
                           soru=question,
                           soru_no=demo_soru_no,
@@ -421,23 +499,23 @@ def demo_sinav():
 def demo_cevap():
     """Demo cevabını işle"""
     sinav_modu = session.get('sinav_modu')
-    
+
     if sinav_modu != 'demo':
         flash('Geçersiz demo oturumu.', 'warning')
         return redirect(url_for('main.index'))
-    
+
     cevap = request.form.get('cevap', '').upper()
-    
+
     demo_cevaplar = session.get('demo_cevaplar', [])
     demo_cevaplar.append(cevap)
     session['demo_cevaplar'] = demo_cevaplar
-    
+
     demo_soru_no = session.get('demo_soru_no', 1)
     session['demo_soru_no'] = demo_soru_no + 1
-    
+
     if demo_soru_no >= 10:
         return redirect(url_for('exam.demo_sonuc'))
-    
+
     return redirect(url_for('exam.demo_sinav'))
 
 
@@ -452,7 +530,7 @@ def demo_sonuc():
     toplam_soru = max(demo_soru_no - 1, 1)
 
     puan = int((dogru_sayisi / toplam_soru) * 100) if toplam_soru > 0 else 0
-    
+
     if puan >= 80:
         seviye = 'B2'
     elif puan >= 60:
@@ -487,70 +565,100 @@ def create_demo_question(soru_no):
         {
             'id': 'demo',
             'soru_metni': 'She _____ to the office every day.',
-            'secenekler': '{"A": "go", "B": "goes", "C": "going", "D": "gone"}',
+            'secenek_a': 'go',
+            'secenek_b': 'goes',
+            'secenek_c': 'going',
+            'secenek_d': 'gone',
             'dogru_cevap': 'B',
             'zorluk': 'A2'
         },
         {
             'id': 'demo',
             'soru_metni': 'I have been living here _____ 2010.',
-            'secenekler': '{"A": "for", "B": "since", "C": "from", "D": "at"}',
+            'secenek_a': 'for',
+            'secenek_b': 'since',
+            'secenek_c': 'from',
+            'secenek_d': 'at',
             'dogru_cevap': 'B',
             'zorluk': 'B1'
         },
         {
             'id': 'demo',
             'soru_metni': 'If I _____ rich, I would travel the world.',
-            'secenekler': '{"A": "am", "B": "was", "C": "were", "D": "be"}',
+            'secenek_a': 'am',
+            'secenek_b': 'was',
+            'secenek_c': 'were',
+            'secenek_d': 'be',
             'dogru_cevap': 'C',
             'zorluk': 'B2'
         },
         {
             'id': 'demo',
             'soru_metni': 'The book _____ by millions of people.',
-            'secenekler': '{"A": "has read", "B": "has been read", "C": "is reading", "D": "reads"}',
+            'secenek_a': 'has read',
+            'secenek_b': 'has been read',
+            'secenek_c': 'is reading',
+            'secenek_d': 'reads',
             'dogru_cevap': 'B',
             'zorluk': 'B2'
         },
         {
             'id': 'demo',
             'soru_metni': 'What _____ you doing when I called?',
-            'secenekler': '{"A": "are", "B": "was", "C": "were", "D": "did"}',
+            'secenek_a': 'are',
+            'secenek_b': 'was',
+            'secenek_c': 'were',
+            'secenek_d': 'did',
             'dogru_cevap': 'C',
             'zorluk': 'A2'
         },
         {
             'id': 'demo',
             'soru_metni': 'He suggested _____ a new approach.',
-            'secenekler': '{"A": "to try", "B": "trying", "C": "try", "D": "tried"}',
+            'secenek_a': 'to try',
+            'secenek_b': 'trying',
+            'secenek_c': 'try',
+            'secenek_d': 'tried',
             'dogru_cevap': 'B',
             'zorluk': 'B1'
         },
         {
             'id': 'demo',
             'soru_metni': 'The meeting _____ postponed until next week.',
-            'secenekler': '{"A": "is", "B": "has", "C": "was", "D": "been"}',
+            'secenek_a': 'is',
+            'secenek_b': 'has',
+            'secenek_c': 'was',
+            'secenek_d': 'been',
             'dogru_cevap': 'C',
             'zorluk': 'B1'
         },
         {
             'id': 'demo',
             'soru_metni': '_____ you ever visited Paris?',
-            'secenekler': '{"A": "Did", "B": "Have", "C": "Are", "D": "Do"}',
+            'secenek_a': 'Did',
+            'secenek_b': 'Have',
+            'secenek_c': 'Are',
+            'secenek_d': 'Do',
             'dogru_cevap': 'B',
             'zorluk': 'A2'
         },
         {
             'id': 'demo',
             'soru_metni': 'I wish I _____ more time to finish the project.',
-            'secenekler': '{"A": "have", "B": "had", "C": "has", "D": "having"}',
+            'secenek_a': 'have',
+            'secenek_b': 'had',
+            'secenek_c': 'has',
+            'secenek_d': 'having',
             'dogru_cevap': 'B',
             'zorluk': 'B2'
         },
         {
             'id': 'demo',
             'soru_metni': 'She is _____ intelligent than her brother.',
-            'secenekler': '{"A": "most", "B": "more", "C": "much", "D": "many"}',
+            'secenek_a': 'most',
+            'secenek_b': 'more',
+            'secenek_c': 'much',
+            'secenek_d': 'many',
             'dogru_cevap': 'B',
             'zorluk': 'A2'
         }
@@ -563,7 +671,10 @@ def create_demo_question(soru_no):
         def __init__(self, data):
             self.id = data['id']
             self.soru_metni = data['soru_metni']
-            self.secenekler = data['secenekler']
+            self.secenek_a = data['secenek_a']
+            self.secenek_b = data['secenek_b']
+            self.secenek_c = data['secenek_c']
+            self.secenek_d = data['secenek_d']
             self.dogru_cevap = data['dogru_cevap']
             self.zorluk = data['zorluk']
             self.soru_tipi = 'SECMELI'
@@ -571,9 +682,9 @@ def create_demo_question(soru_no):
     return MockQuestion(soru_data)
 
 
-# ══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 # ÇIKIŞ
-# ══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 
 @exam_bp.route('/cikis')
 def sinav_cikis():
