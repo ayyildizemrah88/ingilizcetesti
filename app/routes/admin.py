@@ -476,12 +476,14 @@ def aday_sil(id):
 def aday_kalici_sil(id):
     """Aday kalıcı silme - tüm cevapları da siler"""
     try:
-        from app.models import Candidate, ExamAnswer
+        from app.models import Candidate, ExamAnswer, EmailLog
         from app.extensions import db
         
         aday = Candidate.query.get_or_404(id)
-        # Önce cevapları sil
-        ExamAnswer.query.filter_by(candidate_id=id).delete()
+        # Önce email loglarını sil
+        EmailLog.query.filter_by(candidate_id=id).delete()
+        # Sonra cevapları sil (ExamAnswer uses aday_id, not candidate_id)
+        ExamAnswer.query.filter_by(aday_id=id).delete()
         # Sonra adayı sil
         db.session.delete(aday)
         db.session.commit()
@@ -501,8 +503,8 @@ def aday_sinav_sifirla(id):
         from app.extensions import db
         
         aday = Candidate.query.get_or_404(id)
-        # Sınav cevaplarını sil
-        ExamAnswer.query.filter_by(candidate_id=id).delete()
+        # Sınav cevaplarını sil (ExamAnswer uses aday_id, not candidate_id)
+        ExamAnswer.query.filter_by(aday_id=id).delete()
         # Aday durumunu sıfırla
         aday.sinav_durumu = 'beklemede'
         aday.puan = 0
@@ -534,9 +536,9 @@ def toplu_aday_sil():
         
         aday_ids = request.form.getlist('aday_ids[]')
         if aday_ids:
-            # Önce cevapları sil
+            # Önce cevapları sil (ExamAnswer uses aday_id, not candidate_id)
             for aday_id in aday_ids:
-                ExamAnswer.query.filter_by(candidate_id=aday_id).delete()
+                ExamAnswer.query.filter_by(aday_id=aday_id).delete()
             # Sonra adayları sil
             Candidate.query.filter(Candidate.id.in_(aday_ids)).delete(synchronize_session=False)
             db.session.commit()
@@ -602,9 +604,16 @@ def toplu_aday_kalici_sil():
         
         aday_ids = request.form.getlist('aday_ids[]')
         if aday_ids:
-            # Önce cevapları sil
+            # Önce email loglarını sil
             for aday_id in aday_ids:
-                ExamAnswer.query.filter_by(candidate_id=aday_id).delete()
+                try:
+                    from app.models import EmailLog
+                    EmailLog.query.filter_by(candidate_id=aday_id).delete()
+                except:
+                    pass
+            # Sonra cevapları sil (ExamAnswer uses aday_id, not candidate_id)
+            for aday_id in aday_ids:
+                ExamAnswer.query.filter_by(aday_id=aday_id).delete()
             # Sonra adayları sil
             Candidate.query.filter(Candidate.id.in_(aday_ids)).delete(synchronize_session=False)
             db.session.commit()
@@ -802,17 +811,92 @@ def sablon_sil(id):
 @admin_bp.route('/export')
 @superadmin_required
 def export():
-    """Data export"""
-    format_type = request.args.get('format', 'xlsx')
+    """Data export - CSV formatında veri indirme"""
+    export_type = request.args.get('type', 'candidates')
+    format_type = request.args.get('format', 'csv')
+    
     try:
-        from flask import send_file
+        from flask import Response
+        import csv
         import io
-        # Placeholder - actual export logic would go here
-        flash('Export özelliği henüz aktif değil.', 'info')
-        return redirect(url_for('admin.dashboard'))
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        if export_type == 'candidates' or export_type == 'adaylar':
+            from app.models import Candidate
+            # CSV header
+            writer.writerow(['ID', 'Ad Soyad', 'Email', 'Cep No', 'Giriş Kodu', 'Durum', 'Puan', 'Seviye', 'Oluşturulma'])
+            
+            candidates = Candidate.query.order_by(Candidate.id.desc()).all()
+            for c in candidates:
+                writer.writerow([
+                    c.id,
+                    c.ad_soyad,
+                    c.email or '',
+                    c.cep_no or '',
+                    c.giris_kodu or '',
+                    c.sinav_durumu or 'beklemede',
+                    c.puan or '',
+                    c.seviye_sonuc or '',
+                    c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
+                ])
+            filename = 'adaylar_export.csv'
+            
+        elif export_type == 'companies' or export_type == 'sirketler':
+            from app.models import Company
+            writer.writerow(['ID', 'İsim', 'Email', 'Telefon', 'Adres', 'Kredi', 'Aktif', 'Oluşturulma'])
+            
+            companies = Company.query.order_by(Company.id.desc()).all()
+            for c in companies:
+                writer.writerow([
+                    c.id,
+                    c.isim,
+                    c.email or '',
+                    c.telefon or '',
+                    c.adres or '',
+                    c.kredi or 0,
+                    'Evet' if c.is_active else 'Hayır',
+                    c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
+                ])
+            filename = 'sirketler_export.csv'
+            
+        elif export_type == 'questions' or export_type == 'sorular':
+            from app.models import Question
+            writer.writerow(['ID', 'Soru Metni', 'Seviye', 'Beceri', 'Doğru Cevap', 'Aktif'])
+            
+            questions = Question.query.order_by(Question.id.desc()).all()
+            for q in questions:
+                writer.writerow([
+                    q.id,
+                    (q.soru_metni or '')[:100],  # İlk 100 karakter
+                    q.seviye or '',
+                    q.beceri or '',
+                    q.dogru_cevap or '',
+                    'Evet' if q.is_active else 'Hayır'
+                ])
+            filename = 'sorular_export.csv'
+            
+        else:
+            # Varsayılan olarak tüm adayları indir
+            from app.models import Candidate
+            writer.writerow(['ID', 'Ad Soyad', 'Email', 'Puan', 'Seviye'])
+            candidates = Candidate.query.all()
+            for c in candidates:
+                writer.writerow([c.id, c.ad_soyad, c.email or '', c.puan or '', c.seviye_sonuc or ''])
+            filename = 'veriler_export.csv'
+        
+        output.seek(0)
+        
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+        
     except Exception as e:
         logger.error(f"Export error: {e}")
-        flash('Export işlemi başarısız.', 'danger')
+        flash(f'Export işlemi başarısız: {str(e)}', 'danger')
         return redirect(url_for('admin.dashboard'))
 
 
