@@ -46,6 +46,13 @@
         font-weight: bold;
     }
 
+    .tc-input {
+        font-size: 1.2rem;
+        text-align: center;
+        letter-spacing: 0.2rem;
+        font-weight: bold;
+    }
+
     .btn-start-exam {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border: none;
@@ -60,6 +67,10 @@
         transform: translateY(-2px);
         box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
     }
+
+    .tc-validation {
+        font-size: 0.85rem;
+    }
 </style>
 
 <div class="exam-entry-section">
@@ -71,7 +82,7 @@
 
         <!-- Title -->
         <h1 class="h3 text-center mb-2">Sınav Girişi</h1>
-        <p class="text-muted text-center mb-4">Sınav giriş kodunuzu girin</p>
+        <p class="text-muted text-center mb-4">TC Kimlik ve Sınav kodu ile giriş yapın</p>
 
         <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -86,14 +97,41 @@
         {% endif %}
         {% endwith %}
 
+        <!-- Error Messages -->
+        {% if errors %}
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                {% for error in errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
         <!-- Entry Form -->
-        <form action="{{ url_for('auth.sinav_giris') }}" method="POST">
+        <form action="{{ url_for('candidate_auth.sinav_giris') }}" method="POST" id="loginForm">
             <!-- CSRF Token -->
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+            <!-- TC Kimlik -->
             <div class="mb-4">
-                <label for="giris_kodu" class="form-label text-center d-block">Giriş Kodu</label>
-                <input type="text" class="form-control form-control-lg code-input" id="giris_kodu" name="giris_kodu"
+                <label for="tc_kimlik" class="form-label text-center d-block">
+                    <i class="fas fa-id-card me-1"></i> TC Kimlik Numarası
+                </label>
+                <input type="text" class="form-control form-control-lg tc-input" id="tc_kimlik" name="tc_kimlik"
+                    placeholder="___________" maxlength="11" required autocomplete="off" pattern="[0-9]{11}"
+                    inputmode="numeric" oninput="validateTCKimlik(this)">
+                <div id="tc_validation_message" class="form-text text-center mt-2 tc-validation">
+                    11 haneli TC Kimlik numaranızı girin
+                </div>
+            </div>
+
+            <!-- Giriş Kodu -->
+            <div class="mb-4">
+                <label for="exam_code" class="form-label text-center d-block">
+                    <i class="fas fa-key me-1"></i> Sınav Giriş Kodu
+                </label>
+                <input type="text" class="form-control form-control-lg code-input" id="exam_code" name="exam_code"
                     placeholder="XXXXXXXX" maxlength="8" required autocomplete="off">
                 <div class="form-text text-center mt-2">
                     Size verilen 8 karakterlik kodu girin
@@ -101,7 +139,7 @@
             </div>
 
             <div class="d-grid mb-4">
-                <button type="submit" class="btn btn-start-exam text-white btn-lg">
+                <button type="submit" class="btn btn-start-exam text-white btn-lg" id="submitBtn">
                     <i class="fas fa-play me-2"></i>Sınava Başla
                 </button>
             </div>
@@ -129,4 +167,107 @@
         </div>
     </div>
 </div>
+
+<script>
+    // TC Kimlik doğrulama fonksiyonu (Türk TC Kimlik algoritması)
+    function validateTCKimlik(input) {
+        // Sadece rakam kabul et
+        input.value = input.value.replace(/[^0-9]/g, '');
+
+        const tc = input.value;
+        const messageEl = document.getElementById('tc_validation_message');
+
+        if (tc.length === 0) {
+            messageEl.textContent = '11 haneli TC Kimlik numaranızı girin';
+            messageEl.className = 'form-text text-center mt-2 tc-validation';
+            input.classList.remove('is-valid', 'is-invalid');
+            return false;
+        }
+
+        if (tc.length < 11) {
+            messageEl.textContent = `${tc.length}/11 rakam girildi`;
+            messageEl.className = 'form-text text-center mt-2 tc-validation text-warning';
+            input.classList.remove('is-valid', 'is-invalid');
+            return false;
+        }
+
+        if (tc.length === 11) {
+            if (isValidTCKimlik(tc)) {
+                messageEl.textContent = '✓ Geçerli TC Kimlik numarası';
+                messageEl.className = 'form-text text-center mt-2 tc-validation text-success';
+                input.classList.add('is-valid');
+                input.classList.remove('is-invalid');
+                return true;
+            } else {
+                messageEl.textContent = '✗ Geçersiz TC Kimlik numarası';
+                messageEl.className = 'form-text text-center mt-2 tc-validation text-danger';
+                input.classList.add('is-invalid');
+                input.classList.remove('is-valid');
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    // TC Kimlik algoritma kontrolü
+    function isValidTCKimlik(tc) {
+        if (tc.length !== 11) return false;
+        if (tc[0] === '0') return false;
+
+        const digits = tc.split('').map(Number);
+
+        // 10. basamak kontrolü
+        const oddSum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8];
+        const evenSum = digits[1] + digits[3] + digits[5] + digits[7];
+        const digit10 = (oddSum * 7 - evenSum) % 10;
+
+        if (digit10 < 0) {
+            const correctedDigit10 = (digit10 + 10) % 10;
+            if (correctedDigit10 !== digits[9]) return false;
+        } else {
+            if (digit10 !== digits[9]) return false;
+        }
+
+        // 11. basamak kontrolü
+        const total = digits.slice(0, 10).reduce((sum, d) => sum + d, 0);
+        const digit11 = total % 10;
+
+        if (digit11 !== digits[10]) return false;
+
+        return true;
+    }
+
+    // Form gönderilmeden önce kontrol
+    document.getElementById('loginForm').addEventListener('submit', function (e) {
+        const tc = document.getElementById('tc_kimlik').value;
+        const code = document.getElementById('exam_code').value;
+
+        if (!tc || tc.length !== 11) {
+            e.preventDefault();
+            alert('Lütfen 11 haneli TC Kimlik numaranızı girin.');
+            document.getElementById('tc_kimlik').focus();
+            return false;
+        }
+
+        if (!isValidTCKimlik(tc)) {
+            e.preventDefault();
+            alert('Geçersiz TC Kimlik numarası. Lütfen kontrol edin.');
+            document.getElementById('tc_kimlik').focus();
+            return false;
+        }
+
+        if (!code || code.length < 6) {
+            e.preventDefault();
+            alert('Lütfen sınav giriş kodunuzu girin.');
+            document.getElementById('exam_code').focus();
+            return false;
+        }
+    });
+
+    // Giriş kodunu uppercase yap
+    document.getElementById('exam_code').addEventListener('input', function () {
+        this.value = this.value.toUpperCase();
+    });
+</script>
 {% endblock %}
