@@ -56,6 +56,40 @@
                         A1'den C2'ye kadar olan seviyelerden birini alacaksınız.
                     </p>
 
+                    <!-- KAMERA GEREKLİLİĞİ - YENİ BÖLÜM -->
+                    <div class="bg-warning bg-opacity-10 border border-warning rounded p-4 mb-4">
+                        <h5 class="mb-3 text-warning">
+                            <span class="material-icons align-middle me-2">videocam</span>
+                            Kamera Zorunluluğu
+                        </h5>
+                        <p class="mb-3">
+                            Sınav güvenliği için kameranızın açık olması gerekmektedir.
+                            Lütfen aşağıdaki butona tıklayarak kameranızı etkinleştirin.
+                        </p>
+
+                        <!-- Kamera Önizleme -->
+                        <div id="cameraPreviewContainer" class="text-center mb-3" style="display: none;">
+                            <video id="cameraPreview" autoplay playsinline muted
+                                style="width: 200px; height: 150px; border-radius: 10px; border: 3px solid #28a745;"></video>
+                            <p class="text-success mt-2">
+                                <span class="material-icons align-middle">check_circle</span>
+                                Kamera başarıyla etkinleştirildi!
+                            </p>
+                        </div>
+
+                        <!-- Kamera Durumu -->
+                        <div id="cameraStatus" class="text-center">
+                            <button type="button" id="enableCameraBtn" class="btn btn-warning" onclick="enableCamera()">
+                                <span class="material-icons align-middle me-1">videocam</span>
+                                Kamerayı Etkinleştir
+                            </button>
+                            <div id="cameraError" class="text-danger mt-2" style="display: none;">
+                                <span class="material-icons align-middle">error</span>
+                                <span id="cameraErrorText">Kamera etkinleştirilemedi. Lütfen izin verin.</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="bg-light rounded p-4 mb-4">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="consentCheck" required>
@@ -82,12 +116,99 @@
 </div>
 
 <script>
-    document.getElementById('consentCheck').addEventListener('change', function () {
-        var btn = document.getElementById('startButton');
-        if (this.checked) {
-            btn.classList.remove('disabled');
+    let cameraEnabled = false;
+    let cameraStream = null;
+
+    // Kamera etkinleştirme fonksiyonu
+    async function enableCamera() {
+        const enableBtn = document.getElementById('enableCameraBtn');
+        const previewContainer = document.getElementById('cameraPreviewContainer');
+        const preview = document.getElementById('cameraPreview');
+        const errorDiv = document.getElementById('cameraError');
+        const errorText = document.getElementById('cameraErrorText');
+
+        try {
+            enableBtn.disabled = true;
+            enableBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Kamera açılıyor...';
+
+            // Kamera izni iste
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: 'user'
+                },
+                audio: false
+            });
+
+            // Önizleme göster
+            preview.srcObject = cameraStream;
+            previewContainer.style.display = 'block';
+            enableBtn.style.display = 'none';
+            errorDiv.style.display = 'none';
+
+            cameraEnabled = true;
+            checkStartConditions();
+
+        } catch (error) {
+            console.error('Kamera hatası:', error);
+            enableBtn.disabled = false;
+            enableBtn.innerHTML = '<span class="material-icons align-middle me-1">videocam</span>Tekrar Dene';
+
+            // Hata mesajını göster
+            errorDiv.style.display = 'block';
+            if (error.name === 'NotAllowedError') {
+                errorText.textContent = 'Kamera izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.';
+            } else if (error.name === 'NotFoundError') {
+                errorText.textContent = 'Kamera bulunamadı. Lütfen bir kamera bağlayın.';
+            } else if (error.name === 'NotReadableError') {
+                errorText.textContent = 'Kamera başka bir uygulama tarafından kullanılıyor.';
+            } else {
+                errorText.textContent = 'Kamera etkinleştirilemedi: ' + error.message;
+            }
+        }
+    }
+
+    // Başlatma koşullarını kontrol et
+    function checkStartConditions() {
+        const consentChecked = document.getElementById('consentCheck').checked;
+        const startBtn = document.getElementById('startButton');
+
+        if (cameraEnabled && consentChecked) {
+            startBtn.classList.remove('disabled');
         } else {
-            btn.classList.add('disabled');
+            startBtn.classList.add('disabled');
+        }
+    }
+
+    // Onay kutusunu dinle
+    document.getElementById('consentCheck').addEventListener('change', function () {
+        checkStartConditions();
+    });
+
+    // Sayfa yüklendiğinde başlat butonunu devre dışı bırak
+    document.addEventListener('DOMContentLoaded', function () {
+        checkStartConditions();
+    });
+
+    // Sayfa kapatıldığında kamerayı durdur
+    window.addEventListener('beforeunload', function () {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+        }
+    });
+
+    // Başlat butonuna tıklandığında kontrol et
+    document.getElementById('startButton').addEventListener('click', function (e) {
+        if (!cameraEnabled) {
+            e.preventDefault();
+            alert('Lütfen önce kameranızı etkinleştirin. Kamera olmadan sınava başlayamazsınız.');
+            return false;
+        }
+        if (!document.getElementById('consentCheck').checked) {
+            e.preventDefault();
+            alert('Lütfen onay kutusunu işaretleyin.');
+            return false;
         }
     });
 </script>
