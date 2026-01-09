@@ -93,3 +93,49 @@ def gecmis():
                           avg_score=avg_score,
                           best_level=best_level,
                           improvement=improvement)
+
+
+# ==================== YÖNLENDİRME ROUTE'LARI ====================
+# /aday/sinav ve /aday/sonuc istekleri /exam/* route'larına yönlendirilir
+
+@aday_bp.route('/sinav')
+def sinav():
+    """Sınav sayfası - /exam/sinav'a yönlendir"""
+    return redirect(url_for('exam.sinav'))
+
+
+@aday_bp.route('/sinav-bitti')
+def sinav_bitti():
+    """Sınav bitti sayfası - /exam/sinav_bitti'ye yönlendir"""
+    return redirect(url_for('exam.sinav_bitti'))
+
+
+@aday_bp.route('/sonuc')
+def sonuc():
+    """Sonuç sayfası - session'daki aday bilgisine göre yönlendir"""
+    from app.models import Candidate
+    
+    # Session'dan aday id veya giris kodu al
+    aday_id = session.get('aday_id') or session.get('candidate_id')
+    
+    if aday_id:
+        try:
+            candidate = Candidate.query.get(aday_id)
+            if candidate and candidate.giris_kodu:
+                return redirect(url_for('exam.sonuc', giris_kodu=candidate.giris_kodu))
+        except:
+            pass
+    
+    # Aday bulunamazsa giriş sayfasına yönlendir
+    flash("Sonuç görüntülemek için giriş yapmalısınız.", "warning")
+    try:
+        return redirect(url_for('candidate_auth.sinav_giris'))
+    except:
+        return redirect(url_for('auth.sinav_giris'))
+
+
+@aday_bp.route('/sonuc/<giris_kodu>')
+def sonuc_with_code(giris_kodu):
+    """Giriş kodu ile sonuç görüntüleme - /exam/sonuc/<giris_kodu>'ya yönlendir"""
+    return redirect(url_for('exam.sonuc', giris_kodu=giris_kodu))
+
