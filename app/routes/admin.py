@@ -5,6 +5,7 @@ GitHub: app/routes/admin.py
 COMPREHENSIVE FIX: All missing routes added for template compatibility
 Model names: Company, User, Candidate, ExamTemplate, Question, AuditLog, ExamAnswer
 Candidate fields: ad_soyad, email, cep_no (not telefon), sirket_id, giris_kodu
+GÜNCELLENDİ: Aday silme fonksiyonları düzeltildi - foreign key constraint hataları giderildi
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from functools import wraps
@@ -31,6 +32,72 @@ def superadmin_required(f):
 
         return f(*args, **kwargs)
     return decorated_function
+
+
+# ==================== YARDIMCI FONKSİYON: ADAY BAĞIMLI VERİLERİ SİL ====================
+def delete_candidate_related_data(candidate_id):
+    """
+    Bir adaya ait tüm bağımlı verileri siler
+    Foreign key constraint hatalarını önlemek için kullanılır
+    
+    Returns:
+        list: [(tablo_adı, silinen_kayıt_sayısı), ...]
+    """
+    from app.extensions import db
+    silinen_veriler = []
+    
+    # 1. ExamAnswer (Sınav cevapları)
+    try:
+        from app.models import ExamAnswer
+        count = ExamAnswer.query.filter_by(aday_id=candidate_id).delete()
+        silinen_veriler.append(('cevap', count))
+    except Exception as e:
+        logger.warning(f"ExamAnswer silme hatası: {e}")
+    
+    # 2. EmailLog (Email logları)
+    try:
+        from app.models import EmailLog
+        count = EmailLog.query.filter_by(candidate_id=candidate_id).delete()
+        silinen_veriler.append(('email log', count))
+    except Exception as e:
+        logger.warning(f"EmailLog silme hatası: {e}")
+    
+    # 3. ProctoringSnapshot (Proctoring fotoğrafları)
+    try:
+        from app.models import ProctoringSnapshot
+        count = ProctoringSnapshot.query.filter_by(candidate_id=candidate_id).delete()
+        silinen_veriler.append(('proctoring', count))
+    except Exception as e:
+        logger.warning(f"ProctoringSnapshot silme hatası: {e}")
+    
+    # 4. CandidateActivity (Aday aktiviteleri)
+    try:
+        from app.models import CandidateActivity
+        count = CandidateActivity.query.filter_by(candidate_id=candidate_id).delete()
+        silinen_veriler.append(('aktivite', count))
+    except Exception as e:
+        logger.warning(f"CandidateActivity silme hatası: {e}")
+    
+    # 5. Certificate (Sertifikalar)
+    try:
+        from app.models import Certificate
+        count = Certificate.query.filter_by(candidate_id=candidate_id).delete()
+        silinen_veriler.append(('sertifika', count))
+    except Exception as e:
+        logger.warning(f"Certificate silme hatası: {e}")
+    
+    # 6. AuditLog (Denetim logları - adayla ilgili)
+    try:
+        from app.models import AuditLog
+        count = AuditLog.query.filter(
+            AuditLog.entity_type == 'candidate',
+            AuditLog.entity_id == candidate_id
+        ).delete()
+        silinen_veriler.append(('audit log', count))
+    except Exception as e:
+        logger.warning(f"AuditLog silme hatası: {e}")
+    
+    return silinen_veriler
 
 
 # ==================== DASHBOARD ====================
@@ -427,6 +494,7 @@ def aday_ekle():
                 ad_soyad=request.form.get('ad_soyad'),
                 email=request.form.get('email'),
                 cep_no=request.form.get('cep_no') or request.form.get('telefon'),
+                tc_kimlik=request.form.get('tc_kimlik'),
                 sirket_id=request.form.get('sirket_id') or None,
                 giris_kodu=giris_kodu
             )
@@ -454,43 +522,77 @@ def aday_detay(aday_id):
         return redirect(url_for('admin.adaylar'))
 
 
+# ==================== ADAY SİLME - DÜZELTİLDİ ====================
 @admin_bp.route('/aday/sil/<int:id>', methods=['POST'])
 @superadmin_required
 def aday_sil(id):
-    """Aday silme"""
+    """
+    Aday soft delete - is_deleted = True yapar
+    Gerçek silme yapmaz, sadece işaretler
+    """
     try:
         from app.models import Candidate
         from app.extensions import db
+
         aday = Candidate.query.get_or_404(id)
-        db.session.delete(aday)
-        db.session.commit()
-        flash('Aday başarıyla silindi.', 'success')
+        aday_adi = aday.ad_soyad
+        
+        # Soft delete - gerçek silme yerine işaretleme
+        if hasattr(aday, 'is_deleted'):
+            aday.is_deleted = True
+            db.session.commit()
+            flash(f'Aday "{aday_adi}" silindi (geri alınabilir).', 'success')
+        else:
+            # is_deleted alanı yoksa gerçek silme yap
+            delete_candidate_related_data(id)
+            db.session.delete(aday)
+            db.session.commit()
+            flash(f'Aday "{aday_adi}" başarıyla silindi.', 'success')
+            
     except Exception as e:
-        logger.error(f"Aday sil error: {e}")
-        flash('Aday silinirken bir hata oluştu.', 'danger')
+        db.session.rollback()
+        logger.error(f"Aday sil error (id={id}): {e}")
+        flash(f'Aday silinirken bir hata oluştu: {str(e)}', 'danger')
+    
     return redirect(url_for('admin.adaylar'))
 
 
 @admin_bp.route('/aday/kalici-sil/<int:id>', methods=['POST'])
 @superadmin_required
 def aday_kalici_sil(id):
-    """Aday kalıcı silme - tüm cevapları da siler"""
+    """
+    Aday kalıcı silme - veritabanından tamamen kaldırır
+    Tüm bağımlı verileri (cevaplar, email logları, proctoring snapshot'ları) de siler
+    """
     try:
-        from app.models import Candidate, ExamAnswer, EmailLog
+        from app.models import Candidate
         from app.extensions import db
-        
+
         aday = Candidate.query.get_or_404(id)
-        # Önce email loglarını sil
-        EmailLog.query.filter_by(candidate_id=id).delete()
-        # Sonra cevapları sil (ExamAnswer uses aday_id, not candidate_id)
-        ExamAnswer.query.filter_by(aday_id=id).delete()
-        # Sonra adayı sil
+        aday_adi = aday.ad_soyad
+        
+        # 1. Tüm bağımlı verileri sil
+        silinen_veri = delete_candidate_related_data(id)
+        
+        # 2. Adayı veritabanından sil
         db.session.delete(aday)
         db.session.commit()
-        flash('Aday ve tüm verileri kalıcı olarak silindi.', 'success')
+        
+        # Detaylı başarı mesajı
+        mesaj = f'Aday "{aday_adi}" ve tüm verileri kalıcı olarak silindi.'
+        if silinen_veri:
+            detay = ', '.join([f'{v[1]} {v[0]}' for v in silinen_veri if v[1] > 0])
+            if detay:
+                mesaj += f' (Silinen: {detay})'
+        
+        flash(mesaj, 'success')
+        logger.info(f"Aday kalıcı silindi: {aday_adi} (id={id})")
+        
     except Exception as e:
-        logger.error(f"Aday kalici sil error: {e}")
-        flash('Aday silinirken bir hata oluştu.', 'danger')
+        db.session.rollback()
+        logger.error(f"Aday kalıcı sil error (id={id}): {e}")
+        flash(f'Aday silinirken bir hata oluştu: {str(e)}', 'danger')
+    
     return redirect(url_for('admin.adaylar'))
 
 
@@ -529,23 +631,33 @@ def aday_sinav_sifirla(id):
 @admin_bp.route('/aday/toplu-sil', methods=['POST'])
 @superadmin_required
 def toplu_aday_sil():
-    """Toplu aday silme"""
+    """Toplu aday silme (soft delete)"""
     try:
-        from app.models import Candidate, ExamAnswer
+        from app.models import Candidate
         from app.extensions import db
         
         aday_ids = request.form.getlist('aday_ids[]')
         if aday_ids:
-            # Önce cevapları sil (ExamAnswer uses aday_id, not candidate_id)
+            silinen = 0
             for aday_id in aday_ids:
-                ExamAnswer.query.filter_by(aday_id=aday_id).delete()
-            # Sonra adayları sil
-            Candidate.query.filter(Candidate.id.in_(aday_ids)).delete(synchronize_session=False)
+                try:
+                    aday = Candidate.query.get(aday_id)
+                    if aday:
+                        if hasattr(aday, 'is_deleted'):
+                            aday.is_deleted = True
+                        else:
+                            delete_candidate_related_data(int(aday_id))
+                            db.session.delete(aday)
+                        silinen += 1
+                except Exception as e:
+                    logger.warning(f"Toplu sil - aday {aday_id} hatası: {e}")
+            
             db.session.commit()
-            flash(f'{len(aday_ids)} aday başarıyla silindi.', 'success')
+            flash(f'{silinen} aday başarıyla silindi.', 'success')
         else:
             flash('Silinecek aday seçilmedi.', 'warning')
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Toplu aday sil error: {e}")
         flash('Adaylar silinirken bir hata oluştu.', 'danger')
     
@@ -555,15 +667,18 @@ def toplu_aday_sil():
 @admin_bp.route('/aday/aktif/<int:id>', methods=['POST'])
 @superadmin_required
 def aday_aktif(id):
-    """Silinen adayı aktifleştir"""
+    """Silinen adayı aktifleştir (geri yükle)"""
     try:
         from app.models import Candidate
         from app.extensions import db
         
         aday = Candidate.query.get_or_404(id)
-        aday.is_deleted = False
-        db.session.commit()
-        flash('Aday başarıyla aktifleştirildi.', 'success')
+        if hasattr(aday, 'is_deleted'):
+            aday.is_deleted = False
+            db.session.commit()
+            flash(f'Aday "{aday.ad_soyad}" başarıyla geri yüklendi.', 'success')
+        else:
+            flash('Bu aday zaten aktif durumda.', 'info')
     except Exception as e:
         logger.error(f"Aday aktif error: {e}")
         flash('Aday aktifleştirilirken bir hata oluştu.', 'danger')
@@ -573,7 +688,7 @@ def aday_aktif(id):
 @admin_bp.route('/aday/toplu-aktif', methods=['POST'])
 @superadmin_required
 def toplu_aday_aktif():
-    """Toplu aday aktifleştirme"""
+    """Toplu aday aktifleştirme (geri yükleme)"""
     try:
         from app.models import Candidate
         from app.extensions import db
@@ -584,7 +699,7 @@ def toplu_aday_aktif():
                 {'is_deleted': False}, synchronize_session=False
             )
             db.session.commit()
-            flash(f'{len(aday_ids)} aday başarıyla aktifleştirildi.', 'success')
+            flash(f'{len(aday_ids)} aday başarıyla geri yüklendi.', 'success')
         else:
             flash('Aktifleştirilecek aday seçilmedi.', 'warning')
     except Exception as e:
@@ -597,32 +712,52 @@ def toplu_aday_aktif():
 @admin_bp.route('/aday/toplu-kalici-sil', methods=['POST'])
 @superadmin_required
 def toplu_aday_kalici_sil():
-    """Toplu aday kalıcı silme - tüm cevapları da siler"""
+    """
+    Toplu aday kalıcı silme - seçilen tüm adayları ve verilerini siler
+    """
     try:
-        from app.models import Candidate, ExamAnswer
+        from app.models import Candidate
         from app.extensions import db
-        
+
         aday_ids = request.form.getlist('aday_ids[]')
-        if aday_ids:
-            # Önce email loglarını sil
-            for aday_id in aday_ids:
-                try:
-                    from app.models import EmailLog
-                    EmailLog.query.filter_by(candidate_id=aday_id).delete()
-                except:
-                    pass
-            # Sonra cevapları sil (ExamAnswer uses aday_id, not candidate_id)
-            for aday_id in aday_ids:
-                ExamAnswer.query.filter_by(aday_id=aday_id).delete()
-            # Sonra adayları sil
-            Candidate.query.filter(Candidate.id.in_(aday_ids)).delete(synchronize_session=False)
-            db.session.commit()
-            flash(f'{len(aday_ids)} aday ve tüm verileri kalıcı olarak silindi.', 'success')
-        else:
+        
+        if not aday_ids:
             flash('Silinecek aday seçilmedi.', 'warning')
+            return redirect(url_for('admin.adaylar'))
+        
+        silinen_sayisi = 0
+        hatali_sayisi = 0
+        
+        for aday_id in aday_ids:
+            try:
+                aday_id = int(aday_id)
+                aday = Candidate.query.get(aday_id)
+                
+                if aday:
+                    # Bağımlı verileri sil
+                    delete_candidate_related_data(aday_id)
+                    # Adayı sil
+                    db.session.delete(aday)
+                    silinen_sayisi += 1
+                    
+            except Exception as e:
+                logger.error(f"Toplu kalıcı silme - aday {aday_id} hatası: {e}")
+                hatali_sayisi += 1
+                continue
+        
+        # Tüm değişiklikleri kaydet
+        db.session.commit()
+        
+        if silinen_sayisi > 0:
+            flash(f'{silinen_sayisi} aday ve tüm verileri kalıcı olarak silindi.', 'success')
+        
+        if hatali_sayisi > 0:
+            flash(f'{hatali_sayisi} aday silinirken hata oluştu.', 'warning')
+            
     except Exception as e:
-        logger.error(f"Toplu aday kalici sil error: {e}")
-        flash('Adaylar silinirken bir hata oluştu.', 'danger')
+        db.session.rollback()
+        logger.error(f"Toplu aday kalıcı sil error: {e}")
+        flash(f'Toplu silme işleminde bir hata oluştu: {str(e)}', 'danger')
     
     return redirect(url_for('admin.adaylar'))
 
