@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title or 'Şirket Bulunamadı' }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-building fa-4x text-warning"></i>
+                    </div>
+                    
+                    <h3 class="text-dark mb-3">{{ title or 'İşlem Yapılamadı' }}</h3>
+                    
+                    <p class="text-muted lead mb-4">
+                        {{ message or 'Hesabınıza henüz bir şirket atanmamış.' }}
+                    </p>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Bu işlemi gerçekleştirebilmek için hesabınızın bir şirkete bağlı olması gerekmektedir.
+                    </div>
+                    
+                    <div class="mt-4">
+                        <a href="{{ url_for('customer.dashboard') }}" class="btn btn-primary me-2">
+                            <i class="fas fa-home me-2"></i>Ana Sayfaya Dön
+                        </a>
+                        <a href="mailto:info@skillstestcenter.com" class="btn btn-outline-secondary">
+                            <i class="fas fa-envelope me-2"></i>Destek Talebi
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
