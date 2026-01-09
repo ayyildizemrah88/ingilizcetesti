@@ -185,9 +185,11 @@ def add_candidate():
     sirket_id = session.get('sirket_id')
     company = Company.query.get(sirket_id) if sirket_id else None
 
+    # DÜZELTME: Şirket yoksa özel bir sayfa göster, sadece yönlendirme yapma
     if not company:
-        flash("Şirket bilgisi bulunamadı.", "danger")
-        return redirect(url_for('customer.dashboard'))
+        return render_template('customer_no_company.html',
+                              message="Hesabınıza bir şirket atanmamış. Lütfen yöneticinizle iletişime geçin.",
+                              title="Aday Eklenemedi")
 
     # Check credits
     if company.kredi <= 0:
@@ -374,3 +376,68 @@ def export_data():
         mimetype='text/csv',
         headers={'Content-Disposition': 'attachment; filename=sinav_sonuclari.csv'}
     )
+
+
+# ══════════════════════════════════════════════════════════════
+# MÜŞTERİ PROFİL SAYFASI - YENİ EKLENEN
+# ══════════════════════════════════════════════════════════════
+@customer_bp.route('/customer/profile', methods=['GET', 'POST'])
+@customer_bp.route('/musteri/profil', methods=['GET', 'POST'])
+@login_required
+@customer_required
+def profile():
+    """Müşteri profil sayfası - görüntüleme ve düzenleme"""
+    from app.models import User, Company
+    
+    kullanici_id = session.get('kullanici_id')
+    sirket_id = session.get('sirket_id')
+    
+    user = User.query.get(kullanici_id) if kullanici_id else None
+    company = Company.query.get(sirket_id) if sirket_id else None
+    
+    if not user:
+        flash("Kullanıcı bilgisi bulunamadı.", "danger")
+        return redirect(url_for('auth.login'))
+    
+    if request.method == 'POST':
+        # Profil güncelleme
+        ad_soyad = request.form.get('ad_soyad', '').strip()
+        
+        if ad_soyad:
+            user.ad_soyad = ad_soyad
+        
+        # Şifre değişikliği (opsiyonel)
+        yeni_sifre = request.form.get('yeni_sifre', '').strip()
+        sifre_tekrar = request.form.get('sifre_tekrar', '').strip()
+        
+        if yeni_sifre:
+            if yeni_sifre != sifre_tekrar:
+                flash("Şifreler eşleşmiyor.", "danger")
+                return redirect(url_for('customer.profile'))
+            if len(yeni_sifre) < 6:
+                flash("Şifre en az 6 karakter olmalı.", "danger")
+                return redirect(url_for('customer.profile'))
+            user.set_password(yeni_sifre)
+            flash("Şifreniz güncellendi.", "success")
+        
+        db.session.commit()
+        flash("Profil bilgileriniz güncellendi.", "success")
+        return redirect(url_for('customer.profile'))
+    
+    return render_template('customer_profile.html', 
+                          user=user, 
+                          company=company,
+                          sirket_adi=company.isim if company else "Şirket atanmamış")
+
+
+# ══════════════════════════════════════════════════════════════
+# MÜŞTERİ AYARLAR SAYFASI - YENİ EKLENEN
+# ══════════════════════════════════════════════════════════════
+@customer_bp.route('/customer/settings')
+@customer_bp.route('/musteri/ayarlar')
+@login_required
+@customer_required
+def settings():
+    """Müşteri ayarlar sayfası - profil sayfasına yönlendir"""
+    return redirect(url_for('customer.profile'))
+
