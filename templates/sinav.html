@@ -1,43 +1,35 @@
 {% extends "base.html" %}
 {% block title %}Sınav - Skills Test Center{% endblock %}
-
 {% block extra_css %}
 <style>
     .timer {
         font-size: 2rem;
         font-weight: bold;
     }
-
     .timer.warning {
         color: #ffc107;
     }
-
     .timer.danger {
         color: #dc3545;
         animation: blink 1s infinite;
     }
-
     @keyframes blink {
         50% {
             opacity: 0.5;
         }
     }
-
     .option-btn {
         transition: all 0.3s;
     }
-
     .option-btn:hover {
         transform: scale(1.02);
     }
-
     .option-btn.selected {
         border-color: #0d6efd !important;
         background: #e7f1ff;
     }
 </style>
 {% endblock %}
-
 {% block content %}
 <div class="row">
     <div class="col-lg-8 mx-auto">
@@ -45,7 +37,8 @@
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                 <div>
                     <span class="badge bg-primary fs-6">Soru {{ soru_no }} / {{ toplam }}</span>
-                    <span class="badge bg-secondary ms-2">{{ soru.zorluk if soru.zorluk else 'B1' }}</span>
+                    {# KALDIRILDI: Zorluk seviyesi badge'i adaya gösterilmemeli #}
+                    {# <span class="badge bg-secondary ms-2">{{ soru.zorluk if soru.zorluk else 'B1' }}</span> #}
                 </div>
                 <div class="d-flex align-items-center gap-3">
                     {% if soru_suresi and soru_suresi > 0 %}
@@ -60,18 +53,14 @@
                     </div>
                 </div>
             </div>
-
             <div class="card-body p-4">
                 <div class="progress mb-4" style="height: 8px;">
                     <div class="progress-bar" style="width: {{ (soru_no / toplam * 100)|int }}%"></div>
                 </div>
-
                 <h4 class="mb-4">{{ soru.soru_metni }}</h4>
-
                 <form method="POST" action="{{ url_for('exam.sinav_cevap') }}" id="examForm">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="soru_id" value="{{ soru.id }}">
-
                     <div class="d-grid gap-3">
                         <button type="button" class="btn btn-outline-secondary btn-lg text-start option-btn p-3"
                             onclick="selectOption(this, 'A')">
@@ -92,9 +81,7 @@
                         </button>
                         {% endif %}
                     </div>
-
                     <input type="hidden" name="cevap" id="selectedAnswer" value="">
-
                     <div class="d-flex justify-content-between mt-4">
                         <div class="d-flex gap-2">
                             <a href="/candidate/privacy" class="btn btn-outline-secondary">
@@ -118,15 +105,13 @@
 {% block extra_js %}
 <script>
     let remainingSeconds = {{ kalan_sure }};
-    let questionSeconds = {{ soru_suresi or 0 }};  // Soru başına süre (0 = sınırsız)
+    let questionSeconds = {{ soru_suresi or 0 }};
     const timerEl = document.getElementById('timer');
     const questionTimerEl = document.getElementById('questionTimer');
     const OFFLINE_KEY = 'skills_offline_answers';
     let webcamStream = null;
 
-    // ══════════════════════════════════════════════════════════════
     // TOTAL EXAM TIMER
-    // ══════════════════════════════════════════════════════════════
     function updateTimer() {
         const mins = Math.floor(remainingSeconds / 60);
         const secs = remainingSeconds % 60;
@@ -147,9 +132,7 @@
         setTimeout(updateTimer, 1000);
     }
 
-    // ══════════════════════════════════════════════════════════════
     // PER-QUESTION TIMER
-    // ══════════════════════════════════════════════════════════════
     function updateQuestionTimer() {
         if (!questionTimerEl || questionSeconds <= 0) return;
 
@@ -166,7 +149,6 @@
         }
 
         if (questionSeconds <= 0) {
-            // Süre doldu - otomatik gönder
             document.getElementById('examForm').submit();
             return;
         }
@@ -181,13 +163,10 @@
         document.getElementById('selectedAnswer').value = answer;
         document.getElementById('submitBtn').disabled = false;
 
-        // Save to LocalStorage for offline mode
         saveOfflineAnswer({{ soru.id }}, answer);
     }
 
-    // ══════════════════════════════════════════════════════════════
-    // OFFLINE MODE - LocalStorage
-    // ══════════════════════════════════════════════════════════════
+    // OFFLINE MODE
     function saveOfflineAnswer(soruId, answer) {
         try {
             let answers = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
@@ -223,17 +202,14 @@
         }
     }
 
-    // ══════════════════════════════════════════════════════════════
     // WEBCAM PROCTORING
-    // ══════════════════════════════════════════════════════════════
     async function initWebcam() {
         try {
             webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
             console.log('Webcam initialized for proctoring');
 
-            // Take snapshot every 30 seconds
             setInterval(captureSnapshot, 30000);
-            captureSnapshot(); // Initial snapshot
+            captureSnapshot();
         } catch (e) {
             console.warn('Webcam not available', e);
         }
@@ -264,9 +240,7 @@
         }
     }
 
-    // ══════════════════════════════════════════════════════════════
     // NETWORK STATUS
-    // ══════════════════════════════════════════════════════════════
     window.addEventListener('online', () => {
         console.log('Back online, syncing...');
         syncOfflineAnswers();
@@ -276,9 +250,7 @@
         console.log('Offline mode activated');
     });
 
-    // ══════════════════════════════════════════════════════════════
     // PAUSE/RESUME
-    // ══════════════════════════════════════════════════════════════
     async function pauseExam() {
         if (!confirm('Sınavı duraklatmak istiyor musunuz? Kaldığınız yerden devam edebilirsiniz.')) {
             return;
@@ -289,27 +261,25 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ current_question_id: {{ soru.id }} })
-    });
+            });
 
-    const data = await resp.json();
+            const data = await resp.json();
 
-    if (data.status === 'paused') {
-        alert('✅ ' + data.message);
-        window.location.href = '/sinav-giris';
-    } else if (data.status === 'already_paused') {
-        alert('Sınav zaten duraklatılmış.');
-    }
+            if (data.status === 'paused') {
+                alert(data.message);
+                window.location.href = '/sinav-giris';
+            } else if (data.status === 'already_paused') {
+                alert('Sınav zaten duraklatılmış.');
+            }
         } catch (e) {
-        console.error('Pause failed:', e);
-        alert('Duraklatma başarısız. İnternet bağlantınızı kontrol edin.');
-    }
+            console.error('Pause failed:', e);
+            alert('Duraklatma başarısız. İnternet bağlantınızı kontrol edin.');
+        }
     }
 
-    // ══════════════════════════════════════════════════════════════
     // INIT
-    // ══════════════════════════════════════════════════════════════
     updateTimer();
-    updateQuestionTimer();  // Soru başına timer
+    updateQuestionTimer();
     initWebcam();
     syncOfflineAnswers();
 </script>
