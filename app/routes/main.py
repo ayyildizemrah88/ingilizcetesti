@@ -4,6 +4,7 @@ Main Routes - Homepage and public pages
 GitHub: app/routes/main.py
 
 FIX: Added /demo-olustur route that was missing
+FIX: Added /iletisim route for Turkish URL compatibility
 """
 from flask import Blueprint, render_template, session
 
@@ -50,7 +51,13 @@ def demo_olustur():
 
 @main_bp.route('/contact')
 def contact():
-    """İletişim sayfası"""
+    """İletişim sayfası (İngilizce URL)"""
+    return render_template('iletisim.html')
+
+
+@main_bp.route('/iletisim')
+def iletisim():
+    """İletişim sayfası (Türkçe URL)"""
     return render_template('iletisim.html')
 
 
