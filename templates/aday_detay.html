@@ -174,29 +174,30 @@
 <script>
     // Load proctoring photos
     document.addEventListener('DOMContentLoaded', function () {
-        const adayId = {{ aday.id }};
-        const gallery = document.getElementById('proctoring-gallery');
-        const countBadge = document.getElementById('proctoring-count');
-        
-        fetch(`/api/proctoring/snapshots/${adayId}`)
-            .then(response => response.json())
-            .then(data => {
-                countBadge.textContent = data.count + ' fotoğraf';
-                if (data.count === 0) {
-                    gallery.innerHTML = `
+        const adayId = {{ aday.id }
+    };
+    const gallery = document.getElementById('proctoring-gallery');
+    const countBadge = document.getElementById('proctoring-count');
+
+    fetch(`/api/proctoring/snapshots/${adayId}`)
+        .then(response => response.json())
+        .then(data => {
+            countBadge.textContent = data.count + ' fotoğraf';
+            if (data.count === 0) {
+                gallery.innerHTML = `
                         <div class="col-12 text-center py-4 text-muted">
                             <i class="fas fa-camera-slash fa-3x mb-3"></i>
                             <p>Henüz fotoğraf çekilmemiş veya aday sınava girmemiş.</p>
                         </div>
                     `;
-                    return;
-                }
-                gallery.innerHTML = '';
-                data.snapshots.forEach((snap, index) => {
-                    const timestamp = new Date(snap.timestamp).toLocaleString('tr-TR');
-                    const col = document.createElement('div');
-                    col.className = 'col-4 col-md-3';
-                    col.innerHTML = `
+                return;
+            }
+            gallery.innerHTML = '';
+            data.snapshots.forEach((snap, index) => {
+                const timestamp = new Date(snap.timestamp).toLocaleString('tr-TR');
+                const col = document.createElement('div');
+                col.className = 'col-4 col-md-3';
+                col.innerHTML = `
                         <div class="card h-100" style="cursor:pointer" 
                              onclick="showPhoto('${snap.url}', '${timestamp}')">
                             <img src="${snap.url}" class="card-img-top" alt="Snapshot ${index + 1}"
@@ -206,19 +207,19 @@
                             </div>
                         </div>
                     `;
-                    gallery.appendChild(col);
-                });
-            })
-            .catch(error => {
-                gallery.innerHTML = `
+                gallery.appendChild(col);
+            });
+        })
+        .catch(error => {
+            gallery.innerHTML = `
                     <div class="col-12 text-center text-danger py-3">
                         <i class="fas fa-exclamation-triangle me-2"></i>Yüklenemedi
                     </div>
                 `;
-                console.error('Proctoring load error:', error);
-            });
+            console.error('Proctoring load error:', error);
+        });
     });
-    
+
     function showPhoto(url, timestamp) {
         document.getElementById('modal-photo').src = url;
         document.getElementById('modal-timestamp').textContent = timestamp;
