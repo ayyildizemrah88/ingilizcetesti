@@ -71,3 +71,20 @@ def privacy():
 def terms():
     """Kullanım şartları"""
     return render_template('terms.html')
+
+
+@main_bp.route('/toggle-theme')
+def toggle_theme():
+    """Tema değiştir (Light/Dark mode)"""
+    from flask import redirect, request
+    
+    # Mevcut temayı al ve tersini ayarla
+    current_theme = session.get('theme', 'light')
+    new_theme = 'dark' if current_theme == 'light' else 'light'
+    session['theme'] = new_theme
+    
+    # Geri dön (referrer varsa oraya, yoksa ana sayfaya)
+    referrer = request.referrer
+    if referrer:
+        return redirect(referrer)
+    return redirect('/')
