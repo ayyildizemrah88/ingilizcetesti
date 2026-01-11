@@ -6,6 +6,7 @@ COMPREHENSIVE FIX: All missing routes added for template compatibility
 Model names: Company, User, Candidate, ExamTemplate, Question, AuditLog, ExamAnswer
 Candidate fields: ad_soyad, email, cep_no (not telefon), sirket_id, giris_kodu
 GÜNCELLENDİ: Aday silme fonksiyonları düzeltildi - foreign key constraint hataları giderildi
+FIXED: Rapor route'ları düzeltildi - template'lerin beklediği key isimleri eklendi
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from functools import wraps
@@ -39,13 +40,13 @@ def delete_candidate_related_data(candidate_id):
     """
     Bir adaya ait tüm bağımlı verileri siler
     Foreign key constraint hatalarını önlemek için kullanılır
-    
+
     Returns:
         list: [(tablo_adı, silinen_kayıt_sayısı), ...]
     """
     from app.extensions import db
     silinen_veriler = []
-    
+
     # 1. ExamAnswer (Sınav cevapları)
     try:
         from app.models import ExamAnswer
@@ -53,7 +54,7 @@ def delete_candidate_related_data(candidate_id):
         silinen_veriler.append(('cevap', count))
     except Exception as e:
         logger.warning(f"ExamAnswer silme hatası: {e}")
-    
+
     # 2. EmailLog (Email logları)
     try:
         from app.models import EmailLog
@@ -61,7 +62,7 @@ def delete_candidate_related_data(candidate_id):
         silinen_veriler.append(('email log', count))
     except Exception as e:
         logger.warning(f"EmailLog silme hatası: {e}")
-    
+
     # 3. ProctoringSnapshot (Proctoring fotoğrafları)
     try:
         from app.models import ProctoringSnapshot
@@ -69,7 +70,7 @@ def delete_candidate_related_data(candidate_id):
         silinen_veriler.append(('proctoring', count))
     except Exception as e:
         logger.warning(f"ProctoringSnapshot silme hatası: {e}")
-    
+
     # 4. CandidateActivity (Aday aktiviteleri)
     try:
         from app.models import CandidateActivity
@@ -77,7 +78,7 @@ def delete_candidate_related_data(candidate_id):
         silinen_veriler.append(('aktivite', count))
     except Exception as e:
         logger.warning(f"CandidateActivity silme hatası: {e}")
-    
+
     # 5. Certificate (Sertifikalar)
     try:
         from app.models import Certificate
@@ -85,7 +86,7 @@ def delete_candidate_related_data(candidate_id):
         silinen_veriler.append(('sertifika', count))
     except Exception as e:
         logger.warning(f"Certificate silme hatası: {e}")
-    
+
     # 6. AuditLog (Denetim logları - adayla ilgili)
     try:
         from app.models import AuditLog
@@ -96,7 +97,7 @@ def delete_candidate_related_data(candidate_id):
         silinen_veriler.append(('audit log', count))
     except Exception as e:
         logger.warning(f"AuditLog silme hatası: {e}")
-    
+
     return silinen_veriler
 
 
@@ -264,7 +265,7 @@ def toplu_sirket_pasif():
     try:
         from app.models import Company
         from app.extensions import db
-        
+
         sirket_ids = request.form.getlist('sirket_ids[]')
         if sirket_ids:
             for sirket_id in sirket_ids:
@@ -278,7 +279,7 @@ def toplu_sirket_pasif():
     except Exception as e:
         logger.error(f"Toplu sirket pasif error: {e}")
         flash('Şirketler pasifleştirilirken bir hata oluştu.', 'danger')
-    
+
     return redirect(url_for('admin.sirketler'))
 
 
@@ -289,7 +290,7 @@ def toplu_sirket_aktif():
     try:
         from app.models import Company
         from app.extensions import db
-        
+
         sirket_ids = request.form.getlist('sirket_ids[]')
         if sirket_ids:
             for sirket_id in sirket_ids:
@@ -303,7 +304,7 @@ def toplu_sirket_aktif():
     except Exception as e:
         logger.error(f"Toplu sirket aktif error: {e}")
         flash('Şirketler aktifleştirilirken bir hata oluştu.', 'danger')
-    
+
     return redirect(url_for('admin.sirketler'))
 
 
@@ -486,10 +487,10 @@ def aday_ekle():
             from app.models import Candidate
             from app.extensions import db
             import secrets
-            
+
             # Generate unique entry code
             giris_kodu = secrets.token_hex(4).upper()
-            
+
             yeni_aday = Candidate(
                 ad_soyad=request.form.get('ad_soyad'),
                 email=request.form.get('email'),
@@ -536,7 +537,7 @@ def aday_sil(id):
 
         aday = Candidate.query.get_or_404(id)
         aday_adi = aday.ad_soyad
-        
+
         # Soft delete - gerçek silme yerine işaretleme
         if hasattr(aday, 'is_deleted'):
             aday.is_deleted = True
@@ -548,12 +549,12 @@ def aday_sil(id):
             db.session.delete(aday)
             db.session.commit()
             flash(f'Aday "{aday_adi}" başarıyla silindi.', 'success')
-            
+
     except Exception as e:
         db.session.rollback()
         logger.error(f"Aday sil error (id={id}): {e}")
         flash(f'Aday silinirken bir hata oluştu: {str(e)}', 'danger')
-    
+
     return redirect(url_for('admin.adaylar'))
 
 
@@ -570,29 +571,29 @@ def aday_kalici_sil(id):
 
         aday = Candidate.query.get_or_404(id)
         aday_adi = aday.ad_soyad
-        
+
         # 1. Tüm bağımlı verileri sil
         silinen_veri = delete_candidate_related_data(id)
-        
+
         # 2. Adayı veritabanından sil
         db.session.delete(aday)
         db.session.commit()
-        
+
         # Detaylı başarı mesajı
         mesaj = f'Aday "{aday_adi}" ve tüm verileri kalıcı olarak silindi.'
         if silinen_veri:
             detay = ', '.join([f'{v[1]} {v[0]}' for v in silinen_veri if v[1] > 0])
             if detay:
                 mesaj += f' (Silinen: {detay})'
-        
+
         flash(mesaj, 'success')
         logger.info(f"Aday kalıcı silindi: {aday_adi} (id={id})")
-        
+
     except Exception as e:
         db.session.rollback()
         logger.error(f"Aday kalıcı sil error (id={id}): {e}")
         flash(f'Aday silinirken bir hata oluştu: {str(e)}', 'danger')
-    
+
     return redirect(url_for('admin.adaylar'))
 
 
@@ -603,7 +604,7 @@ def aday_sinav_sifirla(id):
     try:
         from app.models import Candidate, ExamAnswer
         from app.extensions import db
-        
+
         aday = Candidate.query.get_or_404(id)
         # Sınav cevaplarını sil (ExamAnswer uses aday_id, not candidate_id)
         ExamAnswer.query.filter_by(aday_id=id).delete()
@@ -624,7 +625,7 @@ def aday_sinav_sifirla(id):
     except Exception as e:
         logger.error(f"Aday sinav sifirla error: {e}")
         flash('Sınav sıfırlanırken bir hata oluştu.', 'danger')
-    
+
     return redirect(url_for('admin.adaylar'))
 
 
@@ -635,7 +636,7 @@ def toplu_aday_sil():
     try:
         from app.models import Candidate
         from app.extensions import db
-        
+
         aday_ids = request.form.getlist('aday_ids[]')
         if aday_ids:
             silinen = 0
@@ -651,7 +652,7 @@ def toplu_aday_sil():
                         silinen += 1
                 except Exception as e:
                     logger.warning(f"Toplu sil - aday {aday_id} hatası: {e}")
-            
+
             db.session.commit()
             flash(f'{silinen} aday başarıyla silindi.', 'success')
         else:
@@ -660,7 +661,7 @@ def toplu_aday_sil():
         db.session.rollback()
         logger.error(f"Toplu aday sil error: {e}")
         flash('Adaylar silinirken bir hata oluştu.', 'danger')
-    
+
     return redirect(url_for('admin.adaylar'))
 
 
@@ -671,7 +672,7 @@ def aday_aktif(id):
     try:
         from app.models import Candidate
         from app.extensions import db
-        
+
         aday = Candidate.query.get_or_404(id)
         if hasattr(aday, 'is_deleted'):
             aday.is_deleted = False
@@ -692,7 +693,7 @@ def toplu_aday_aktif():
     try:
         from app.models import Candidate
         from app.extensions import db
-        
+
         aday_ids = request.form.getlist('aday_ids[]')
         if aday_ids:
             Candidate.query.filter(Candidate.id.in_(aday_ids)).update(
@@ -705,7 +706,7 @@ def toplu_aday_aktif():
     except Exception as e:
         logger.error(f"Toplu aday aktif error: {e}")
         flash('Adaylar aktifleştirilirken bir hata oluştu.', 'danger')
-    
+
     return redirect(url_for('admin.adaylar'))
 
 
@@ -720,45 +721,45 @@ def toplu_aday_kalici_sil():
         from app.extensions import db
 
         aday_ids = request.form.getlist('aday_ids[]')
-        
+
         if not aday_ids:
             flash('Silinecek aday seçilmedi.', 'warning')
             return redirect(url_for('admin.adaylar'))
-        
+
         silinen_sayisi = 0
         hatali_sayisi = 0
-        
+
         for aday_id in aday_ids:
             try:
                 aday_id = int(aday_id)
                 aday = Candidate.query.get(aday_id)
-                
+
                 if aday:
                     # Bağımlı verileri sil
                     delete_candidate_related_data(aday_id)
                     # Adayı sil
                     db.session.delete(aday)
                     silinen_sayisi += 1
-                    
+
             except Exception as e:
                 logger.error(f"Toplu kalıcı silme - aday {aday_id} hatası: {e}")
                 hatali_sayisi += 1
                 continue
-        
+
         # Tüm değişiklikleri kaydet
         db.session.commit()
-        
+
         if silinen_sayisi > 0:
             flash(f'{silinen_sayisi} aday ve tüm verileri kalıcı olarak silindi.', 'success')
-        
+
         if hatali_sayisi > 0:
             flash(f'{hatali_sayisi} aday silinirken hata oluştu.', 'warning')
-            
+
     except Exception as e:
         db.session.rollback()
         logger.error(f"Toplu aday kalıcı sil error: {e}")
         flash(f'Toplu silme işleminde bir hata oluştu: {str(e)}', 'danger')
-    
+
     return redirect(url_for('admin.adaylar'))
 
 
@@ -949,20 +950,20 @@ def export():
     """Data export - CSV formatında veri indirme"""
     export_type = request.args.get('type', 'candidates')
     format_type = request.args.get('format', 'csv')
-    
+
     try:
         from flask import Response
         import csv
         import io
-        
+
         output = io.StringIO()
         writer = csv.writer(output)
-        
+
         if export_type == 'candidates' or export_type == 'adaylar':
             from app.models import Candidate
             # CSV header
             writer.writerow(['ID', 'Ad Soyad', 'Email', 'Cep No', 'Giriş Kodu', 'Durum', 'Puan', 'Seviye', 'Oluşturulma'])
-            
+
             candidates = Candidate.query.order_by(Candidate.id.desc()).all()
             for c in candidates:
                 writer.writerow([
@@ -977,11 +978,11 @@ def export():
                     c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
                 ])
             filename = 'adaylar_export.csv'
-            
+
         elif export_type == 'companies' or export_type == 'sirketler':
             from app.models import Company
             writer.writerow(['ID', 'İsim', 'Email', 'Telefon', 'Adres', 'Kredi', 'Aktif', 'Oluşturulma'])
-            
+
             companies = Company.query.order_by(Company.id.desc()).all()
             for c in companies:
                 writer.writerow([
@@ -995,11 +996,11 @@ def export():
                     c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
                 ])
             filename = 'sirketler_export.csv'
-            
+
         elif export_type == 'questions' or export_type == 'sorular':
             from app.models import Question
             writer.writerow(['ID', 'Soru Metni', 'Seviye', 'Beceri', 'Doğru Cevap', 'Aktif'])
-            
+
             questions = Question.query.order_by(Question.id.desc()).all()
             for q in questions:
                 writer.writerow([
@@ -1011,7 +1012,7 @@ def export():
                     'Evet' if q.is_active else 'Hayır'
                 ])
             filename = 'sorular_export.csv'
-            
+
         else:
             # Varsayılan olarak tüm adayları indir
             from app.models import Candidate
@@ -1020,27 +1021,41 @@ def export():
             for c in candidates:
                 writer.writerow([c.id, c.ad_soyad, c.email or '', c.puan or '', c.seviye_sonuc or ''])
             filename = 'veriler_export.csv'
-        
+
         output.seek(0)
-        
+
         return Response(
             output.getvalue(),
             mimetype='text/csv',
             headers={'Content-Disposition': f'attachment; filename={filename}'}
         )
-        
+
     except Exception as e:
         logger.error(f"Export error: {e}")
         flash(f'Export işlemi başarısız: {str(e)}', 'danger')
         return redirect(url_for('admin.dashboard'))
 
 
-# ==================== RAPORLAR ====================
+# ==================== RAPORLAR ==================== (DÜZELTİLDİ)
 @admin_bp.route('/raporlar')
 @superadmin_required
 def raporlar():
     """Raporlar sayfası"""
-    return render_template('raporlar.html')
+    stats = {
+        'total': 0,
+        'completed': 0,
+        'pending': 0,
+    }
+    try:
+        from app.models import Candidate
+        stats = {
+            'total': Candidate.query.filter_by(is_deleted=False).count(),
+            'completed': Candidate.query.filter_by(is_deleted=False, sinav_durumu='tamamlandi').count(),
+            'pending': Candidate.query.filter_by(is_deleted=False, sinav_durumu='beklemede').count(),
+        }
+    except Exception as e:
+        logger.error(f"Raporlar error: {e}")
+    return render_template('raporlar.html', stats=stats)
 
 
 @admin_bp.route('/super-rapor')
@@ -1048,18 +1063,23 @@ def raporlar():
 def super_rapor():
     """Platform geneli rapor"""
     stats = {
-        'toplam_sirket': 0,
-        'toplam_kullanici': 0,
-        'toplam_soru': 0,
-        'toplam_aday': 0,
+        'total_companies': 0,
+        'active_companies': 0,
+        'total_users': 0,
+        'total_candidates': 0,
+        'completed_exams': 0,
+        'total_credits_used': 0,
     }
     try:
         from app.models import Company, User, Question, Candidate
+        from app.extensions import db
         stats = {
-            'toplam_sirket': Company.query.count(),
-            'toplam_kullanici': User.query.count(),
-            'toplam_soru': Question.query.count(),
-            'toplam_aday': Candidate.query.count(),
+            'total_companies': Company.query.count(),
+            'active_companies': Company.query.filter_by(is_active=True).count(),
+            'total_users': User.query.count(),
+            'total_candidates': Candidate.query.filter_by(is_deleted=False).count(),
+            'completed_exams': Candidate.query.filter_by(is_deleted=False, sinav_durumu='tamamlandi').count(),
+            'total_credits_used': db.session.query(db.func.sum(Company.kredi)).scalar() or 0,
         }
     except Exception as e:
         logger.error(f"Super rapor error: {e}")
@@ -1108,12 +1128,33 @@ def ayarlar():
     return render_template('ayarlar.html')
 
 
-# ==================== VERİ YÖNETİMİ ====================
+# ==================== VERİ YÖNETİMİ ==================== (DÜZELTİLDİ)
 @admin_bp.route('/veri-yonetimi')
 @superadmin_required
 def veri_yonetimi():
     """Veri yönetimi sayfası"""
-    return render_template('veri_yonetimi.html')
+    stats = {
+        'total_candidates': 0,
+        'total_questions': 0,
+        'total_answers': 0,
+        'speaking_recordings': 0,
+        'audit_logs': 0,
+        'db_size_mb': 0,
+    }
+    backups = []
+    try:
+        from app.models import Candidate, Question, ExamAnswer, AuditLog
+        stats = {
+            'total_candidates': Candidate.query.filter_by(is_deleted=False).count(),
+            'total_questions': Question.query.count(),
+            'total_answers': ExamAnswer.query.count(),
+            'speaking_recordings': 0,
+            'audit_logs': AuditLog.query.count(),
+            'db_size_mb': 0,
+        }
+    except Exception as e:
+        logger.error(f"Veri yonetimi error: {e}")
+    return render_template('veri_yonetimi.html', stats=stats, backups=backups)
 
 
 @admin_bp.route('/fraud-heatmap')
@@ -1131,7 +1172,7 @@ def logs():
     page = request.args.get('page', 1, type=int)
     action = request.args.get('action', '')
     logs_list = []
-    
+
     # Create pagination object
     class LogPagination:
         def __init__(self):
@@ -1141,9 +1182,9 @@ def logs():
             self.has_next = False
             self.prev_num = None
             self.next_num = None
-    
+
     pagination = LogPagination()
-    
+
     try:
         from app.models import AuditLog
         query = AuditLog.query
@@ -1161,7 +1202,7 @@ def logs():
         pagination.next_num = logs_data.next_num
     except Exception as e:
         logger.error(f"Logs error: {e}")
-    
+
     return render_template('admin_logs.html', logs=logs_list, pagination=pagination)
 
 
@@ -1172,7 +1213,7 @@ def loglar():
     page = request.args.get('page', 1, type=int)
     action = request.args.get('action', '')
     logs_list = []
-    
+
     # Create pagination object
     class LogPagination:
         def __init__(self):
@@ -1182,9 +1223,9 @@ def loglar():
             self.has_next = False
             self.prev_num = None
             self.next_num = None
-    
+
     pagination = LogPagination()
-    
+
     try:
         from app.models import AuditLog
         query = AuditLog.query
@@ -1202,7 +1243,7 @@ def loglar():
         pagination.next_num = logs_data.next_num
     except Exception as e:
         logger.error(f"Loglar error: {e}")
-    
+
     return render_template('admin_logs.html', logs=logs_list, pagination=pagination)
 
 
