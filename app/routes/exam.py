@@ -6,6 +6,7 @@ GÜNCELLENDİ:
 - calculate_exam_results fonksiyonuna error handling eklendi
 - sinav_bitti route'una try-except eklendi
 - Bölme hatası koruması eklendi
+- sinav_sonuc.html -> sinav_bitti.html düzeltildi
 """
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
@@ -276,7 +277,8 @@ def sinav_bitti():
                     candidate.seviye_sonuc = 'A1'
                 db.session.commit()
 
-        return render_template('sinav_sonuc.html',
+        # DÜZELTİLDİ: sinav_sonuc.html -> sinav_bitti.html
+        return render_template('sinav_bitti.html',
                               aday=candidate,
                               is_demo=False)
 
@@ -297,7 +299,8 @@ def sonuc(giris_kodu):
         flash('Bu sınav henüz tamamlanmamış.', 'warning')
         return redirect(url_for('main.index'))
 
-    return render_template('sinav_sonuc.html', aday=candidate, is_demo=False)
+    # DÜZELTİLDİ: sinav_sonuc.html -> sinav_bitti.html
+    return render_template('sinav_bitti.html', aday=candidate, is_demo=False)
 
 
 def calculate_exam_results(candidate):
