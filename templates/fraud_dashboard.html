@@ -226,6 +226,9 @@
 </div>
 
 <script>
+    // CSRF Token - tüm POST istekleri için gerekli
+    const csrfToken = '{{ csrf_token() }}';
+
     // Filter functionality
     document.querySelectorAll('[data-filter]').forEach(btn => {
         btn.addEventListener('click', function () {
@@ -243,13 +246,16 @@
         });
     });
 
-    // Case actions
+    // Case actions - DÜZELTİLDİ: CSRF Token eklendi
     function clearCase(caseId) {
         if (!confirm('Bu vakayı temiz olarak işaretlemek istiyor musunuz?')) return;
 
         fetch(`/analytics/api/fraud-cases/${caseId}/clear`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken  // CSRF Token eklendi
+            }
         })
             .then(response => response.json())
             .then(data => {
@@ -267,7 +273,10 @@
 
         fetch(`/analytics/api/fraud-cases/${caseId}/confirm`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken  // CSRF Token eklendi
+            }
         })
             .then(response => response.json())
             .then(data => {
