@@ -134,6 +134,8 @@
 </div>
 
 <script>
+    // CSRF Token - tüm POST istekleri için gerekli
+    const csrfToken = '{{ csrf_token() }}';
     let currentCandidateId = null;
 
     function resetExam(candidateId, candidateName) {
@@ -141,7 +143,8 @@
             fetch(`/exam/reset/${candidateId}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken  // DÜZELTİLDİ: CSRF Token eklendi
                 }
             })
                 .then(response => response.json())
@@ -168,12 +171,14 @@
     function confirmExtendTime() {
         const extraMinutes = document.getElementById('extraMinutes').value;
 
-        const formData = new FormData();
-        formData.append('extra_minutes', extraMinutes);
-
+        // DÜZELTİLDİ: FormData yerine JSON kullanılıyor ve CSRF Token ekleniyor
         fetch(`/exam/extend-time/${currentCandidateId}`, {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken  // CSRF Token eklendi
+            },
+            body: JSON.stringify({ extra_minutes: parseInt(extraMinutes) })
         })
             .then(response => response.json())
             .then(data => {
