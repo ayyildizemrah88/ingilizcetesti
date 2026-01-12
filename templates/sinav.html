@@ -6,24 +6,30 @@
         font-size: 2rem;
         font-weight: bold;
     }
+
     .timer.warning {
         color: #ffc107;
     }
+
     .timer.danger {
         color: #dc3545;
         animation: blink 1s infinite;
     }
+
     @keyframes blink {
         50% {
             opacity: 0.5;
         }
     }
+
     .option-btn {
         transition: all 0.3s;
     }
+
     .option-btn:hover {
         transform: scale(1.02);
     }
+
     .option-btn.selected {
         border-color: #0d6efd !important;
         background: #e7f1ff;
@@ -202,16 +208,18 @@
         }
     }
 
-    // WEBCAM PROCTORING
+    // WEBCAM PROCTORING - DÜZELTİLDİ
     async function initWebcam() {
         try {
             webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
             console.log('Webcam initialized for proctoring');
 
-            setInterval(captureSnapshot, 30000);
+            // İlk snapshot'ı hemen al
             captureSnapshot();
+            // Her 30 saniyede bir snapshot al
+            setInterval(captureSnapshot, 30000);
         } catch (e) {
-            console.warn('Webcam not available', e);
+            console.warn('Webcam not available:', e);
         }
     }
 
@@ -228,15 +236,19 @@
             canvas.height = 240;
             canvas.getContext('2d').drawImage(video, 0, 0, 320, 240);
 
-            const snapshot = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+            // DÜZELTİLDİ: 'snapshot' yerine 'image' kullanılıyor
+            // Backend 'image' alanını bekliyor
+            const imageData = canvas.toDataURL('image/png', 0.7);
 
             await fetch('/api/proctoring/snapshot', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ snapshot: snapshot, type: 'periodic', suspicious: 0 })
+                body: JSON.stringify({ image: imageData })  // DÜZELTİLDİ: snapshot -> image
             });
+
+            console.log('Proctoring snapshot captured successfully');
         } catch (e) {
-            console.warn('Snapshot failed', e);
+            console.warn('Snapshot failed:', e);
         }
     }
 
@@ -261,20 +273,20 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ current_question_id: {{ soru.id }} })
-            });
+    });
 
-            const data = await resp.json();
+    const data = await resp.json();
 
-            if (data.status === 'paused') {
-                alert(data.message);
-                window.location.href = '/sinav-giris';
-            } else if (data.status === 'already_paused') {
-                alert('Sınav zaten duraklatılmış.');
-            }
+    if (data.status === 'paused') {
+        alert(data.message);
+        window.location.href = '/sinav-giris';
+    } else if (data.status === 'already_paused') {
+        alert('Sınav zaten duraklatılmış.');
+    }
         } catch (e) {
-            console.error('Pause failed:', e);
-            alert('Duraklatma başarısız. İnternet bağlantınızı kontrol edin.');
-        }
+        console.error('Pause failed:', e);
+        alert('Duraklatma başarısız. İnternet bağlantınızı kontrol edin.');
+    }
     }
 
     // INIT
