@@ -34,17 +34,51 @@
         border-color: #0d6efd !important;
         background: #e7f1ff;
     }
+
+    /* Güvenlik: Seçim engelleme */
+    .exam-content {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+    }
+
+    /* Tab değiştirme uyarısı */
+    .tab-warning-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(220, 53, 69, 0.95);
+        z-index: 9999;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-size: 1.5rem;
+        text-align: center;
+        padding: 2rem;
+    }
 </style>
 {% endblock %}
 {% block content %}
-<div class="row">
+<!-- Tab değiştirme uyarı overlay'i -->
+<div id="tabWarningOverlay" class="tab-warning-overlay">
+    <div>
+        <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+        <h2>Sınav Sayfasından Ayrıldınız!</h2>
+        <p>Lütfen sınav tamamlanana kadar bu sayfada kalın.</p>
+        <p class="text-warning">Bu durum kayıt altına alınmıştır.</p>
+    </div>
+</div>
+
+<div class="row exam-content">
     <div class="col-lg-8 mx-auto">
         <div class="card border-0 mb-4">
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                 <div>
                     <span class="badge bg-primary fs-6">Soru {{ soru_no }} / {{ toplam }}</span>
-                    {# KALDIRILDI: Zorluk seviyesi badge'i adaya gösterilmemeli #}
-                    {# <span class="badge bg-secondary ms-2">{{ soru.zorluk if soru.zorluk else 'B1' }}</span> #}
                 </div>
                 <div class="d-flex align-items-center gap-3">
                     {% if soru_suresi and soru_suresi > 0 %}
@@ -110,6 +144,7 @@
 
 {% block extra_js %}
 <script>
+    // ==================== YAPILANDIRMA ====================
     let remainingSeconds = {{ kalan_sure }};
     let questionSeconds = {{ soru_suresi or 0 }};
     const timerEl = document.getElementById('timer');
@@ -117,7 +152,13 @@
     const OFFLINE_KEY = 'skills_offline_answers';
     let webcamStream = null;
 
-    // TOTAL EXAM TIMER
+    // CSRF Token - Proctoring için gerekli
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
+    // Tab değiştirme sayacı
+    let tabSwitchCount = 0;
+
+    // ==================== ZAMANLAYICILAR ====================
     function updateTimer() {
         const mins = Math.floor(remainingSeconds / 60);
         const secs = remainingSeconds % 60;
@@ -138,7 +179,6 @@
         setTimeout(updateTimer, 1000);
     }
 
-    // PER-QUESTION TIMER
     function updateQuestionTimer() {
         if (!questionTimerEl || questionSeconds <= 0) return;
 
@@ -163,6 +203,7 @@
         setTimeout(updateQuestionTimer, 1000);
     }
 
+    // ==================== SEÇENEK İŞLEMLERİ ====================
     function selectOption(btn, answer) {
         document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
@@ -172,7 +213,7 @@
         saveOfflineAnswer({{ soru.id }}, answer);
     }
 
-    // OFFLINE MODE
+    // ==================== ÇEVRİMDIŞI MOD ====================
     function saveOfflineAnswer(soruId, answer) {
         try {
             let answers = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
@@ -195,7 +236,10 @@
 
             const resp = await fetch('/api/offline/sync', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
                 body: JSON.stringify({ answers: answers })
             });
 
@@ -208,14 +252,14 @@
         }
     }
 
-    // WEBCAM PROCTORING - DÜZELTİLDİ
+    // ==================== WEBCAM PROCTORING - DÜZELTİLDİ ====================
     async function initWebcam() {
         try {
             webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
             console.log('Webcam initialized for proctoring');
 
             // İlk snapshot'ı hemen al
-            captureSnapshot();
+            setTimeout(captureSnapshot, 2000);
             // Her 30 saniyede bir snapshot al
             setInterval(captureSnapshot, 30000);
         } catch (e) {
@@ -224,7 +268,10 @@
     }
 
     async function captureSnapshot() {
-        if (!webcamStream) return;
+        if (!webcamStream) {
+            console.warn('Webcam stream not available');
+            return;
+        }
 
         try {
             const video = document.createElement('video');
@@ -236,23 +283,138 @@
             canvas.height = 240;
             canvas.getContext('2d').drawImage(video, 0, 0, 320, 240);
 
-            // DÜZELTİLDİ: 'snapshot' yerine 'image' kullanılıyor
-            // Backend 'image' alanını bekliyor
+            // Data URL formatında görüntü
             const imageData = canvas.toDataURL('image/png', 0.7);
 
-            await fetch('/api/proctoring/snapshot', {
+            // DÜZELTİLDİ: CSRF Token header'a eklendi
+            const resp = await fetch('/api/proctoring/snapshot', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: imageData })  // DÜZELTİLDİ: snapshot -> image
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken  // CSRF Token eklendi
+                },
+                body: JSON.stringify({ image: imageData })
             });
 
-            console.log('Proctoring snapshot captured successfully');
+            if (resp.ok) {
+                console.log('Proctoring snapshot captured successfully');
+            } else {
+                console.warn('Proctoring snapshot failed:', resp.status);
+            }
         } catch (e) {
             console.warn('Snapshot failed:', e);
         }
     }
 
-    // NETWORK STATUS
+    // ==================== GÜVENLİK TEDBİRLERİ ====================
+
+    // 1. Sağ tık engelleme
+    document.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+        console.log('Sağ tık engellendi');
+        return false;
+    });
+
+    // 2. Kopyalama engelleme
+    document.addEventListener('copy', function (e) {
+        e.preventDefault();
+        console.log('Kopyalama engellendi');
+        return false;
+    });
+
+    // 3. Yapıştırma engelleme
+    document.addEventListener('paste', function (e) {
+        e.preventDefault();
+        console.log('Yapıştırma engellendi');
+        return false;
+    });
+
+    // 4. Kesme engelleme
+    document.addEventListener('cut', function (e) {
+        e.preventDefault();
+        console.log('Kesme engellendi');
+        return false;
+    });
+
+    // 5. Tab/Pencere değiştirme tespiti
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            tabSwitchCount++;
+            console.log('Tab değiştirildi! Toplam:', tabSwitchCount);
+
+            // Uyarı overlay göster
+            document.getElementById('tabWarningOverlay').style.display = 'flex';
+
+            // Sunucuya bildir
+            logSecurityEvent('tab_switch', { count: tabSwitchCount });
+
+            // 2 saniye sonra overlay'i gizle
+            setTimeout(() => {
+                document.getElementById('tabWarningOverlay').style.display = 'none';
+            }, 2000);
+        }
+    });
+
+    // 6. Blur (odak kaybı) tespiti
+    window.addEventListener('blur', function () {
+        console.log('Pencere odağı kaybedildi');
+        logSecurityEvent('window_blur', {});
+    });
+
+    // 7. Kısayol tuşları engelleme (Ctrl+C, Ctrl+V, Ctrl+A, F12, PrintScreen vb.)
+    document.addEventListener('keydown', function (e) {
+        // F12 (DevTools)
+        if (e.key === 'F12') {
+            e.preventDefault();
+            console.log('F12 engellendi');
+            return false;
+        }
+
+        // Ctrl + tuş kombinasyonları
+        if (e.ctrlKey) {
+            // Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A, Ctrl+U, Ctrl+S, Ctrl+P
+            if (['c', 'v', 'x', 'a', 'u', 's', 'p', 'C', 'V', 'X', 'A', 'U', 'S', 'P'].includes(e.key)) {
+                e.preventDefault();
+                console.log('Ctrl+' + e.key + ' engellendi');
+                return false;
+            }
+            // Ctrl+Shift+I (DevTools)
+            if (e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) {
+                e.preventDefault();
+                console.log('DevTools kısayolu engellendi');
+                return false;
+            }
+        }
+
+        // PrintScreen
+        if (e.key === 'PrintScreen') {
+            e.preventDefault();
+            console.log('PrintScreen engellendi');
+            return false;
+        }
+    });
+
+    // 8. Güvenlik olaylarını sunucuya bildir
+    async function logSecurityEvent(eventType, data) {
+        try {
+            await fetch('/api/security/log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    event_type: eventType,
+                    data: data,
+                    timestamp: new Date().toISOString()
+                })
+            });
+        } catch (e) {
+            console.warn('Security log failed:', e);
+        }
+    }
+
+    // ==================== AĞ DURUMU ====================
     window.addEventListener('online', () => {
         console.log('Back online, syncing...');
         syncOfflineAnswers();
@@ -262,7 +424,7 @@
         console.log('Offline mode activated');
     });
 
-    // PAUSE/RESUME
+    // ==================== DURAKLATMA ====================
     async function pauseExam() {
         if (!confirm('Sınavı duraklatmak istiyor musunuz? Kaldığınız yerden devam edebilirsiniz.')) {
             return;
@@ -271,7 +433,10 @@
         try {
             const resp = await fetch('/exam/sinav/pause', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
                 body: JSON.stringify({ current_question_id: {{ soru.id }} })
     });
 
@@ -289,10 +454,12 @@
     }
     }
 
-    // INIT
+    // ==================== BAŞLATMA ====================
     updateTimer();
     updateQuestionTimer();
     initWebcam();
     syncOfflineAnswers();
+
+    console.log('Sınav güvenlik sistemi aktif');
 </script>
 {% endblock %}
