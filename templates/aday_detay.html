@@ -194,6 +194,18 @@
                             </ul>
                         </div>
                     </div>
+
+                    <!-- Güvenlik İhlalleri - YENİ -->
+                    <hr>
+                    <h6 class="text-danger mb-3">
+                        <i class="fas fa-exclamation-triangle me-1"></i>Güvenlik İhlalleri
+                    </h6>
+                    <div id="securityLogs" class="small">
+                        <div class="text-center py-2">
+                            <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+                            <span class="text-muted ms-2">Yükleniyor...</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -296,5 +308,67 @@
             alert('Sertifika oluşturulurken bir hata oluştu.');
         }
     }
+
+    // Güvenlik loglarını yükle - YENİ
+    async function loadSecurityLogs() {
+        const logsDiv = document.getElementById('securityLogs');
+
+        try {
+            const response = await fetch(`/api/security/logs/${adayId}`);
+            const data = await response.json();
+
+            if (data.total_events === 0) {
+                logsDiv.innerHTML = `
+                    <div class="text-success">
+                        <i class="fas fa-check-circle me-1"></i>Güvenlik ihlali tespit edilmedi
+                    </div>
+                `;
+                return;
+            }
+
+            const tabSwitches = data.event_counts.tab_switch || 0;
+            const blurEvents = data.event_counts.window_blur || 0;
+
+            let html = `
+                <div class="row text-center mb-2">
+                    <div class="col-6">
+                        <div class="p-2 ${tabSwitches > 0 ? 'bg-danger bg-opacity-10 border border-danger rounded' : ''}">
+                            <strong class="${tabSwitches > 0 ? 'text-danger' : ''}">${tabSwitches}</strong>
+                            <div class="text-muted small">Tab Değiştirme</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 ${blurEvents > 0 ? 'bg-warning bg-opacity-10 border border-warning rounded' : ''}">
+                            <strong class="${blurEvents > 0 ? 'text-warning' : ''}">${blurEvents}</strong>
+                            <div class="text-muted small">Odak Kaybı</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (data.events && data.events.length > 0) {
+                html += `<div class="mt-2"><small class="text-muted">Son 10 olay:</small><ul class="list-unstyled mb-0 mt-1">`;
+                data.events.slice(-10).reverse().forEach(event => {
+                    const time = new Date(event.timestamp).toLocaleTimeString('tr-TR');
+                    const eventLabel = event.event_type === 'tab_switch' ? 'Tab değiştirildi' : 'Odak kaybı';
+                    html += `<li><span class="badge ${event.event_type === 'tab_switch' ? 'bg-danger' : 'bg-warning text-dark'} me-1">${eventLabel}</span> <span class="text-muted">${time}</span></li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            logsDiv.innerHTML = html;
+
+        } catch (error) {
+            logsDiv.innerHTML = `
+                <div class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>Güvenlik logları yüklenemedi
+                </div>
+            `;
+            console.error('Security logs error:', error);
+        }
+    }
+
+    // Güvenlik loglarını sayfa yüklendiğinde çağır
+    loadSecurityLogs();
 </script>
 {% endblock %}
