@@ -98,9 +98,57 @@
                     <div class="progress-bar" style="width: {{ (soru_no / toplam * 100)|int }}%"></div>
                 </div>
                 <h4 class="mb-4">{{ soru.soru_metni }}</h4>
-                <form method="POST" action="{{ url_for('exam.sinav_cevap') }}" id="examForm">
+                <form method="POST" action="{{ url_for('exam.sinav_cevap') }}" id="examForm"
+                    enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="soru_id" value="{{ soru.id }}">
+                    <input type="hidden" name="soru_tipi" value="{{ soru.soru_tipi or 'SECMELI' }}">
+
+                    {% if soru.soru_tipi == 'KONUSMA' %}
+                    <!-- SPEAKING - Ses Kaydı -->
+                    <div class="speaking-section">
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-microphone me-2"></i>
+                            <strong>Konuşma Sorusu:</strong> Lütfen aşağıdaki butona basarak cevabınızı sesli olarak
+                            kaydedin.
+                        </div>
+
+                        <div class="text-center mb-4">
+                            <button type="button" id="recordBtn" class="btn btn-danger btn-lg px-5 py-3"
+                                onclick="toggleRecording()">
+                                <i class="fas fa-microphone me-2" id="recordIcon"></i>
+                                <span id="recordText">Kayda Başla</span>
+                            </button>
+                            <div id="recordingTimer" class="mt-2 fs-4 text-danger" style="display:none;">
+                                <i class="fas fa-circle text-danger blink me-2"></i>Kayıt: <span
+                                    id="recordTime">00:00</span>
+                            </div>
+                        </div>
+
+                        <audio id="audioPlayback" controls class="w-100 mb-3" style="display:none;"></audio>
+                        <input type="hidden" name="audio_data" id="audioData">
+                        <input type="hidden" name="cevap" id="selectedAnswer" value="">
+                    </div>
+
+                    {% elif soru.soru_tipi == 'YAZILI' %}
+                    <!-- WRITING - Yazı Girişi -->
+                    <div class="writing-section">
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-pen me-2"></i>
+                            <strong>Yazma Sorusu:</strong> Lütfen cevabınızı aşağıdaki alana yazın.
+                        </div>
+
+                        <textarea name="yazili_cevap" id="writingAnswer" class="form-control" rows="8"
+                            placeholder="Cevabınızı buraya yazın..." oninput="updateWritingStatus()"></textarea>
+                        <div class="d-flex justify-content-between mt-2">
+                            <small class="text-muted">Minimum 50 karakter</small>
+                            <small id="charCount" class="text-muted">0 karakter</small>
+                        </div>
+                        <input type="hidden" name="cevap" id="selectedAnswer" value="">
+                    </div>
+
+                    {% else %}
+                    <!-- MULTIPLE CHOICE - Çoktan Seçmeli (Varsayılan) -->
                     <div class="d-grid gap-3">
                         <button type="button" class="btn btn-outline-secondary btn-lg text-start option-btn p-3"
                             onclick="selectOption(this, 'A')">
@@ -122,6 +170,8 @@
                         {% endif %}
                     </div>
                     <input type="hidden" name="cevap" id="selectedAnswer" value="">
+                    {% endif %}
+
                     <div class="d-flex justify-content-end mt-4">
                         <button type="submit" class="btn btn-primary btn-lg px-5" id="submitBtn" disabled>
                             Sonraki <i class="bi bi-arrow-right ms-2"></i>
@@ -468,6 +518,108 @@
         console.error('Pause failed:', e);
         alert('Duraklatma başarısız. İnternet bağlantınızı kontrol edin.');
     }
+    }
+    // ==================== SES KAYDI (SPEAKING) ====================
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let isRecording = false;
+    let recordingSeconds = 0;
+    let recordingInterval = null;
+
+    async function toggleRecording() {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            await startRecording();
+        }
+    }
+
+    async function startRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = (e) => {
+                audioChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+
+                const playback = document.getElementById('audioPlayback');
+                playback.src = audioUrl;
+                playback.style.display = 'block';
+
+                // Convert to base64 for form submission
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = () => {
+                    document.getElementById('audioData').value = reader.result;
+                    document.getElementById('selectedAnswer').value = 'AUDIO_RECORDED';
+                    document.getElementById('submitBtn').disabled = false;
+                };
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+            recordingSeconds = 0;
+
+            document.getElementById('recordBtn').classList.remove('btn-danger');
+            document.getElementById('recordBtn').classList.add('btn-success');
+            document.getElementById('recordIcon').classList.remove('fa-microphone');
+            document.getElementById('recordIcon').classList.add('fa-stop');
+            document.getElementById('recordText').textContent = 'Kaydı Durdur';
+            document.getElementById('recordingTimer').style.display = 'block';
+
+            recordingInterval = setInterval(() => {
+                recordingSeconds++;
+                const mins = Math.floor(recordingSeconds / 60);
+                const secs = recordingSeconds % 60;
+                document.getElementById('recordTime').textContent =
+                    `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }, 1000);
+
+        } catch (err) {
+            console.error('Mikrofon erişimi başarısız:', err);
+            alert('Mikrofon erişimi sağlanamadı. Lütfen tarayıcı izinlerini kontrol edin.');
+        }
+    }
+
+    function stopRecording() {
+        if (mediaRecorder && isRecording) {
+            mediaRecorder.stop();
+            isRecording = false;
+            clearInterval(recordingInterval);
+
+            document.getElementById('recordBtn').classList.remove('btn-success');
+            document.getElementById('recordBtn').classList.add('btn-danger');
+            document.getElementById('recordIcon').classList.remove('fa-stop');
+            document.getElementById('recordIcon').classList.add('fa-microphone');
+            document.getElementById('recordText').textContent = 'Tekrar Kaydet';
+            document.getElementById('recordingTimer').style.display = 'none';
+        }
+    }
+
+    // ==================== YAZILI CEVAP (WRITING) ====================
+    function updateWritingStatus() {
+        const textarea = document.getElementById('writingAnswer');
+        if (!textarea) return;
+
+        const charCount = textarea.value.length;
+        document.getElementById('charCount').textContent = charCount + ' karakter';
+
+        if (charCount >= 50) {
+            document.getElementById('charCount').classList.remove('text-muted');
+            document.getElementById('charCount').classList.add('text-success');
+            document.getElementById('selectedAnswer').value = 'WRITTEN_ANSWER';
+            document.getElementById('submitBtn').disabled = false;
+        } else {
+            document.getElementById('charCount').classList.remove('text-success');
+            document.getElementById('charCount').classList.add('text-muted');
+            document.getElementById('submitBtn').disabled = true;
+        }
     }
 
     // ==================== BAŞLATMA ====================
