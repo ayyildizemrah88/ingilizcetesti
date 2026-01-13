@@ -1304,14 +1304,7 @@ def demo_olustur():
     return render_template('demo_olustur.html')
 
 
-# ==================== VERİ YÖNETİMİ ROUTE'LARI ====================
-@admin_bp.route('/veri-yonetimi')
-@superadmin_required
-def veri_yonetimi():
-    """Veri yönetimi ana sayfası"""
-    return redirect(url_for('data.backup'))
-
-
+# ==================== YEDEK ALMA VE VERİ ALT ROUTE'LARI ====================
 @admin_bp.route('/veri-yonetimi/yedek-al', methods=['GET', 'POST'])
 @superadmin_required
 def yedek_al():
