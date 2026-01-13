@@ -1302,3 +1302,41 @@ def demo_olustur():
             logger.error(f"Demo olustur error: {e}")
             flash('Demo oluşturulurken bir hata oluştu.', 'danger')
     return render_template('demo_olustur.html')
+
+
+# ==================== VERİ YÖNETİMİ ROUTE'LARI ====================
+@admin_bp.route('/veri-yonetimi')
+@superadmin_required
+def veri_yonetimi():
+    """Veri yönetimi ana sayfası"""
+    return redirect(url_for('data.backup'))
+
+
+@admin_bp.route('/veri-yonetimi/yedek-al', methods=['GET', 'POST'])
+@superadmin_required
+def yedek_al():
+    """Yedek alma sayfası - data.backup'a yönlendir"""
+    if request.method == 'POST':
+        return redirect(url_for('data.create_backup'), code=307)
+    return redirect(url_for('data.backup'))
+
+
+@admin_bp.route('/veri-yonetimi/temizlik')
+@superadmin_required
+def veri_temizlik():
+    """Veri temizliği sayfası"""
+    return redirect(url_for('data.cleanup'))
+
+
+@admin_bp.route('/veri-yonetimi/gdpr')
+@superadmin_required
+def veri_gdpr():
+    """GDPR sayfası"""
+    return redirect(url_for('data.gdpr'))
+
+
+@admin_bp.route('/veri-yonetimi/kvkk')
+@superadmin_required
+def veri_kvkk():
+    """KVKK sayfası"""
+    return redirect(url_for('data.kvkk'))
