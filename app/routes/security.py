@@ -5,13 +5,21 @@ NEW FILE: Implements security event logging for fraud detection
 GitHub: app/routes/security.py
 """
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 from flask import Blueprint, request, session, jsonify, current_app
 
 from app.extensions import db
 
+# Türkiye saat dilimi (UTC+3)
+TURKEY_TZ = timezone(timedelta(hours=3))
+
 security_bp = Blueprint('security', __name__, url_prefix='/api/security')
+
+def get_turkey_time():
+    """Türkiye saatini döndür"""
+    return datetime.now(TURKEY_TZ)
+
 
 
 def exam_required(f):
@@ -54,7 +62,7 @@ def log_security_event():
         data = request.get_json()
         event_type = data.get('event_type', 'unknown')
         event_data = data.get('data', {})
-        timestamp = data.get('timestamp', datetime.utcnow().isoformat())
+        timestamp = data.get('timestamp', get_turkey_time().isoformat())
         
         # Create security logs directory
         logs_dir = os.path.join(current_app.root_path, '..', 'security_logs')
