@@ -315,7 +315,7 @@
             <div class="card bg-secondary text-white">
                 <div class="card-body text-center">
                     <h5 class="card-title"><i class="fas fa-clock me-2"></i>Bekliyor</h5>
-                    <h2 class="mb-0">-</h2>
+                    <h2 class="mb-0">{{ bekliyor_count|default('-') }}</h2>
                 </div>
             </div>
         </div>
@@ -323,7 +323,7 @@
             <div class="card bg-warning text-dark">
                 <div class="card-body text-center">
                     <h5 class="card-title"><i class="fas fa-play me-2"></i>Devam Eden</h5>
-                    <h2 class="mb-0">-</h2>
+                    <h2 class="mb-0">{{ devam_count|default('-') }}</h2>
                 </div>
             </div>
         </div>
@@ -331,7 +331,7 @@
             <div class="card bg-success text-white">
                 <div class="card-body text-center">
                     <h5 class="card-title"><i class="fas fa-check me-2"></i>Tamamlanan</h5>
-                    <h2 class="mb-0">-</h2>
+                    <h2 class="mb-0">{{ tamamlanan_count|default('-') }}</h2>
                 </div>
             </div>
         </div>
