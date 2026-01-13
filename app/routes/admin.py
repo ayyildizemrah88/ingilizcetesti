@@ -197,20 +197,42 @@ def sirket_ekle():
 def sirket_duzenle(id):
     """Şirket düzenleme"""
     try:
-        from app.models import Company
+        from app.models import Company, User
         from app.extensions import db
         sirket = Company.query.get_or_404(id)
+        
+        # Şirkete ait admin kullanıcısını bul
+        admin_user = User.query.filter_by(sirket_id=id, rol='customer').first()
 
         if request.method == 'POST':
             sirket.isim = request.form.get('ad') or request.form.get('isim') or sirket.isim
             sirket.email = request.form.get('email') or sirket.email
             sirket.telefon = request.form.get('telefon') or sirket.telefon
             sirket.adres = request.form.get('adres') or sirket.adres
+            
+            # Şifre değiştirme işlemi
+            new_password = request.form.get('new_password')
+            new_password_confirm = request.form.get('new_password_confirm')
+            
+            if new_password and new_password_confirm:
+                if new_password == new_password_confirm:
+                    if len(new_password) >= 8:
+                        if admin_user:
+                            admin_user.set_password(new_password)
+                            # Plain password'u da sakla (görüntüleme için)
+                            if hasattr(admin_user, 'plain_password'):
+                                admin_user.plain_password = new_password
+                            flash('Şifre başarıyla değiştirildi.', 'success')
+                    else:
+                        flash('Şifre en az 8 karakter olmalıdır.', 'warning')
+                else:
+                    flash('Şifreler eşleşmiyor.', 'warning')
+            
             db.session.commit()
             flash('Şirket başarıyla güncellendi.', 'success')
             return redirect(url_for('admin.sirketler'))
 
-        return render_template('sirket_form.html', sirket=sirket)
+        return render_template('sirket_form.html', sirket=sirket, admin_user=admin_user)
     except Exception as e:
         logger.error(f"Sirket duzenle error: {e}")
         flash('Şirket düzenlenirken bir hata oluştu.', 'danger')
