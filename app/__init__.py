@@ -261,6 +261,16 @@ def register_blueprints(app):
     except ImportError as e:
         app.logger.warning(f"Proctoring blueprint not available: {e}")
 
+    # ══════════════════════════════════════════════════════════════
+    # YENİ: Register security blueprint (tab switch, fraud detection)
+    # ══════════════════════════════════════════════════════════════
+    try:
+        from app.routes.security import security_bp
+        app.register_blueprint(security_bp)
+        app.logger.info("✅ Security blueprint registered")
+    except ImportError as e:
+        app.logger.warning(f"Security blueprint not available: {e}")
+
     # Initialize i18n (internationalization)
     try:
         from app.i18n import init_i18n
