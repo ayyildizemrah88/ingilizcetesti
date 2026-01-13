@@ -4,188 +4,39 @@
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <!-- Success Header -->
-            <div class="text-center mb-5">
-                <div class="mb-4">
-                    {% if aday and aday.puan %}
-                    {% if aday.puan >= 80 %}
-                    <div class="display-1 mb-3">🏆</div>
-                    <h1 class="display-5 text-success">Mükemmel!</h1>
-                    {% elif aday.puan >= 60 %}
-                    <div class="display-1 mb-3">🎉</div>
-                    <h1 class="display-5 text-primary">Tebrikler!</h1>
-                    {% elif aday.puan >= 40 %}
-                    <div class="display-1 mb-3">👍</div>
-                    <h1 class="display-5 text-info">İyi Bir Başlangıç!</h1>
-                    {% else %}
-                    <div class="display-1 mb-3">💪</div>
-                    <h1 class="display-5 text-warning">Geliştirebilirsiniz!</h1>
-                    {% endif %}
-                    {% else %}
-                    <div class="display-1 mb-3">✅</div>
-                    <h1 class="display-5 text-success">Tebrikler!</h1>
-                    {% endif %}
-                </div>
-                <p class="lead text-muted">Sınavınız başarıyla tamamlandı.</p>
-            </div>
+        <div class="col-lg-6">
+            <!-- Basit Teşekkür Mesajı -->
+            <div class="card border-0 shadow-lg text-center">
+                <div class="card-body py-5">
+                    <div class="mb-4">
+                        <div class="display-1 mb-3">✅</div>
+                        <h1 class="display-5 text-success mb-3">Sınavınız Tamamlandı!</h1>
+                    </div>
 
-            <!-- Score Cards -->
-            <div class="row g-4 mb-5">
-                <div class="col-md-3">
-                    <div class="card border-0 shadow-sm text-center h-100 bg-primary text-white">
-                        <div class="card-body">
-                            <h2 class="display-6 mb-1">{{ (aday.puan or 0)|round|int }}</h2>
-                            <small class="opacity-75">Puan</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-0 shadow-sm text-center h-100 bg-success text-white">
-                        <div class="card-body">
-                            <h2 class="display-6 mb-1">{{ aday.seviye_sonuc or 'N/A' }}</h2>
-                            <small class="opacity-75">CEFR Seviye</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-0 shadow-sm text-center h-100 bg-info text-white">
-                        <div class="card-body">
-                            <h2 class="display-6 mb-1">{{ aday.soru_limiti or 25 }}</h2>
-                            <small class="opacity-75">Toplam Soru</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-0 shadow-sm text-center h-100 bg-warning text-dark">
-                        <div class="card-body">
-                            <h2 class="display-6 mb-1">{{ aday.sinav_suresi or 30 }} dk</h2>
-                            <small class="opacity-75">Süre</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    <p class="lead text-muted mb-4">
+                        Sınava katıldığınız için teşekkür ederiz.
+                    </p>
 
-            <!-- Category Performance -->
-            {% if category_scores %}
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white border-0">
-                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Kategori Performansı</h5>
-                </div>
-                <div class="card-body">
-                    {% for cat, scores in category_scores.items() %}
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-capitalize">{{ cat }}</span>
-                            <span class="text-muted">{{ scores.correct }}/{{ scores.total }}</span>
-                        </div>
-                        <div class="progress" style="height: 10px;">
-                            {% set pct = ((scores.correct / scores.total) * 100) if scores.total > 0 else 0 %}
-                            <div class="progress-bar {% if pct >= 70 %}bg-success{% elif pct >= 40 %}bg-warning{% else %}bg-danger{% endif %}"
-                                style="width: {{ pct }}%"></div>
-                        </div>
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Sonuçlarınız değerlendirilmek üzere kayıt altına alınmıştır.<br>
+                        Sonuçlarınız tarafınıza ayrıca bildirilecektir.
                     </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% else %}
-            <!-- Skill Scores if no category_scores -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white border-0">
-                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Yetenek Puanları</h5>
-                </div>
-                <div class="card-body">
-                    {% set skills = [
-                    ('Grammar', aday.p_grammar),
-                    ('Vocabulary', aday.p_vocabulary),
-                    ('Reading', aday.p_reading),
-                    ('Listening', aday.p_listening),
-                    ('Writing', aday.p_writing),
-                    ('Speaking', aday.p_speaking)
-                    ] %}
-                    {% for skill_name, skill_value in skills %}
-                    {% if skill_value %}
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span>{{ skill_name }}</span>
-                            <span class="text-muted">%{{ (skill_value or 0)|round|int }}</span>
-                        </div>
-                        <div class="progress" style="height: 10px;">
-                            {% set pct = skill_value or 0 %}
-                            <div class="progress-bar {% if pct >= 70 %}bg-success{% elif pct >= 40 %}bg-warning{% else %}bg-danger{% endif %}"
-                                style="width: {{ pct }}%"></div>
-                        </div>
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
 
-            <!-- Candidate Info -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white border-0">
-                    <h5 class="mb-0"><i class="fas fa-user me-2"></i>Aday Bilgileri</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p class="mb-2"><strong>Ad Soyad:</strong> {{ aday.ad_soyad or 'N/A' }}</p>
-                            <p class="mb-2"><strong>Giriş Kodu:</strong> <code>{{ aday.giris_kodu or 'N/A' }}</code></p>
-                        </div>
-                        <div class="col-md-6">
-                            <p class="mb-2"><strong>Sınav Tarihi:</strong>
-                                {% if aday.bitis_tarihi %}
-                                {{ aday.bitis_tarihi.strftime('%d.%m.%Y %H:%M') }}
-                                {% else %}
-                                N/A
-                                {% endif %}
-                            </p>
-                            <p class="mb-2"><strong>Süre:</strong> {{ aday.sinav_suresi or 30 }} dakika</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex flex-wrap gap-3 justify-content-center">
-                        {% if aday and aday.certificate_hash %}
-                        <a href="/certificate/{{ aday.certificate_hash }}" class="btn btn-success btn-lg">
-                            <i class="fas fa-certificate me-2"></i>Sertifikayı Görüntüle
-                        </a>
-                        <a href="/certificate/{{ aday.certificate_hash }}/pdf" class="btn btn-outline-primary btn-lg">
-                            <i class="fas fa-file-pdf me-2"></i>PDF İndir
-                        </a>
-                        {% endif %}
-                        <a href="/" class="btn btn-outline-secondary btn-lg">
+                    <div class="d-grid gap-2">
+                        <a href="/" class="btn btn-primary btn-lg">
                             <i class="fas fa-home me-2"></i>Ana Sayfa
                         </a>
                     </div>
                 </div>
             </div>
 
-            <!-- CEFR Level Explanation -->
-            <div class="card border-0 bg-light mt-4">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="fas fa-info-circle me-2"></i>CEFR Seviye Açıklaması</h6>
-                    <p class="card-text small text-muted mb-0">
-                        {% if aday.seviye_sonuc == 'C2' %}
-                        <strong>C2 - Ustaca:</strong> Dili neredeyse anadil seviyesinde kullanabilirsiniz.
-                        {% elif aday.seviye_sonuc == 'C1' %}
-                        <strong>C1 - İleri:</strong> Karmaşık konularda akıcı ve spontan iletişim kurabilirsiniz.
-                        {% elif aday.seviye_sonuc == 'B2' %}
-                        <strong>B2 - Üst Orta:</strong> Kendi uzmanlık alanınızda teknik tartışmalara katılabilirsiniz.
-                        {% elif aday.seviye_sonuc == 'B1' %}
-                        <strong>B1 - Orta:</strong> Günlük konularda kendinizi ifade edebilirsiniz.
-                        {% elif aday.seviye_sonuc == 'A2' %}
-                        <strong>A2 - Temel:</strong> Basit cümlelerle iletişim kurabilirsiniz.
-                        {% else %}
-                        <strong>A1 - Başlangıç:</strong> Temel seviyede kelime ve ifadeler kullanabilirsiniz.
-                        {% endif %}
-                    </p>
-                </div>
+            <!-- İletişim Bilgileri -->
+            <div class="text-center mt-4 text-muted">
+                <p class="small mb-1">Sorularınız için:</p>
+                <p class="small mb-0">
+                    <i class="fas fa-envelope me-1"></i> info@skillstestcenter.com
+                </p>
             </div>
         </div>
     </div>
