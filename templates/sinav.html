@@ -150,6 +150,11 @@
     // Tab değiştirme sayacı
     let tabSwitchCount = 0;
 
+    // DÜZELTİLDİ: İlk 5 saniye tab değişikliklerini ignore et (kamera izni için)
+    let ignoreTabSwitch = true;
+    let lastTabSwitchTime = 0;
+    setTimeout(() => { ignoreTabSwitch = false; }, 5000);
+
     // ==================== ZAMANLAYICILAR ====================
     function updateTimer() {
         const mins = Math.floor(remainingSeconds / 60);
@@ -328,9 +333,23 @@
         return false;
     });
 
-    // 5. Tab/Pencere değiştirme tespiti
+    // 5. Tab/Pencere değiştirme tespiti - DÜZELTİLDİ
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) {
+            // İlk 5 saniye ignore et (kamera izni popup'ları için)
+            if (ignoreTabSwitch) {
+                console.log('Tab değişikliği ignore edildi (başlangıç)');
+                return;
+            }
+
+            // Debounce: 2 saniye içinde tekrar tetiklenmesini engelle
+            const now = Date.now();
+            if (now - lastTabSwitchTime < 2000) {
+                console.log('Tab değişikliği ignore edildi (debounce)');
+                return;
+            }
+            lastTabSwitchTime = now;
+
             tabSwitchCount++;
             console.log('Tab değiştirildi! Toplam:', tabSwitchCount);
 
@@ -347,8 +366,13 @@
         }
     });
 
-    // 6. Blur (odak kaybı) tespiti
+    // 6. Blur (odak kaybı) tespiti - DÜZELTİLDİ
     window.addEventListener('blur', function () {
+        // İlk 5 saniye ignore et
+        if (ignoreTabSwitch) {
+            console.log('Blur ignore edildi (başlangıç)');
+            return;
+        }
         console.log('Pencere odağı kaybedildi');
         logSecurityEvent('window_blur', {});
     });
