@@ -46,7 +46,7 @@ def download_certificate(candidate_id):
         candidate_data = {
             'id': candidate.id,
             'ad_soyad': candidate.ad_soyad,
-            'puan': candidate.toplam_puan or candidate.puan or 0,
+            'puan': candidate.puan or 0,
             'sinav_bitis': candidate.sinav_bitis or candidate.bitis_tarihi,
             'skills': {
                 'grammar': getattr(candidate, 'grammar_puan', 0) or getattr(candidate, 'p_grammar', 0) or 0,
@@ -108,7 +108,7 @@ def verify_certificate(cert_hash):
         valid=True,
         cert_hash=cert_hash,
         candidate_name=candidate.ad_soyad,
-        score=candidate.toplam_puan or candidate.puan,
+        score=candidate.puan,
         cefr_level=candidate.cefr_seviye or candidate.seviye_sonuc,
         exam_date=candidate.sinav_bitis or candidate.bitis_tarihi,
         company=candidate.company.ad if candidate.company else None
@@ -200,7 +200,7 @@ def api_generate_certificate(candidate_id):
         candidate_data = {
             'id': candidate.id,
             'ad_soyad': candidate.ad_soyad,
-            'puan': candidate.toplam_puan or candidate.puan or 0,
+            'puan': candidate.puan or 0,
             'cefr_seviye': candidate.cefr_seviye or candidate.seviye_sonuc or 'B1',
             'sinav_bitis': candidate.sinav_bitis or candidate.bitis_tarihi,
             'skills': {
@@ -249,7 +249,7 @@ def api_verify_certificate(cert_hash):
     return jsonify({
         'valid': True,
         'candidate_name': candidate.ad_soyad,
-        'score': candidate.toplam_puan or candidate.puan,
+        'score': candidate.puan,
         'cefr_level': candidate.cefr_seviye or candidate.seviye_sonuc,
         'exam_date': (candidate.sinav_bitis or candidate.bitis_tarihi).isoformat() if (candidate.sinav_bitis or candidate.bitis_tarihi) else None,
         'certificate_hash': cert_hash
