@@ -513,14 +513,16 @@ def aday_ekle():
 @superadmin_required
 def aday_detay(aday_id):
     """Aday detay sayfası"""
-    try:
-        from app.models import Candidate
-        aday = Candidate.query.get_or_404(aday_id)
-        return render_template('aday_detay.html', aday=aday)
-    except Exception as e:
-        logger.error(f"Aday detay error: {e}")
+    from app.models import Candidate
+    
+    # get_or_404 zaten 404 döner, ekstra exception handling gerekmiyor
+    aday = Candidate.query.get(aday_id)
+    
+    if not aday:
         flash('Aday bulunamadı.', 'danger')
         return redirect(url_for('admin.adaylar'))
+    
+    return render_template('aday_detay.html', aday=aday)
 
 
 # ==================== ADAY SİLME - DÜZELTİLDİ ====================
