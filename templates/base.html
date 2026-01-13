@@ -198,12 +198,25 @@
     <!-- Skip Link for Screen Readers -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <!-- ===================================
-         ANA SAYFA BUTONU - SABİT FLOATING
+         ANA SAYFA BUTONU - ROL BAZLI
          =================================== -->
+    {% if session.get('rol') in ['superadmin', 'super_admin', 'admin'] %}
+    <a href="{{ url_for('admin.dashboard') }}" class="home-button-fixed" title="Admin Paneli" aria-label="Admin Paneli">
+        <i class="bi bi-house-door-fill" aria-hidden="true"></i>
+        <span class="home-button-tooltip">🏠 Admin Paneli</span>
+    </a>
+    {% elif session.get('rol') == 'customer' %}
+    <a href="{{ url_for('customer.dashboard') }}" class="home-button-fixed" title="Müşteri Paneli"
+        aria-label="Müşteri Paneli">
+        <i class="bi bi-house-door-fill" aria-hidden="true"></i>
+        <span class="home-button-tooltip">🏠 Müşteri Paneli</span>
+    </a>
+    {% else %}
     <a href="/" class="home-button-fixed" title="Ana Sayfaya Dön" aria-label="Ana Sayfaya Dön">
         <i class="bi bi-house-door-fill" aria-hidden="true"></i>
         <span class="home-button-tooltip">🏠 Ana Sayfa</span>
     </a>
+    {% endif %}
     <!-- Top Bar with Language Selector -->
     <div class="bg-dark text-white py-1">
         <div class="container d-flex justify-content-end align-items-center">
