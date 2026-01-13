@@ -6,12 +6,6 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-user-graduate me-2"></i>{{ aday.ad_soyad if aday else 'Aday' }}</h2>
         <div>
-            {% if aday.certificate_hash %}
-            <a href="{{ url_for('certificate.download_pdf', hash=aday.certificate_hash) }}"
-                class="btn btn-success me-2">
-                <i class="fas fa-download me-1"></i>Sertifika İndir
-            </a>
-            {% endif %}
             <a href="{{ url_for('admin.adaylar') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>Geri
             </a>
@@ -68,6 +62,47 @@
                     </ul>
                 </div>
             </div>
+
+            <!-- SERTIFIKA KARTI - YENİ -->
+            {% if aday.sinav_durumu == 'tamamlandi' %}
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-certificate me-2"></i>Sertifika</h5>
+                </div>
+                <div class="card-body">
+                    {% if aday.certificate_hash %}
+                    <div class="text-center mb-3">
+                        <i class="fas fa-check-circle fa-3x text-success mb-2"></i>
+                        <p class="text-muted mb-1">Sertifika hazır</p>
+                        <code class="small">{{ aday.certificate_hash }}</code>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <!-- DÜZELTİLDİ: Doğru route kullanıldı -->
+                        <a href="{{ url_for('certificate.download_certificate', candidate_id=aday.id) }}"
+                            class="btn btn-success">
+                            <i class="fas fa-download me-1"></i>Sertifika İndir (PDF)
+                        </a>
+                        <a href="{{ url_for('certificate.verify_certificate', cert_hash=aday.certificate_hash) }}"
+                            class="btn btn-outline-success" target="_blank">
+                            <i class="fas fa-check me-1"></i>Doğrula
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center mb-3">
+                        <i class="fas fa-clock fa-3x text-warning mb-2"></i>
+                        <p class="text-muted mb-1">Sertifika henüz oluşturulmamış</p>
+                    </div>
+                    <form id="generateCertForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="button" class="btn btn-success w-100"
+                            onclick="generateCertificate({{ aday.id }})">
+                            <i class="fas fa-plus me-1"></i>Sertifika Oluştur
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </div>
         <!-- Right Column: Proctoring & Actions -->
         <div class="col-lg-8">
@@ -106,7 +141,6 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <!-- DÜZELTİLDİ: admin.sinav_sifirla -> admin.aday_sinav_sifirla -->
                             <form method="POST" action="{{ url_for('admin.aday_sinav_sifirla', id=aday.id) }}"
                                 onsubmit="return confirm('Sınavı sıfırlamak istediğinize emin misiniz?')">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -132,6 +166,15 @@
                     <div class="row">
                         <div class="col-6">
                             <ul class="list-unstyled small">
+                                <li><strong>Durum:</strong>
+                                    {% if aday.sinav_durumu == 'tamamlandi' %}
+                                    <span class="badge bg-success">Tamamlandı</span>
+                                    {% elif aday.sinav_durumu == 'devam_ediyor' %}
+                                    <span class="badge bg-warning">Devam Ediyor</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Beklemede</span>
+                                    {% endif %}
+                                </li>
                                 <li><strong>Duraklatıldı:</strong> {% if aday.is_paused %}<span
                                         class="text-danger">Evet</span>{% else %}Hayır{% endif %}</li>
                                 <li><strong>Toplam Duraklama:</strong> {{ aday.total_paused_seconds or 0 }} sn</li>
@@ -141,7 +184,7 @@
                             <ul class="list-unstyled small">
                                 <li><strong>Pratik Mi:</strong> {% if aday.is_practice %}Evet{% else %}Hayır{% endif %}
                                 </li>
-                                <li><strong>Sertifika:</strong>
+                                <li><strong>Sertifika Hash:</strong>
                                     {% if aday.certificate_hash %}
                                     <code class="small">{{ aday.certificate_hash[:12] }}...</code>
                                     {% else %}
@@ -172,31 +215,35 @@
     </div>
 </div>
 <script>
+    // CSRF Token
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
     // Load proctoring photos
     document.addEventListener('DOMContentLoaded', function () {
-        const adayId = {{ aday.id }};
-        const gallery = document.getElementById('proctoring-gallery');
-        const countBadge = document.getElementById('proctoring-count');
+        const adayId = {{ aday.id }
+    };
+    const gallery = document.getElementById('proctoring-gallery');
+    const countBadge = document.getElementById('proctoring-count');
 
-        fetch(`/api/proctoring/snapshots/${adayId}`)
-            .then(response => response.json())
-            .then(data => {
-                countBadge.textContent = data.count + ' fotoğraf';
-                if (data.count === 0) {
-                    gallery.innerHTML = `
+    fetch(`/api/proctoring/snapshots/${adayId}`)
+        .then(response => response.json())
+        .then(data => {
+            countBadge.textContent = data.count + ' fotoğraf';
+            if (data.count === 0) {
+                gallery.innerHTML = `
                         <div class="col-12 text-center py-4 text-muted">
                             <i class="fas fa-camera-slash fa-3x mb-3"></i>
                             <p>Henüz fotoğraf çekilmemiş veya aday sınava girmemiş.</p>
                         </div>
                     `;
-                    return;
-                }
-                gallery.innerHTML = '';
-                data.snapshots.forEach((snap, index) => {
-                    const timestamp = new Date(snap.timestamp).toLocaleString('tr-TR');
-                    const col = document.createElement('div');
-                    col.className = 'col-4 col-md-3';
-                    col.innerHTML = `
+                return;
+            }
+            gallery.innerHTML = '';
+            data.snapshots.forEach((snap, index) => {
+                const timestamp = new Date(snap.timestamp).toLocaleString('tr-TR');
+                const col = document.createElement('div');
+                col.className = 'col-4 col-md-3';
+                col.innerHTML = `
                         <div class="card h-100" style="cursor:pointer" 
                              onclick="showPhoto('${snap.url}', '${timestamp}')">
                             <img src="${snap.url}" class="card-img-top" alt="Snapshot ${index + 1}"
@@ -206,23 +253,48 @@
                             </div>
                         </div>
                     `;
-                    gallery.appendChild(col);
-                });
-            })
-            .catch(error => {
-                gallery.innerHTML = `
+                gallery.appendChild(col);
+            });
+        })
+        .catch(error => {
+            gallery.innerHTML = `
                     <div class="col-12 text-center text-danger py-3">
                         <i class="fas fa-exclamation-triangle me-2"></i>Yüklenemedi
                     </div>
                 `;
-                console.error('Proctoring load error:', error);
-            });
+            console.error('Proctoring load error:', error);
+        });
     });
 
     function showPhoto(url, timestamp) {
         document.getElementById('modal-photo').src = url;
         document.getElementById('modal-timestamp').textContent = timestamp;
         new bootstrap.Modal(document.getElementById('photoModal')).show();
+    }
+
+    // Sertifika oluşturma fonksiyonu
+    async function generateCertificate(candidateId) {
+        try {
+            const response = await fetch(`/sertifika/generate/${candidateId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Sertifika başarıyla oluşturuldu! Sayfa yenilenecek.');
+                location.reload();
+            } else {
+                alert('Hata: ' + (data.message || 'Sertifika oluşturulamadı'));
+            }
+        } catch (error) {
+            console.error('Certificate generation error:', error);
+            alert('Sertifika oluşturulurken bir hata oluştu.');
+        }
     }
 </script>
 {% endblock %}
