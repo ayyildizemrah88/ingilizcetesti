@@ -443,12 +443,26 @@ def adaylar():
     """Aday listesi with pagination"""
     page = request.args.get('page', 1, type=int)
     per_page = 20
+    
+    # Stats counts
+    bekliyor_count = 0
+    devam_count = 0
+    tamamlanan_count = 0
 
     try:
         from app.models import Candidate
-        adaylar = Candidate.query.order_by(Candidate.id.desc()).paginate(
+        adaylar = Candidate.query.filter_by(is_deleted=False).order_by(Candidate.id.desc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
+        
+        # Calculate stats
+        try:
+            bekliyor_count = Candidate.query.filter_by(is_deleted=False, sinav_durumu='beklemede').count()
+            devam_count = Candidate.query.filter_by(is_deleted=False, sinav_durumu='baslamis').count()
+            tamamlanan_count = Candidate.query.filter_by(is_deleted=False, sinav_durumu='tamamlandi').count()
+        except Exception as stat_err:
+            logger.warning(f"Stats calculation error: {stat_err}")
+            
     except Exception as e:
         logger.error(f"Adaylar error: {e}")
         flash('Adaylar yüklenirken bir hata oluştu.', 'danger')
@@ -464,7 +478,12 @@ def adaylar():
             total = 0
             iter_pages = lambda self, **kwargs: []
         adaylar = EmptyPagination()
-    return render_template('adaylar.html', adaylar=adaylar)
+        
+    return render_template('adaylar.html', 
+                          adaylar=adaylar,
+                          bekliyor_count=bekliyor_count,
+                          devam_count=devam_count,
+                          tamamlanan_count=tamamlanan_count)
 
 
 @admin_bp.route('/bulk-upload', methods=['GET', 'POST'])
