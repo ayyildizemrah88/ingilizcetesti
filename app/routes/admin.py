@@ -915,6 +915,7 @@ def sablonlar():
 @superadmin_required
 def sablon_ekle():
     """Yeni şablon ekleme"""
+    import json
     sirketler = []
     try:
         from app.models import Company
@@ -926,6 +927,30 @@ def sablon_ekle():
         try:
             from app.models import ExamTemplate
             from app.extensions import db
+            
+            # Build sections_config from form data
+            sections = request.form.getlist('sections[]')
+            sections_config = {}
+            
+            for section in sections:
+                section_config = {
+                    'question_count': int(request.form.get(f'{section}_question_count', 5)),
+                    'time_limit': int(request.form.get(f'{section}_time_limit', 10)) * 60,  # convert to seconds
+                    'order': int(request.form.get(f'{section}_order', 1))
+                }
+                # Add section-specific fields
+                if section == 'speaking':
+                    section_config['prep_time'] = int(request.form.get('speaking_prep_time', 30))
+                    section_config['answer_time'] = int(request.form.get('speaking_answer_time', 60))
+                elif section == 'writing':
+                    section_config['min_words'] = int(request.form.get('writing_min_words', 150))
+                elif section == 'reading':
+                    section_config['passage_count'] = int(request.form.get('reading_passage_count', 2))
+                elif section == 'listening':
+                    section_config['audio_count'] = int(request.form.get('listening_audio_count', 3))
+                
+                sections_config[section] = section_config
+            
             yeni_sablon = ExamTemplate(
                 isim=request.form.get('isim') or request.form.get('ad'),
                 sinav_suresi=int(request.form.get('sinav_suresi', 30)),
@@ -935,7 +960,8 @@ def sablon_ekle():
                 is_adaptive=request.form.get('is_adaptive') == 'on',
                 randomize_questions=request.form.get('randomize_questions') == 'on',
                 show_results=request.form.get('show_results') == 'on',
-                sirket_id=request.form.get('sirket_id') or None
+                sirket_id=request.form.get('sirket_id') or None,
+                sections_config=json.dumps(sections_config) if sections_config else None
             )
             db.session.add(yeni_sablon)
             db.session.commit()
@@ -960,6 +986,7 @@ def sablon_yeni():
 @superadmin_required
 def sablon_duzenle(id):
     """Şablon düzenleme"""
+    import json
     sirketler = []
     try:
         from app.models import Company
@@ -973,6 +1000,28 @@ def sablon_duzenle(id):
         sablon = ExamTemplate.query.get_or_404(id)
 
         if request.method == 'POST':
+            # Build sections_config from form data
+            sections = request.form.getlist('sections[]')
+            sections_config = {}
+            
+            for section in sections:
+                section_config = {
+                    'question_count': int(request.form.get(f'{section}_question_count', 5)),
+                    'time_limit': int(request.form.get(f'{section}_time_limit', 10)) * 60,
+                    'order': int(request.form.get(f'{section}_order', 1))
+                }
+                if section == 'speaking':
+                    section_config['prep_time'] = int(request.form.get('speaking_prep_time', 30))
+                    section_config['answer_time'] = int(request.form.get('speaking_answer_time', 60))
+                elif section == 'writing':
+                    section_config['min_words'] = int(request.form.get('writing_min_words', 150))
+                elif section == 'reading':
+                    section_config['passage_count'] = int(request.form.get('reading_passage_count', 2))
+                elif section == 'listening':
+                    section_config['audio_count'] = int(request.form.get('listening_audio_count', 3))
+                
+                sections_config[section] = section_config
+            
             sablon.isim = request.form.get('isim') or request.form.get('ad') or sablon.isim
             sablon.sinav_suresi = int(request.form.get('sinav_suresi', sablon.sinav_suresi))
             sablon.soru_suresi = int(request.form.get('soru_suresi', sablon.soru_suresi or 60))
@@ -982,6 +1031,7 @@ def sablon_duzenle(id):
             sablon.randomize_questions = request.form.get('randomize_questions') == 'on'
             sablon.show_results = request.form.get('show_results') == 'on'
             sablon.sirket_id = request.form.get('sirket_id') or sablon.sirket_id
+            sablon.sections_config = json.dumps(sections_config) if sections_config else sablon.sections_config
             db.session.commit()
             flash('Şablon başarıyla güncellendi.', 'success')
             return redirect(url_for('admin.sablonlar'))
