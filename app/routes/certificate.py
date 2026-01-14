@@ -42,11 +42,22 @@ def download_certificate(candidate_id):
         from app.utils.certificate_generator import CertificateGenerator
 
         generator = CertificateGenerator()
+        # Calculate CEFR level from score if not already set
+        score = candidate.puan or 0
+        cefr_level = getattr(candidate, 'cefr_seviye', None) or getattr(candidate, 'seviye_sonuc', None)
+        if not cefr_level:
+            if score >= 90: cefr_level = 'C2'
+            elif score >= 80: cefr_level = 'C1'
+            elif score >= 70: cefr_level = 'B2'
+            elif score >= 55: cefr_level = 'B1'
+            elif score >= 40: cefr_level = 'A2'
+            else: cefr_level = 'A1'
 
         candidate_data = {
             'id': candidate.id,
             'ad_soyad': candidate.ad_soyad,
-            'puan': candidate.puan or 0,
+            'puan': score,
+            'cefr_seviye': cefr_level,
             'sinav_bitis': getattr(candidate, 'sinav_bitis', None) or getattr(candidate, 'bitis_tarihi', None),
             'skills': {
                 'grammar': getattr(candidate, 'grammar_puan', 0) or getattr(candidate, 'p_grammar', 0) or 0,
@@ -197,11 +208,22 @@ def api_generate_certificate(candidate_id):
 
         generator = CertificateGenerator()
 
+        # Calculate CEFR level from score if not already set
+        score = candidate.puan or 0
+        cefr_level = candidate.cefr_seviye or candidate.seviye_sonuc
+        if not cefr_level:
+            if score >= 90: cefr_level = 'C2'
+            elif score >= 80: cefr_level = 'C1'
+            elif score >= 70: cefr_level = 'B2'
+            elif score >= 55: cefr_level = 'B1'
+            elif score >= 40: cefr_level = 'A2'
+            else: cefr_level = 'A1'
+
         candidate_data = {
             'id': candidate.id,
             'ad_soyad': candidate.ad_soyad,
-            'puan': candidate.puan or 0,
-            'cefr_seviye': candidate.cefr_seviye or candidate.seviye_sonuc or 'B1',
+            'puan': score,
+            'cefr_seviye': cefr_level,
             'sinav_bitis': getattr(candidate, 'sinav_bitis', None) or getattr(candidate, 'bitis_tarihi', None),
             'skills': {
                 'grammar': getattr(candidate, 'grammar_puan', 0) or getattr(candidate, 'p_grammar', 0) or 0,
