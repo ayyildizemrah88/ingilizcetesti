@@ -127,13 +127,9 @@ class CertificateGenerator:
         c.rect(0, 0, self.width, 2*cm, fill=True, stroke=False)
     
     def _draw_border(self, c):
-        """Draw decorative border."""
-        c.setStrokeColor(self.gold_color)
-        c.setLineWidth(3)
-        c.rect(1.5*cm, 1.5*cm, self.width - 3*cm, self.height - 3*cm, fill=False)
-        
-        c.setLineWidth(1)
-        c.rect(2*cm, 2*cm, self.width - 4*cm, self.height - 4*cm, fill=False)
+        """Draw decorative border - disabled per user request."""
+        # Yellow/gold border removed
+        pass
     
     def _draw_header(self, c):
         """Draw certificate header."""
