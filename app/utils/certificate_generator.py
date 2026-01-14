@@ -185,7 +185,7 @@ class CertificateGenerator:
         c.drawCentredString(self.width/2, self.height - 14.8*cm, description)
         
         c.setFont('Helvetica-Bold', 16)
-        c.drawCentredString(self.width/2, self.height - 16*cm, f"Overall Score: {score}%")
+        c.drawCentredString(self.width/2, self.height - 15.3*cm, f"Overall Score: {score}%")
     
     def _draw_scores(self, c, data):
         """Draw skill scores."""
