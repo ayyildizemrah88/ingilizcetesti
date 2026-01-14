@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}{{ sirket.isim }} - Admin Oluştur{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Navigation -->
+    <div class="mb-3">
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-house-fill me-1"></i>Dashboard
+        </a>
+        <a href="{{ url_for('admin.sirket_duzenle', id=sirket.id) }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left me-1"></i>Şirket Düzenle
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-plus align-middle me-2"></i>
+                        Admin Kullanıcı Oluştur
+                    </h5>
+                </div>
+                <div class="card-body">
+
+                    <!-- Şirket Bilgisi -->
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-building me-2"></i>
+                        <strong>Şirket:</strong> {{ sirket.isim }}
+                    </div>
+
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="POST">
+                        <!-- CSRF Token for Security -->
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Admin E-posta -->
+                        <div class="mb-3">
+                            <label for="admin_email" class="form-label">Admin E-posta *</label>
+                            <input type="email" class="form-control" id="admin_email" name="admin_email" required
+                                placeholder="admin@{{ sirket.isim|lower|replace(' ', '') }}.com">
+                            <div class="form-text">Bu e-posta ile müşteri paneline giriş yapılacak.</div>
+                        </div>
+
+                        <!-- Admin Ad Soyad -->
+                        <div class="mb-3">
+                            <label for="admin_ad_soyad" class="form-label">Admin Ad Soyad *</label>
+                            <input type="text" class="form-control" id="admin_ad_soyad" name="admin_ad_soyad" required
+                                placeholder="Yetkili kişinin adı soyadı">
+                        </div>
+
+                        <!-- Admin Şifre -->
+                        <div class="mb-3">
+                            <label for="admin_password" class="form-label">Şifre *</label>
+                            <input type="password" class="form-control" id="admin_password" name="admin_password"
+                                required minlength="8" placeholder="En az 8 karakter">
+                            <div class="form-text">Güçlü bir şifre seçin.</div>
+                        </div>
+
+                        <!-- Admin Şifre Tekrar -->
+                        <div class="mb-4">
+                            <label for="admin_password_confirm" class="form-label">Şifre (Tekrar) *</label>
+                            <input type="password" class="form-control" id="admin_password_confirm" minlength="8"
+                                placeholder="Şifreyi tekrar girin">
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-user-plus me-1"></i>Admin Oluştur
+                            </button>
+                            <a href="{{ url_for('admin.sirket_duzenle', id=sirket.id) }}"
+                                class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>İptal
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    // Şifre eşleşme kontrolü
+    document.querySelector('form').addEventListener('submit', function (e) {
+        const password = document.getElementById('admin_password').value;
+        const passwordConfirm = document.getElementById('admin_password_confirm').value;
+
+        if (passwordConfirm && password !== passwordConfirm) {
+            e.preventDefault();
+            alert('Şifreler eşleşmiyor!');
+            return false;
+        }
+    });
+</script>
+{% endblock %}
