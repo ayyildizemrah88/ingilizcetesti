@@ -170,23 +170,54 @@ def sirket_detay(sirket_id):
 @admin_bp.route('/sirket/ekle', methods=['GET', 'POST'])
 @superadmin_required
 def sirket_ekle():
-    """Yeni şirket ekleme"""
+    """Yeni şirket ekleme - Admin kullanıcı ile birlikte"""
     if request.method == 'POST':
         try:
-            from app.models import Company
+            from app.models import Company, User
             from app.extensions import db
+            
+            # Şirket oluştur
             yeni_sirket = Company(
                 isim=request.form.get('ad') or request.form.get('isim'),
                 email=request.form.get('email'),
                 telefon=request.form.get('telefon'),
                 adres=request.form.get('adres'),
+                kredi=int(request.form.get('kredi', 10)),
                 is_active=True
             )
             db.session.add(yeni_sirket)
+            db.session.flush()  # ID almak için
+            
+            # Admin kullanıcı oluştur (form'dan gelen bilgilerle)
+            admin_email = request.form.get('admin_email')
+            admin_ad_soyad = request.form.get('admin_ad_soyad')
+            admin_password = request.form.get('admin_password')
+            
+            if admin_email and admin_ad_soyad and admin_password:
+                # Email kontrolü
+                existing_user = User.query.filter_by(email=admin_email).first()
+                if existing_user:
+                    db.session.rollback()
+                    flash('Bu e-posta adresi zaten kullanılıyor.', 'danger')
+                    return render_template('sirket_form.html')
+                
+                admin_user = User(
+                    email=admin_email,
+                    ad_soyad=admin_ad_soyad,
+                    rol='customer',
+                    sirket_id=yeni_sirket.id,
+                    is_active=True
+                )
+                admin_user.set_password(admin_password)
+                db.session.add(admin_user)
+                flash('Şirket ve admin kullanıcı başarıyla oluşturuldu.', 'success')
+            else:
+                flash('Şirket oluşturuldu ancak admin bilgileri eksik olduğu için kullanıcı oluşturulmadı.', 'warning')
+            
             db.session.commit()
-            flash('Şirket başarıyla eklendi.', 'success')
             return redirect(url_for('admin.sirketler'))
         except Exception as e:
+            db.session.rollback()
             logger.error(f"Sirket ekle error: {e}")
             flash('Şirket eklenirken bir hata oluştu.', 'danger')
     return render_template('sirket_form.html')
@@ -277,6 +308,57 @@ def sirket_kredi(id):
     except Exception as e:
         logger.error(f"Sirket kredi error: {e}")
         flash('Kredi eklenirken bir hata oluştu.', 'danger')
+        return redirect(url_for('admin.sirketler'))
+
+
+@admin_bp.route('/sirket/<int:id>/admin-olustur', methods=['GET', 'POST'])
+@superadmin_required
+def sirket_admin_olustur(id):
+    """Mevcut şirkete admin kullanıcı oluşturma"""
+    try:
+        from app.models import Company, User
+        from app.extensions import db
+        
+        sirket = Company.query.get_or_404(id)
+        
+        # Mevcut admin kontrolü
+        existing_admin = User.query.filter_by(sirket_id=id, rol='customer').first()
+        if existing_admin:
+            flash('Bu şirkete zaten bir admin kullanıcısı atanmış.', 'warning')
+            return redirect(url_for('admin.sirket_duzenle', id=id))
+        
+        if request.method == 'POST':
+            admin_email = request.form.get('admin_email')
+            admin_ad_soyad = request.form.get('admin_ad_soyad')
+            admin_password = request.form.get('admin_password')
+            
+            if admin_email and admin_ad_soyad and admin_password:
+                # Email kontrolü
+                if User.query.filter_by(email=admin_email).first():
+                    flash('Bu e-posta adresi zaten kullanılıyor.', 'danger')
+                else:
+                    if len(admin_password) < 8:
+                        flash('Şifre en az 8 karakter olmalıdır.', 'warning')
+                    else:
+                        admin_user = User(
+                            email=admin_email,
+                            ad_soyad=admin_ad_soyad,
+                            rol='customer',
+                            sirket_id=id,
+                            is_active=True
+                        )
+                        admin_user.set_password(admin_password)
+                        db.session.add(admin_user)
+                        db.session.commit()
+                        flash('Admin kullanıcısı başarıyla oluşturuldu.', 'success')
+                        return redirect(url_for('admin.sirket_duzenle', id=id))
+            else:
+                flash('Tüm alanları doldurunuz.', 'warning')
+        
+        return render_template('sirket_admin_olustur.html', sirket=sirket)
+    except Exception as e:
+        logger.error(f"Sirket admin olustur error: {e}")
+        flash('Admin oluşturulurken bir hata oluştu.', 'danger')
         return redirect(url_for('admin.sirketler'))
 
 
