@@ -915,15 +915,27 @@ def sablonlar():
 @superadmin_required
 def sablon_ekle():
     """Yeni şablon ekleme"""
+    sirketler = []
+    try:
+        from app.models import Company
+        sirketler = Company.query.all()
+    except:
+        pass
+    
     if request.method == 'POST':
         try:
             from app.models import ExamTemplate
             from app.extensions import db
             yeni_sablon = ExamTemplate(
-                ad=request.form.get('ad'),
-                aciklama=request.form.get('aciklama'),
-                sure=int(request.form.get('sure', 60)),
-                soru_sayisi=int(request.form.get('soru_sayisi', 10))
+                isim=request.form.get('isim') or request.form.get('ad'),
+                sinav_suresi=int(request.form.get('sinav_suresi', 30)),
+                soru_suresi=int(request.form.get('soru_suresi', 60)),
+                soru_limiti=int(request.form.get('soru_limiti', 25)),
+                baslangic_seviyesi=request.form.get('baslangic_seviyesi', 'B1'),
+                is_adaptive=request.form.get('is_adaptive') == 'on',
+                randomize_questions=request.form.get('randomize_questions') == 'on',
+                show_results=request.form.get('show_results') == 'on',
+                sirket_id=request.form.get('sirket_id') or None
             )
             db.session.add(yeni_sablon)
             db.session.commit()
@@ -931,8 +943,8 @@ def sablon_ekle():
             return redirect(url_for('admin.sablonlar'))
         except Exception as e:
             logger.error(f"Sablon ekle error: {e}")
-            flash('Şablon eklenirken bir hata oluştu.', 'danger')
-    return render_template('sablon_form.html')
+            flash(f'Şablon eklenirken bir hata oluştu: {str(e)}', 'danger')
+    return render_template('sablon_form.html', sirketler=sirketler)
 
 
 # Alias for sablon_yeni -> sablon_ekle
@@ -948,24 +960,36 @@ def sablon_yeni():
 @superadmin_required
 def sablon_duzenle(id):
     """Şablon düzenleme"""
+    sirketler = []
+    try:
+        from app.models import Company
+        sirketler = Company.query.all()
+    except:
+        pass
+    
     try:
         from app.models import ExamTemplate
         from app.extensions import db
         sablon = ExamTemplate.query.get_or_404(id)
 
         if request.method == 'POST':
-            sablon.ad = request.form.get('ad') or sablon.ad
-            sablon.aciklama = request.form.get('aciklama') or sablon.aciklama
-            sablon.sure = int(request.form.get('sure', sablon.sure))
-            sablon.soru_sayisi = int(request.form.get('soru_sayisi', sablon.soru_sayisi))
+            sablon.isim = request.form.get('isim') or request.form.get('ad') or sablon.isim
+            sablon.sinav_suresi = int(request.form.get('sinav_suresi', sablon.sinav_suresi))
+            sablon.soru_suresi = int(request.form.get('soru_suresi', sablon.soru_suresi or 60))
+            sablon.soru_limiti = int(request.form.get('soru_limiti', sablon.soru_limiti))
+            sablon.baslangic_seviyesi = request.form.get('baslangic_seviyesi') or sablon.baslangic_seviyesi
+            sablon.is_adaptive = request.form.get('is_adaptive') == 'on'
+            sablon.randomize_questions = request.form.get('randomize_questions') == 'on'
+            sablon.show_results = request.form.get('show_results') == 'on'
+            sablon.sirket_id = request.form.get('sirket_id') or sablon.sirket_id
             db.session.commit()
             flash('Şablon başarıyla güncellendi.', 'success')
             return redirect(url_for('admin.sablonlar'))
 
-        return render_template('sablon_form.html', sablon=sablon)
+        return render_template('sablon_form.html', sablon=sablon, sirketler=sirketler)
     except Exception as e:
         logger.error(f"Sablon duzenle error: {e}")
-        flash('Şablon düzenlenirken bir hata oluştu.', 'danger')
+        flash(f'Şablon düzenlenirken bir hata oluştu: {str(e)}', 'danger')
         return redirect(url_for('admin.sablonlar'))
 
 
