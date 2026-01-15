@@ -15,19 +15,20 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" id="sablonForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <!-- Temel Bilgiler -->
                         <div class="row mb-4">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Şablon Adı *</label>
-                                <input type="text" name="isim" class="form-control form-control-lg" 
-                                       placeholder="Örn: Sadece Speaking Testi, Tam Kapsamlı Sınav"
-                                       value="{{ sablon.isim if sablon else '' }}" required>
+                                <input type="text" name="isim" class="form-control form-control-lg"
+                                    placeholder="Örn: Sadece Speaking Testi, Tam Kapsamlı Sınav"
+                                    value="{{ sablon.isim if sablon else '' }}" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Açıklama</label>
-                                <input type="text" name="aciklama" class="form-control form-control-lg" 
-                                       placeholder="Şablon hakkında kısa açıklama"
-                                       value="{{ sablon.aciklama if sablon else '' }}">
+                                <input type="text" name="aciklama" class="form-control form-control-lg"
+                                    placeholder="Şablon hakkında kısa açıklama"
+                                    value="{{ sablon.aciklama if sablon else '' }}">
                             </div>
                         </div>
 
@@ -40,47 +41,47 @@
                             <div class="card-body">
                                 <div class="row">
                                     {% set beceriler = [
-                                        ('grammar', 'Dilbilgisi (Grammar)', 'fas fa-spell-check', '#3498db'),
-                                        ('vocabulary', 'Kelime Bilgisi (Vocabulary)', 'fas fa-book', '#9b59b6'),
-                                        ('reading', 'Okuma (Reading)', 'fas fa-book-open', '#2ecc71'),
-                                        ('listening', 'Dinleme (Listening)', 'fas fa-headphones', '#e74c3c'),
-                                        ('speaking', 'Konuşma (Speaking)', 'fas fa-microphone', '#f39c12'),
-                                        ('writing', 'Yazma (Writing)', 'fas fa-pen', '#1abc9c')
+                                    ('grammar', 'Dilbilgisi (Grammar)', 'fas fa-spell-check', '#3498db'),
+                                    ('vocabulary', 'Kelime Bilgisi (Vocabulary)', 'fas fa-book', '#9b59b6'),
+                                    ('reading', 'Okuma (Reading)', 'fas fa-book-open', '#2ecc71'),
+                                    ('listening', 'Dinleme (Listening)', 'fas fa-headphones', '#e74c3c'),
+                                    ('speaking', 'Konuşma (Speaking)', 'fas fa-microphone', '#f39c12'),
+                                    ('writing', 'Yazma (Writing)', 'fas fa-pen', '#1abc9c')
                                     ] %}
-                                    
+
                                     {% for beceri, label, icon, color in beceriler %}
                                     <div class="col-md-6 col-lg-4 mb-3">
-                                        <div class="card beceri-card h-100" id="card-{{ beceri }}" style="border-left: 4px solid {{ color }};">
+                                        <div class="card beceri-card h-100" id="card-{{ beceri }}"
+                                            style="border-left: 4px solid {{ color }};">
                                             <div class="card-body">
                                                 <div class="form-check mb-3">
-                                                    <input type="checkbox" name="beceriler" value="{{ beceri }}" 
-                                                           class="form-check-input beceri-checkbox" 
-                                                           id="check-{{ beceri }}"
-                                                           {% if mevcut_ayarlar and mevcut_ayarlar.get('beceri_dagilimi', {}).get(beceri) %}checked{% endif %}
-                                                           onchange="toggleBeceriInputs('{{ beceri }}')">
+                                                    <input type="checkbox" name="beceriler" value="{{ beceri }}"
+                                                        class="form-check-input beceri-checkbox" id="check-{{ beceri }}"
+                                                        {% if mevcut_ayarlar and mevcut_ayarlar.get('beceri_dagilimi',
+                                                        {}).get(beceri) %}checked{% endif %}
+                                                        onchange="toggleBeceriInputs('{{ beceri }}')">
                                                     <label class="form-check-label fw-bold" for="check-{{ beceri }}">
-                                                        <i class="{{ icon }} me-1" style="color: {{ color }};"></i> {{ label }}
+                                                        <i class="{{ icon }} me-1" style="color: {{ color }};"></i> {{
+                                                        label }}
                                                     </label>
                                                 </div>
-                                                
-                                                <div class="beceri-inputs" id="inputs-{{ beceri }}" 
-                                                     style="{% if not (mevcut_ayarlar and mevcut_ayarlar.get('beceri_dagilimi', {}).get(beceri)) %}display: none;{% endif %}">
+
+                                                <div class="beceri-inputs" id="inputs-{{ beceri }}"
+                                                    style="{% if not (mevcut_ayarlar and mevcut_ayarlar.get('beceri_dagilimi', {}).get(beceri)) %}display: none;{% endif %}">
                                                     <div class="row g-2">
                                                         <div class="col-6">
                                                             <label class="form-label small">Soru Sayısı</label>
-                                                            <input type="number" name="{{ beceri }}_count" 
-                                                                   class="form-control form-control-sm" 
-                                                                   min="0" max="50" 
-                                                                   value="{{ mevcut_ayarlar.get('beceri_dagilimi', {}).get(beceri, 5) if mevcut_ayarlar else 5 }}"
-                                                                   placeholder="5">
+                                                            <input type="number" name="{{ beceri }}_count"
+                                                                class="form-control form-control-sm" min="0" max="50"
+                                                                value="{{ mevcut_ayarlar.get('beceri_dagilimi', {}).get(beceri, 5) if mevcut_ayarlar else 5 }}"
+                                                                placeholder="5">
                                                         </div>
                                                         <div class="col-6">
                                                             <label class="form-label small">Süre (sn/soru)</label>
-                                                            <input type="number" name="{{ beceri }}_sure" 
-                                                                   class="form-control form-control-sm" 
-                                                                   min="10" max="600" 
-                                                                   value="{{ mevcut_ayarlar.get('beceri_sureleri', {}).get(beceri, 60) if mevcut_ayarlar else 60 }}"
-                                                                   placeholder="60">
+                                                            <input type="number" name="{{ beceri }}_sure"
+                                                                class="form-control form-control-sm" min="10" max="600"
+                                                                value="{{ mevcut_ayarlar.get('beceri_sureleri', {}).get(beceri, 60) if mevcut_ayarlar else 60 }}"
+                                                                placeholder="60">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -101,24 +102,23 @@
                                 <div class="row">
                                     <div class="col-md-3">
                                         <label class="form-label fw-bold">Toplam Süre (dakika)</label>
-                                        <input type="number" name="toplam_sure" class="form-control" 
-                                               min="5" max="300" 
-                                               value="{{ mevcut_ayarlar.get('toplam_sure_dakika', 30) if mevcut_ayarlar else 30 }}"
-                                               placeholder="30">
+                                        <input type="number" name="toplam_sure" class="form-control" min="5" max="300"
+                                            value="{{ mevcut_ayarlar.get('toplam_sure_dakika', 30) if mevcut_ayarlar else 30 }}"
+                                            placeholder="30">
                                         <small class="text-muted">Sınavın toplam süresi</small>
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label fw-bold">Geçme Puanı (%)</label>
-                                        <input type="number" name="gecme_puani" class="form-control" 
-                                               min="0" max="100" 
-                                               value="{{ mevcut_ayarlar.get('gecme_puani', 60) if mevcut_ayarlar else 60 }}"
-                                               placeholder="60">
+                                        <input type="number" name="gecme_puani" class="form-control" min="0" max="100"
+                                            value="{{ mevcut_ayarlar.get('gecme_puani', 60) if mevcut_ayarlar else 60 }}"
+                                            placeholder="60">
                                         <small class="text-muted">Minimum başarı puanı</small>
                                     </div>
                                     <div class="col-md-3">
                                         <div class="form-check mt-4">
-                                            <input type="checkbox" name="karisik_soru" class="form-check-input" id="karisikSoru"
-                                                   {% if mevcut_ayarlar and mevcut_ayarlar.get('karisik_soru') %}checked{% endif %}>
+                                            <input type="checkbox" name="karisik_soru" class="form-check-input"
+                                                id="karisikSoru" {% if mevcut_ayarlar and
+                                                mevcut_ayarlar.get('karisik_soru') %}checked{% endif %}>
                                             <label class="form-check-label" for="karisikSoru">
                                                 <i class="fas fa-random me-1"></i> Soruları Karıştır
                                             </label>
@@ -126,8 +126,9 @@
                                     </div>
                                     <div class="col-md-3">
                                         <div class="form-check mt-4">
-                                            <input type="checkbox" name="geri_donus" class="form-check-input" id="geriDonus"
-                                                   {% if mevcut_ayarlar and mevcut_ayarlar.get('geri_donus') %}checked{% endif %}>
+                                            <input type="checkbox" name="geri_donus" class="form-check-input"
+                                                id="geriDonus" {% if mevcut_ayarlar and mevcut_ayarlar.get('geri_donus')
+                                                %}checked{% endif %}>
                                             <label class="form-check-label" for="geriDonus">
                                                 <i class="fas fa-undo me-1"></i> Geri Dönüşe İzin Ver
                                             </label>
@@ -161,90 +162,93 @@
 </div>
 
 <style>
-.beceri-card {
-    transition: all 0.3s ease;
-}
-.beceri-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-.beceri-card.selected {
-    background: rgba(52, 152, 219, 0.1);
-}
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
+    .beceri-card {
+        transition: all 0.3s ease;
+    }
+
+    .beceri-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .beceri-card.selected {
+        background: rgba(52, 152, 219, 0.1);
+    }
+
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
 </style>
 
 <script>
-function toggleBeceriInputs(beceri) {
-    const checkbox = document.getElementById('check-' + beceri);
-    const inputs = document.getElementById('inputs-' + beceri);
-    const card = document.getElementById('card-' + beceri);
-    
-    if (checkbox.checked) {
-        inputs.style.display = 'block';
-        card.classList.add('selected');
-    } else {
-        inputs.style.display = 'none';
-        card.classList.remove('selected');
-    }
-    updateOzet();
-}
+    function toggleBeceriInputs(beceri) {
+        const checkbox = document.getElementById('check-' + beceri);
+        const inputs = document.getElementById('inputs-' + beceri);
+        const card = document.getElementById('card-' + beceri);
 
-function updateOzet() {
-    const checkboxes = document.querySelectorAll('.beceri-checkbox:checked');
-    let toplamSoru = 0;
-    let toplamSure = 0;
-    let beceriler = [];
-    
-    const beceriIsimleri = {
-        'grammar': 'Dilbilgisi',
-        'vocabulary': 'Kelime',
-        'reading': 'Okuma',
-        'listening': 'Dinleme',
-        'speaking': 'Konuşma',
-        'writing': 'Yazma'
-    };
-    
-    checkboxes.forEach(cb => {
-        const beceri = cb.value;
-        const countInput = document.querySelector(`input[name="${beceri}_count"]`);
-        const sureInput = document.querySelector(`input[name="${beceri}_sure"]`);
-        
-        const count = parseInt(countInput.value) || 0;
-        const sure = parseInt(sureInput.value) || 60;
-        
-        if (count > 0) {
-            toplamSoru += count;
-            toplamSure += count * sure;
-            beceriler.push(`${beceriIsimleri[beceri]}: ${count} soru`);
+        if (checkbox.checked) {
+            inputs.style.display = 'block';
+            card.classList.add('selected');
+        } else {
+            inputs.style.display = 'none';
+            card.classList.remove('selected');
         }
-    });
-    
-    const ozetMetin = document.getElementById('ozetMetin');
-    if (beceriler.length > 0) {
-        const dakika = Math.ceil(toplamSure / 60);
-        ozetMetin.innerHTML = `<strong>Seçilen Beceriler:</strong> ${beceriler.join(', ')}<br>
-                               <strong>Toplam:</strong> ${toplamSoru} soru, tahmini ${dakika} dakika`;
-    } else {
-        ozetMetin.innerHTML = 'Henüz beceri seçilmedi.';
+        updateOzet();
     }
-}
 
-// Sayfa yüklendiğinde özeti güncelle
-document.addEventListener('DOMContentLoaded', function() {
-    // Mevcut seçimleri işaretle
-    document.querySelectorAll('.beceri-checkbox:checked').forEach(cb => {
-        document.getElementById('card-' + cb.value).classList.add('selected');
+    function updateOzet() {
+        const checkboxes = document.querySelectorAll('.beceri-checkbox:checked');
+        let toplamSoru = 0;
+        let toplamSure = 0;
+        let beceriler = [];
+
+        const beceriIsimleri = {
+            'grammar': 'Dilbilgisi',
+            'vocabulary': 'Kelime',
+            'reading': 'Okuma',
+            'listening': 'Dinleme',
+            'speaking': 'Konuşma',
+            'writing': 'Yazma'
+        };
+
+        checkboxes.forEach(cb => {
+            const beceri = cb.value;
+            const countInput = document.querySelector(`input[name="${beceri}_count"]`);
+            const sureInput = document.querySelector(`input[name="${beceri}_sure"]`);
+
+            const count = parseInt(countInput.value) || 0;
+            const sure = parseInt(sureInput.value) || 60;
+
+            if (count > 0) {
+                toplamSoru += count;
+                toplamSure += count * sure;
+                beceriler.push(`${beceriIsimleri[beceri]}: ${count} soru`);
+            }
+        });
+
+        const ozetMetin = document.getElementById('ozetMetin');
+        if (beceriler.length > 0) {
+            const dakika = Math.ceil(toplamSure / 60);
+            ozetMetin.innerHTML = `<strong>Seçilen Beceriler:</strong> ${beceriler.join(', ')}<br>
+                               <strong>Toplam:</strong> ${toplamSoru} soru, tahmini ${dakika} dakika`;
+        } else {
+            ozetMetin.innerHTML = 'Henüz beceri seçilmedi.';
+        }
+    }
+
+    // Sayfa yüklendiğinde özeti güncelle
+    document.addEventListener('DOMContentLoaded', function () {
+        // Mevcut seçimleri işaretle
+        document.querySelectorAll('.beceri-checkbox:checked').forEach(cb => {
+            document.getElementById('card-' + cb.value).classList.add('selected');
+        });
+        updateOzet();
+
+        // Input değişikliklerini dinle
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('change', updateOzet);
+            input.addEventListener('input', updateOzet);
+        });
     });
-    updateOzet();
-    
-    // Input değişikliklerini dinle
-    document.querySelectorAll('input[type="number"]').forEach(input => {
-        input.addEventListener('change', updateOzet);
-        input.addEventListener('input', updateOzet);
-    });
-});
 </script>
 {% endblock %}
