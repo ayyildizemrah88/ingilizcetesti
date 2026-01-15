@@ -864,6 +864,7 @@ def sablonlar():
 
 @admin_bp.route('/sablon/ekle', methods=['GET', 'POST'])
 @admin_bp.route('/sablon-ekle', methods=['GET', 'POST'])
+@admin_bp.route('/sablon/yeni', methods=['GET', 'POST'])
 @superadmin_required
 def sablon_ekle():
     if request.method == 'POST':
@@ -897,6 +898,13 @@ def sablon_ekle():
             logger.error(f"Sablon ekle error: {e}")
             flash('Şablon oluşturulurken bir hata oluştu.', 'danger')
     return render_template('sablon_form.html')
+
+
+# Alias for template compatibility
+@admin_bp.route('/sablon-yeni', methods=['GET', 'POST'])
+@superadmin_required
+def sablon_yeni():
+    return sablon_ekle()
 
 
 @admin_bp.route('/sablon/duzenle/<int:id>', methods=['GET', 'POST'])
@@ -1083,11 +1091,3 @@ def demo_olustur():
             db.session.add(demo_aday)
             db.session.commit()
             
-            flash(f'Demo sınav oluşturuldu. Giriş kodu: {giris_kodu}', 'success')
-            return redirect(url_for('admin.adaylar'))
-        except Exception as e:
-            logger.error(f"Demo olustur error: {e}")
-            flash('Demo oluşturulurken bir hata oluştu.', 'danger')
-    
-    return render_template('demo_bilgi.html')
-
