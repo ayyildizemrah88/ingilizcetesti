@@ -5,7 +5,7 @@
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-lg-6">
-            <!-- Basit Teşekkür Mesajı -->
+            <!-- Sonuç Kartı -->
             <div class="card border-0 shadow-lg text-center">
                 <div class="card-body py-5">
                     <div class="mb-4">
@@ -17,10 +17,56 @@
                         Sınava katıldığınız için teşekkür ederiz.
                     </p>
 
+                    {% if aday %}
+                    <!-- Aday Bilgileri -->
+                    <div class="bg-light rounded p-4 mb-4">
+                        <h5 class="text-primary mb-3">{{ aday.ad_soyad }}</h5>
+
+                        {% if aday.puan is not none %}
+                        <div class="row text-center mb-3">
+                            <div class="col-6">
+                                <div class="h2 mb-0 text-primary">{{ aday.puan|int }}</div>
+                                <small class="text-muted">Puan</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="h2 mb-0 
+                                    {% if aday.seviye_sonuc in ['C1', 'C2'] %}text-success
+                                    {% elif aday.seviye_sonuc in ['B1', 'B2'] %}text-info
+                                    {% else %}text-warning{% endif %}">
+                                    {{ aday.seviye_sonuc or 'N/A' }}
+                                </div>
+                                <small class="text-muted">Seviye</small>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- DÜZELTİLDİ: Şirket Bilgisi Eklendi -->
+                        {% if aday.company %}
+                        <div class="pt-3 border-top">
+                            <small class="text-muted d-block mb-1">Şirket</small>
+                            <span class="badge bg-secondary fs-6">{{ aday.company.isim }}</span>
+                        </div>
+                        {% elif aday.sirket_id %}
+                        <!-- Şirket ilişkisi yüklenmemişse ID göster -->
+                        <div class="pt-3 border-top">
+                            <small class="text-muted d-block mb-1">Şirket ID</small>
+                            <span class="badge bg-secondary fs-6">#{{ aday.sirket_id }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
                     <div class="d-grid gap-2">
                         <a href="/" class="btn btn-primary btn-lg">
                             <i class="fas fa-home me-2"></i>Ana Sayfa
                         </a>
+
+                        {% if aday and aday.certificate_hash %}
+                        <a href="{{ url_for('certificate.view', hash=aday.certificate_hash) }}"
+                            class="btn btn-outline-success btn-lg">
+                            <i class="fas fa-certificate me-2"></i>Sertifikayı Görüntüle
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
