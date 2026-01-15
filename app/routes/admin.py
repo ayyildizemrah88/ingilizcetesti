@@ -5,8 +5,9 @@ GitHub: app/routes/admin.py
 COMPREHENSIVE FIX: All missing routes added for template compatibility
 Model names: Company, User, Candidate, ExamTemplate, Question, AuditLog, ExamAnswer
 Candidate fields: ad_soyad, email, cep_no (not telefon), sirket_id, giris_kodu
-GÜNCELLENDİ: Aday silme fonksiyonları düzeltildi - foreign key constraint hataları giderildi
-FIXED: Rapor route'ları düzeltildi - template'lerin beklediği key isimleri eklendi
+GÃœNCELLENDI: Aday silme fonksiyonlarÄ± dÃ¼zeltildi - foreign key constraint hatalarÄ± giderildi
+FIXED: Rapor route'larÄ± dÃ¼zeltildi - template'lerin beklediÄŸi key isimleri eklendi
+FIXED: Speaking/Writing sorularÄ±nda ÅŸÄ±k alanlarÄ± NULL olarak kaydedilir
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from functools import wraps
@@ -19,57 +20,56 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 
 def superadmin_required(f):
-    """Super admin yetkisi gerektiren route'lar için dekoratör"""
+    """Super admin yetkisi gerektiren route'lar iÃ§in dekoratÃ¶r"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'kullanici_id' not in session:
-            flash('Bu sayfaya erişmek için giriş yapmalısınız.', 'warning')
+            flash('Bu sayfaya eriÅŸmek iÃ§in giriÅŸ yapmalÄ±sÄ±nÄ±z.', 'warning')
             return redirect(url_for('auth.login'))
 
         rol = session.get('rol', '')
         if rol not in ['superadmin', 'super_admin', 'admin']:
-            flash('Bu sayfaya erişim yetkiniz yok.', 'danger')
+            flash('Bu sayfaya eriÅŸim yetkiniz yok.', 'danger')
             return redirect(url_for('main.index'))
 
         return f(*args, **kwargs)
     return decorated_function
 
-
-# ==================== YARDIMCI FONKSİYON: ADAY BAĞIMLI VERİLERİ SİL ====================
+# ==================== YARDIMCI FONKSÄ°YON: ADAY BAÄžIMLI VERÄ°LERÄ° SÄ°L ====================
 def delete_candidate_related_data(candidate_id):
     """
-    Bir adaya ait tüm bağımlı verileri siler
-    Foreign key constraint hatalarını önlemek için kullanılır
+    Bir adaya ait tÃ¼m baÄŸÄ±mlÄ± verileri siler
+    Foreign key constraint hatalarÄ±nÄ± Ã¶nlemek iÃ§in kullanÄ±lÄ±r
 
     Returns:
-        list: [(tablo_adı, silinen_kayıt_sayısı), ...]
+        list: [(tablo_adÄ±, silinen_kayÄ±t_sayÄ±sÄ±), ...]
     """
     from app.extensions import db
     silinen_veriler = []
 
-    # 1. ExamAnswer (Sınav cevapları)
+    # 1. ExamAnswer (SÄ±nav cevaplarÄ±)
     try:
         from app.models import ExamAnswer
         count = ExamAnswer.query.filter_by(aday_id=candidate_id).delete()
         silinen_veriler.append(('cevap', count))
     except Exception as e:
-        logger.warning(f"ExamAnswer silme hatası: {e}")
+        logger.warning(f"ExamAnswer silme hatasÄ±: {e}")
 
-    # 2. EmailLog (Email logları)
+    # 2. EmailLog (Email loglarÄ±)
     try:
         from app.models import EmailLog
         count = EmailLog.query.filter_by(candidate_id=candidate_id).delete()
         silinen_veriler.append(('email log', count))
     except Exception as e:
-        logger.warning(f"EmailLog silme hatası: {e}")
+        logger.warning(f"EmailLog silme hatasÄ±: {e}")
 
-    # 3. ProctoringSnapshot (Proctoring fotoğrafları)
+    # 3. ProctoringSnapshot (Proctoring fotoÄŸraflarÄ±)
     try:
         from app.models import ProctoringSnapshot
         count = ProctoringSnapshot.query.filter_by(candidate_id=candidate_id).delete()
         silinen_veriler.append(('proctoring', count))
     except Exception as e:
-        logger.warning(f"ProctoringSnapshot silme hatası: {e}")
+        logger.warning(f"ProctoringSnapshot silme hatasÄ±: {e}")
 
     # 4. CandidateActivity (Aday aktiviteleri)
     try:
@@ -77,7 +77,7 @@ def delete_candidate_related_data(candidate_id):
         count = CandidateActivity.query.filter_by(candidate_id=candidate_id).delete()
         silinen_veriler.append(('aktivite', count))
     except Exception as e:
-        logger.warning(f"CandidateActivity silme hatası: {e}")
+        logger.warning(f"CandidateActivity silme hatasÄ±: {e}")
 
     # 5. Certificate (Sertifikalar)
     try:
@@ -85,9 +85,9 @@ def delete_candidate_related_data(candidate_id):
         count = Certificate.query.filter_by(candidate_id=candidate_id).delete()
         silinen_veriler.append(('sertifika', count))
     except Exception as e:
-        logger.warning(f"Certificate silme hatası: {e}")
+        logger.warning(f"Certificate silme hatasÄ±: {e}")
 
-    # 6. AuditLog (Denetim logları - adayla ilgili)
+    # 6. AuditLog (Denetim loglarÄ± - adayla ilgili)
     try:
         from app.models import AuditLog
         count = AuditLog.query.filter(
@@ -96,10 +96,9 @@ def delete_candidate_related_data(candidate_id):
         ).delete()
         silinen_veriler.append(('audit log', count))
     except Exception as e:
-        logger.warning(f"AuditLog silme hatası: {e}")
+        logger.warning(f"AuditLog silme hatasÄ±: {e}")
 
     return silinen_veriler
-
 
 # ==================== DASHBOARD ====================
 @admin_bp.route('/')
@@ -137,40 +136,39 @@ def dashboard():
                          soru_sayisi=stats.get('toplam_soru', 0),
                          sirket_sayisi=stats.get('toplam_sirket', 0))
 
-
-# ==================== ŞİRKET YÖNETİMİ ====================
+# ==================== ÅžÄ°RKET YÃ–NETÄ°MÄ° ====================
 @admin_bp.route('/sirketler')
 @superadmin_required
 def sirketler():
-    """Şirket listesi"""
+    """Åžirket listesi"""
     sirketler = []
     try:
         from app.models import Company
         sirketler = Company.query.order_by(Company.id.desc()).all()
     except Exception as e:
         logger.error(f"Sirketler error: {e}")
-        flash('Şirketler yüklenirken bir hata oluştu.', 'danger')
+        flash('Åžirketler yÃ¼klenirken bir hata oluÅŸtu.', 'danger')
     return render_template('sirketler.html', sirketler=sirketler)
 
 
 @admin_bp.route('/sirket/<int:sirket_id>')
 @superadmin_required
 def sirket_detay(sirket_id):
-    """Şirket detay sayfası"""
+    """Åžirket detay sayfasÄ±"""
     try:
         from app.models import Company
         sirket = Company.query.get_or_404(sirket_id)
         return render_template('sirket_detay.html', sirket=sirket)
     except Exception as e:
         logger.error(f"Sirket detay error: {e}")
-        flash('Şirket bulunamadı.', 'danger')
+        flash('Åžirket bulunamadÄ±.', 'danger')
         return redirect(url_for('admin.sirketler'))
 
 
 @admin_bp.route('/sirket/ekle', methods=['GET', 'POST'])
 @superadmin_required
 def sirket_ekle():
-    """Yeni şirket ekleme"""
+    """Yeni ÅŸirket ekleme"""
     if request.method == 'POST':
         try:
             from app.models import Company
@@ -184,24 +182,24 @@ def sirket_ekle():
             )
             db.session.add(yeni_sirket)
             db.session.commit()
-            flash('Şirket başarıyla eklendi.', 'success')
+            flash('Åžirket baÅŸarÄ±yla eklendi.', 'success')
             return redirect(url_for('admin.sirketler'))
         except Exception as e:
             logger.error(f"Sirket ekle error: {e}")
-            flash('Şirket eklenirken bir hata oluştu.', 'danger')
+            flash('Åžirket eklenirken bir hata oluÅŸtu.', 'danger')
     return render_template('sirket_form.html')
 
 
 @admin_bp.route('/sirket/duzenle/<int:id>', methods=['GET', 'POST'])
 @superadmin_required
 def sirket_duzenle(id):
-    """Şirket düzenleme"""
+    """Åžirket dÃ¼zenleme"""
     try:
         from app.models import Company, User
         from app.extensions import db
         sirket = Company.query.get_or_404(id)
-        
-        # Şirkete ait admin kullanıcısını bul
+
+        # Åžirkete ait admin kullanÄ±cÄ±sÄ±nÄ± bul
         admin_user = User.query.filter_by(sirket_id=id, rol='customer').first()
 
         if request.method == 'POST':
@@ -209,57 +207,56 @@ def sirket_duzenle(id):
             sirket.email = request.form.get('email') or sirket.email
             sirket.telefon = request.form.get('telefon') or sirket.telefon
             sirket.adres = request.form.get('adres') or sirket.adres
-            
-            # Şifre değiştirme işlemi
+
+            # Åžifre deÄŸiÅŸtirme iÅŸlemi
             new_password = request.form.get('new_password')
             new_password_confirm = request.form.get('new_password_confirm')
-            
+
             if new_password and new_password_confirm:
                 if new_password == new_password_confirm:
                     if len(new_password) >= 8:
                         if admin_user:
                             admin_user.set_password(new_password)
-                            # Plain password'u da sakla (görüntüleme için)
                             if hasattr(admin_user, 'plain_password'):
                                 admin_user.plain_password = new_password
-                            flash('Şifre başarıyla değiştirildi.', 'success')
+                            flash('Åžifre baÅŸarÄ±yla deÄŸiÅŸtirildi.', 'success')
                     else:
-                        flash('Şifre en az 8 karakter olmalıdır.', 'warning')
+                        flash('Åžifre en az 8 karakter olmalÄ±dÄ±r.', 'warning')
                 else:
-                    flash('Şifreler eşleşmiyor.', 'warning')
-            
+                    flash('Åžifreler eÅŸleÅŸmiyor.', 'warning')
+
             db.session.commit()
-            flash('Şirket başarıyla güncellendi.', 'success')
+            flash('Åžirket baÅŸarÄ±yla gÃ¼ncellendi.', 'success')
             return redirect(url_for('admin.sirketler'))
 
         return render_template('sirket_form.html', sirket=sirket, admin_user=admin_user)
     except Exception as e:
         logger.error(f"Sirket duzenle error: {e}")
-        flash('Şirket düzenlenirken bir hata oluştu.', 'danger')
+        flash('Åžirket dÃ¼zenlenirken bir hata oluÅŸtu.', 'danger')
         return redirect(url_for('admin.sirketler'))
 
 
 @admin_bp.route('/sirket/sil/<int:id>', methods=['POST'])
 @superadmin_required
 def sirket_sil(id):
-    """Şirket silme"""
+    """Åžirket silme"""
     try:
         from app.models import Company
         from app.extensions import db
         sirket = Company.query.get_or_404(id)
         db.session.delete(sirket)
         db.session.commit()
-        flash('Şirket başarıyla silindi.', 'success')
+        flash('Åžirket baÅŸarÄ±yla silindi.', 'success')
     except Exception as e:
         logger.error(f"Sirket sil error: {e}")
-        flash('Şirket silinirken bir hata oluştu.', 'danger')
+        flash('Åžirket silinirken bir hata oluÅŸtu.', 'danger')
     return redirect(url_for('admin.sirketler'))
 
 
 @admin_bp.route('/sirket/kredi/<int:id>', methods=['GET', 'POST'])
 @superadmin_required
 def sirket_kredi(id):
-    """Şirkete kredi ekleme sayfası"""
+    """Åžirkete kredi ekleme sayfasÄ±"""
     try:
         from app.models import Company
         from app.extensions import db
@@ -270,20 +267,20 @@ def sirket_kredi(id):
             if hasattr(sirket, 'kredi'):
                 sirket.kredi = (sirket.kredi or 0) + miktar
             db.session.commit()
-            flash(f'{miktar} kredi başarıyla eklendi.', 'success')
+            flash(f'{miktar} kredi baÅŸarÄ±yla eklendi.', 'success')
             return redirect(url_for('admin.sirketler'))
 
         return render_template('sirket_kredi.html', sirket=sirket)
     except Exception as e:
         logger.error(f"Sirket kredi error: {e}")
-        flash('Kredi eklenirken bir hata oluştu.', 'danger')
+        flash('Kredi eklenirken bir hata oluÅŸtu.', 'danger')
         return redirect(url_for('admin.sirketler'))
 
 
 @admin_bp.route('/sirket/toplu-pasif', methods=['POST'])
 @superadmin_required
 def toplu_sirket_pasif():
-    """Toplu şirket pasifleştirme"""
+    """Toplu ÅŸirket pasifleÅŸtirme"""
     try:
         from app.models import Company
         from app.extensions import db
@@ -295,12 +292,12 @@ def toplu_sirket_pasif():
                 if sirket:
                     sirket.is_active = False
             db.session.commit()
-            flash(f'{len(sirket_ids)} şirket pasifleştirildi.', 'success')
+            flash(f'{len(sirket_ids)} ÅŸirket pasifleÅŸtirildi.', 'success')
         else:
-            flash('Pasifleştirilecek şirket seçilmedi.', 'warning')
+            flash('PasifleÅŸtirilecek ÅŸirket seÃ§ilmedi.', 'warning')
     except Exception as e:
         logger.error(f"Toplu sirket pasif error: {e}")
-        flash('Şirketler pasifleştirilirken bir hata oluştu.', 'danger')
+        flash('Åžirketler pasifleÅŸtirilirken bir hata oluÅŸtu.', 'danger')
 
     return redirect(url_for('admin.sirketler'))
 
@@ -308,7 +305,7 @@ def toplu_sirket_pasif():
 @admin_bp.route('/sirket/toplu-aktif', methods=['POST'])
 @superadmin_required
 def toplu_sirket_aktif():
-    """Toplu şirket aktifleştirme"""
+    """Toplu ÅŸirket aktifleÅŸtirme"""
     try:
         from app.models import Company
         from app.extensions import db
@@ -320,35 +317,34 @@ def toplu_sirket_aktif():
                 if sirket:
                     sirket.is_active = True
             db.session.commit()
-            flash(f'{len(sirket_ids)} şirket aktifleştirildi.', 'success')
+            flash(f'{len(sirket_ids)} ÅŸirket aktifleÅŸtirildi.', 'success')
         else:
-            flash('Aktifleştirilecek şirket seçilmedi.', 'warning')
+            flash('AktifleÅŸtirilecek ÅŸirket seÃ§ilmedi.', 'warning')
     except Exception as e:
         logger.error(f"Toplu sirket aktif error: {e}")
-        flash('Şirketler aktifleştirilirken bir hata oluştu.', 'danger')
+        flash('Åžirketler aktifleÅŸtirilirken bir hata oluÅŸtu.', 'danger')
 
     return redirect(url_for('admin.sirketler'))
 
-
-# ==================== KULLANICI YÖNETİMİ ====================
+# ==================== KULLANICI YÃ–NETÄ°MÄ° ====================
 @admin_bp.route('/kullanicilar')
 @superadmin_required
 def kullanicilar():
-    """Kullanıcı listesi"""
+    """KullanÄ±cÄ± listesi"""
     kullanicilar = []
     try:
         from app.models import User
         kullanicilar = User.query.order_by(User.id.desc()).all()
     except Exception as e:
         logger.error(f"Kullanicilar error: {e}")
-        flash('Kullanıcılar yüklenirken bir hata oluştu.', 'danger')
+        flash('KullanÄ±cÄ±lar yÃ¼klenirken bir hata oluÅŸtu.', 'danger')
     return render_template('kullanicilar.html', kullanicilar=kullanicilar)
 
 
 @admin_bp.route('/kullanici/ekle', methods=['GET', 'POST'])
 @superadmin_required
 def kullanici_ekle():
-    """Yeni kullanıcı ekleme"""
+    """Yeni kullanÄ±cÄ± ekleme"""
     sirketler = []
     try:
         from app.models import Company
@@ -370,18 +366,18 @@ def kullanici_ekle():
             yeni_kullanici.set_password(request.form.get('sifre', 'password123'))
             db.session.add(yeni_kullanici)
             db.session.commit()
-            flash('Kullanıcı başarıyla eklendi.', 'success')
+            flash('KullanÄ±cÄ± baÅŸarÄ±yla eklendi.', 'success')
             return redirect(url_for('admin.kullanicilar'))
         except Exception as e:
             logger.error(f"Kullanici ekle error: {e}")
-            flash('Kullanıcı eklenirken bir hata oluştu.', 'danger')
+            flash('KullanÄ±cÄ± eklenirken bir hata oluÅŸtu.', 'danger')
     return render_template('kullanici_form.html', sirketler=sirketler)
 
 
 @admin_bp.route('/kullanici/duzenle/<int:id>', methods=['GET', 'POST'])
 @superadmin_required
 def kullanici_duzenle(id):
-    """Kullanıcı düzenleme"""
+    """KullanÄ±cÄ± dÃ¼zenleme"""
     sirketler = []
     try:
         from app.models import Company
@@ -402,49 +398,46 @@ def kullanici_duzenle(id):
             if request.form.get('sifre'):
                 kullanici.set_password(request.form.get('sifre'))
             db.session.commit()
-            flash('Kullanıcı başarıyla güncellendi.', 'success')
+            flash('KullanÄ±cÄ± baÅŸarÄ±yla gÃ¼ncellendi.', 'success')
             return redirect(url_for('admin.kullanicilar'))
 
         return render_template('kullanici_form.html', kullanici=kullanici, sirketler=sirketler)
     except Exception as e:
         logger.error(f"Kullanici duzenle error: {e}")
-        flash('Kullanıcı düzenlenirken bir hata oluştu.', 'danger')
+        flash('KullanÄ±cÄ± dÃ¼zenlenirken bir hata oluÅŸtu.', 'danger')
         return redirect(url_for('admin.kullanicilar'))
 
 
 @admin_bp.route('/kullanici/sil/<int:id>', methods=['POST'])
 @superadmin_required
 def kullanici_sil(id):
-    """Kullanıcı silme"""
+    """KullanÄ±cÄ± silme"""
     try:
         from app.models import User
         from app.extensions import db
         kullanici = User.query.get_or_404(id)
         db.session.delete(kullanici)
         db.session.commit()
-        flash('Kullanıcı başarıyla silindi.', 'success')
+        flash('KullanÄ±cÄ± baÅŸarÄ±yla silindi.', 'success')
     except Exception as e:
         logger.error(f"Kullanici sil error: {e}")
-        flash('Kullanıcı silinirken bir hata oluştu.', 'danger')
+        flash('KullanÄ±cÄ± silinirken bir hata oluÅŸtu.', 'danger')
     return redirect(url_for('admin.kullanicilar'))
 
 
 @admin_bp.route('/kullanici/kalici-sil/<int:id>', methods=['POST'])
 @superadmin_required
 def kullanici_kalici_sil(id):
-    """Kullanıcı kalıcı silme (alias for kullanici_sil)"""
+    """KullanÄ±cÄ± kalÄ±cÄ± silme (alias for kullanici_sil)"""
     return kullanici_sil(id)
 
-
-# ==================== ADAY YÖNETİMİ ====================
+# ==================== ADAY YÃ–NETÄ°MÄ° ====================
 @admin_bp.route('/adaylar')
 @superadmin_required
 def adaylar():
     """Aday listesi with pagination"""
     page = request.args.get('page', 1, type=int)
     per_page = 20
-    
-    # Stats counts
     bekliyor_count = 0
     devam_count = 0
     tamamlanan_count = 0
@@ -454,19 +447,15 @@ def adaylar():
         adaylar = Candidate.query.filter_by(is_deleted=False).order_by(Candidate.id.desc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
-        
-        # Calculate stats
         try:
             bekliyor_count = Candidate.query.filter_by(is_deleted=False, sinav_durumu='beklemede').count()
             devam_count = Candidate.query.filter_by(is_deleted=False, sinav_durumu='baslamis').count()
             tamamlanan_count = Candidate.query.filter_by(is_deleted=False, sinav_durumu='tamamlandi').count()
         except Exception as stat_err:
             logger.warning(f"Stats calculation error: {stat_err}")
-            
     except Exception as e:
         logger.error(f"Adaylar error: {e}")
-        flash('Adaylar yüklenirken bir hata oluştu.', 'danger')
-        # Return empty pagination-like object
+        flash('Adaylar yÃ¼klenirken bir hata oluÅŸtu.', 'danger')
         class EmptyPagination:
             items = []
             pages = 0
@@ -478,7 +467,7 @@ def adaylar():
             total = 0
             iter_pages = lambda self, **kwargs: []
         adaylar = EmptyPagination()
-        
+
     return render_template('adaylar.html', 
                           adaylar=adaylar,
                           bekliyor_count=bekliyor_count,
@@ -489,7 +478,7 @@ def adaylar():
 @admin_bp.route('/bulk-upload', methods=['GET', 'POST'])
 @superadmin_required
 def bulk_upload():
-    """Toplu aday yükleme"""
+    """Toplu aday yÃ¼kleme"""
     sirketler = []
     sablonlar = []
     try:
@@ -501,11 +490,11 @@ def bulk_upload():
 
     if request.method == 'POST':
         try:
-            flash('Toplu yükleme işlemi başarılı.', 'success')
+            flash('Toplu yÃ¼kleme iÅŸlemi baÅŸarÄ±lÄ±.', 'success')
             return redirect(url_for('admin.adaylar'))
         except Exception as e:
             logger.error(f"Bulk upload error: {e}")
-            flash('Toplu yükleme sırasında bir hata oluştu.', 'danger')
+            flash('Toplu yÃ¼kleme sÄ±rasÄ±nda bir hata oluÅŸtu.', 'danger')
 
     return render_template('bulk_upload.html', sirketler=sirketler, sablonlar=sablonlar)
 
@@ -528,10 +517,7 @@ def aday_ekle():
             from app.models import Candidate
             from app.extensions import db
             import secrets
-
-            # Generate unique entry code
             giris_kodu = secrets.token_hex(4).upper()
-
             yeni_aday = Candidate(
                 ad_soyad=request.form.get('ad_soyad'),
                 email=request.form.get('email'),
@@ -542,116 +528,87 @@ def aday_ekle():
             )
             db.session.add(yeni_aday)
             db.session.commit()
-            flash(f'Aday başarıyla eklendi. Giriş kodu: {giris_kodu}', 'success')
+            flash(f'Aday baÅŸarÄ±yla eklendi. GiriÅŸ kodu: {giris_kodu}', 'success')
             return redirect(url_for('admin.adaylar'))
         except Exception as e:
             logger.error(f"Aday ekle error: {e}")
-            flash('Aday eklenirken bir hata oluştu.', 'danger')
+            flash('Aday eklenirken bir hata oluÅŸtu.', 'danger')
     return render_template('aday_form.html', sirketler=sirketler, sablonlar=sablonlar)
 
 
 @admin_bp.route('/aday/<int:aday_id>')
 @superadmin_required
 def aday_detay(aday_id):
-    """Aday detay sayfası"""
+    """Aday detay sayfasÄ±"""
     from app.models import Candidate
-    
-    # get_or_404 zaten 404 döner, ekstra exception handling gerekmiyor
     aday = Candidate.query.get(aday_id)
-    
     if not aday:
-        flash('Aday bulunamadı.', 'danger')
+        flash('Aday bulunamadÄ±.', 'danger')
         return redirect(url_for('admin.adaylar'))
-    
     return render_template('aday_detay.html', aday=aday)
 
 
-# ==================== ADAY SİLME - DÜZELTİLDİ ====================
+# ==================== ADAY SÄ°LME - DÃœZELTÄ°LDÄ° ====================
 @admin_bp.route('/aday/sil/<int:id>', methods=['POST'])
 @superadmin_required
 def aday_sil(id):
-    """
-    Aday soft delete - is_deleted = True yapar
-    Gerçek silme yapmaz, sadece işaretler
-    """
+    """Aday soft delete - is_deleted = True yapar"""
     try:
         from app.models import Candidate
         from app.extensions import db
-
         aday = Candidate.query.get_or_404(id)
         aday_adi = aday.ad_soyad
-
-        # Soft delete - gerçek silme yerine işaretleme
         if hasattr(aday, 'is_deleted'):
             aday.is_deleted = True
             db.session.commit()
-            flash(f'Aday "{aday_adi}" silindi (geri alınabilir).', 'success')
+            flash(f'Aday "{aday_adi}" silindi (geri alÄ±nabilir).', 'success')
         else:
-            # is_deleted alanı yoksa gerçek silme yap
             delete_candidate_related_data(id)
             db.session.delete(aday)
             db.session.commit()
-            flash(f'Aday "{aday_adi}" başarıyla silindi.', 'success')
-
+            flash(f'Aday "{aday_adi}" baÅŸarÄ±yla silindi.', 'success')
     except Exception as e:
         db.session.rollback()
         logger.error(f"Aday sil error (id={id}): {e}")
-        flash(f'Aday silinirken bir hata oluştu: {str(e)}', 'danger')
-
+        flash(f'Aday silinirken bir hata oluÅŸtu: {str(e)}', 'danger')
     return redirect(url_for('admin.adaylar'))
 
 
 @admin_bp.route('/aday/kalici-sil/<int:id>', methods=['POST'])
 @superadmin_required
 def aday_kalici_sil(id):
-    """
-    Aday kalıcı silme - veritabanından tamamen kaldırır
-    Tüm bağımlı verileri (cevaplar, email logları, proctoring snapshot'ları) de siler
-    """
+    """Aday kalÄ±cÄ± silme - veritabanÄ±ndan tamamen kaldÄ±rÄ±r"""
     try:
         from app.models import Candidate
         from app.extensions import db
-
         aday = Candidate.query.get_or_404(id)
         aday_adi = aday.ad_soyad
-
-        # 1. Tüm bağımlı verileri sil
         silinen_veri = delete_candidate_related_data(id)
-
-        # 2. Adayı veritabanından sil
         db.session.delete(aday)
         db.session.commit()
-
-        # Detaylı başarı mesajı
-        mesaj = f'Aday "{aday_adi}" ve tüm verileri kalıcı olarak silindi.'
+        mesaj = f'Aday "{aday_adi}" ve tÃ¼m verileri kalÄ±cÄ± olarak silindi.'
         if silinen_veri:
             detay = ', '.join([f'{v[1]} {v[0]}' for v in silinen_veri if v[1] > 0])
             if detay:
                 mesaj += f' (Silinen: {detay})'
-
         flash(mesaj, 'success')
-        logger.info(f"Aday kalıcı silindi: {aday_adi} (id={id})")
-
+        logger.info(f"Aday kalÄ±cÄ± silindi: {aday_adi} (id={id})")
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Aday kalıcı sil error (id={id}): {e}")
-        flash(f'Aday silinirken bir hata oluştu: {str(e)}', 'danger')
-
+        logger.error(f"Aday kalÄ±cÄ± sil error (id={id}): {e}")
+        flash(f'Aday silinirken bir hata oluÅŸtu: {str(e)}', 'danger')
     return redirect(url_for('admin.adaylar'))
 
 
 @admin_bp.route('/aday/sinav-sifirla/<int:id>', methods=['POST'])
 @superadmin_required
 def aday_sinav_sifirla(id):
-    """Aday sınav sıfırlama"""
+    """Aday sÄ±nav sÄ±fÄ±rlama"""
     try:
         from app.models import Candidate, ExamAnswer
         from app.extensions import db
-
         aday = Candidate.query.get_or_404(id)
-        # Sınav cevaplarını sil (ExamAnswer uses aday_id, not candidate_id)
         ExamAnswer.query.filter_by(aday_id=id).delete()
-        # Aday durumunu sıfırla
         aday.sinav_durumu = 'beklemede'
         aday.puan = 0
         aday.p_grammar = 0
@@ -664,11 +621,10 @@ def aday_sinav_sifirla(id):
         aday.bitis_tarihi = None
         aday.seviye_sonuc = None
         db.session.commit()
-        flash('Aday sınavı başarıyla sıfırlandı.', 'success')
+        flash('Aday sÄ±navÄ± baÅŸarÄ±yla sÄ±fÄ±rlandÄ±.', 'success')
     except Exception as e:
         logger.error(f"Aday sinav sifirla error: {e}")
-        flash('Sınav sıfırlanırken bir hata oluştu.', 'danger')
-
+        flash('SÄ±nav sÄ±fÄ±rlanÄ±rken bir hata oluÅŸtu.', 'danger')
     return redirect(url_for('admin.adaylar'))
 
 
@@ -679,7 +635,6 @@ def toplu_aday_sil():
     try:
         from app.models import Candidate
         from app.extensions import db
-
         aday_ids = request.form.getlist('aday_ids[]')
         if aday_ids:
             silinen = 0
@@ -694,119 +649,97 @@ def toplu_aday_sil():
                             db.session.delete(aday)
                         silinen += 1
                 except Exception as e:
-                    logger.warning(f"Toplu sil - aday {aday_id} hatası: {e}")
-
+                    logger.warning(f"Toplu sil - aday {aday_id} hatasÄ±: {e}")
             db.session.commit()
-            flash(f'{silinen} aday başarıyla silindi.', 'success')
+            flash(f'{silinen} aday baÅŸarÄ±yla silindi.', 'success')
         else:
-            flash('Silinecek aday seçilmedi.', 'warning')
+            flash('Silinecek aday seÃ§ilmedi.', 'warning')
     except Exception as e:
         db.session.rollback()
         logger.error(f"Toplu aday sil error: {e}")
-        flash('Adaylar silinirken bir hata oluştu.', 'danger')
-
+        flash('Adaylar silinirken bir hata oluÅŸtu.', 'danger')
     return redirect(url_for('admin.adaylar'))
 
 
 @admin_bp.route('/aday/aktif/<int:id>', methods=['POST'])
 @superadmin_required
 def aday_aktif(id):
-    """Silinen adayı aktifleştir (geri yükle)"""
+    """Silinen adayÄ± aktifleÅŸtir (geri yÃ¼kle)"""
     try:
         from app.models import Candidate
         from app.extensions import db
-
         aday = Candidate.query.get_or_404(id)
         if hasattr(aday, 'is_deleted'):
             aday.is_deleted = False
             db.session.commit()
-            flash(f'Aday "{aday.ad_soyad}" başarıyla geri yüklendi.', 'success')
+            flash(f'Aday "{aday.ad_soyad}" baÅŸarÄ±yla geri yÃ¼klendi.', 'success')
         else:
             flash('Bu aday zaten aktif durumda.', 'info')
     except Exception as e:
         logger.error(f"Aday aktif error: {e}")
-        flash('Aday aktifleştirilirken bir hata oluştu.', 'danger')
+        flash('Aday aktifleÅŸtirilirken bir hata oluÅŸtu.', 'danger')
     return redirect(url_for('admin.adaylar'))
 
 
 @admin_bp.route('/aday/toplu-aktif', methods=['POST'])
 @superadmin_required
 def toplu_aday_aktif():
-    """Toplu aday aktifleştirme (geri yükleme)"""
+    """Toplu aday aktifleÅŸtirme (geri yÃ¼kleme)"""
     try:
         from app.models import Candidate
         from app.extensions import db
-
         aday_ids = request.form.getlist('aday_ids[]')
         if aday_ids:
             Candidate.query.filter(Candidate.id.in_(aday_ids)).update(
                 {'is_deleted': False}, synchronize_session=False
             )
             db.session.commit()
-            flash(f'{len(aday_ids)} aday başarıyla geri yüklendi.', 'success')
+            flash(f'{len(aday_ids)} aday baÅŸarÄ±yla geri yÃ¼klendi.', 'success')
         else:
-            flash('Aktifleştirilecek aday seçilmedi.', 'warning')
+            flash('AktifleÅŸtirilecek aday seÃ§ilmedi.', 'warning')
     except Exception as e:
         logger.error(f"Toplu aday aktif error: {e}")
-        flash('Adaylar aktifleştirilirken bir hata oluştu.', 'danger')
-
+        flash('Adaylar aktifleÅŸtirilirken bir hata oluÅŸtu.', 'danger')
     return redirect(url_for('admin.adaylar'))
 
 
 @admin_bp.route('/aday/toplu-kalici-sil', methods=['POST'])
 @superadmin_required
 def toplu_aday_kalici_sil():
-    """
-    Toplu aday kalıcı silme - seçilen tüm adayları ve verilerini siler
-    """
+    """Toplu aday kalÄ±cÄ± silme"""
     try:
         from app.models import Candidate
         from app.extensions import db
-
         aday_ids = request.form.getlist('aday_ids[]')
-
         if not aday_ids:
-            flash('Silinecek aday seçilmedi.', 'warning')
+            flash('Silinecek aday seÃ§ilmedi.', 'warning')
             return redirect(url_for('admin.adaylar'))
-
         silinen_sayisi = 0
         hatali_sayisi = 0
-
         for aday_id in aday_ids:
             try:
                 aday_id = int(aday_id)
                 aday = Candidate.query.get(aday_id)
-
                 if aday:
-                    # Bağımlı verileri sil
                     delete_candidate_related_data(aday_id)
-                    # Adayı sil
                     db.session.delete(aday)
                     silinen_sayisi += 1
-
             except Exception as e:
-                logger.error(f"Toplu kalıcı silme - aday {aday_id} hatası: {e}")
+                logger.error(f"Toplu kalÄ±cÄ± silme - aday {aday_id} hatasÄ±: {e}")
                 hatali_sayisi += 1
                 continue
-
-        # Tüm değişiklikleri kaydet
         db.session.commit()
-
         if silinen_sayisi > 0:
-            flash(f'{silinen_sayisi} aday ve tüm verileri kalıcı olarak silindi.', 'success')
-
+            flash(f'{silinen_sayisi} aday ve tÃ¼m verileri kalÄ±cÄ± olarak silindi.', 'success')
         if hatali_sayisi > 0:
-            flash(f'{hatali_sayisi} aday silinirken hata oluştu.', 'warning')
-
+            flash(f'{hatali_sayisi} aday silinirken hata oluÅŸtu.', 'warning')
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Toplu aday kalıcı sil error: {e}")
-        flash(f'Toplu silme işleminde bir hata oluştu: {str(e)}', 'danger')
-
+        logger.error(f"Toplu aday kalÄ±cÄ± sil error: {e}")
+        flash(f'Toplu silme iÅŸleminde bir hata oluÅŸtu: {str(e)}', 'danger')
     return redirect(url_for('admin.adaylar'))
 
-
-# ==================== SORU YÖNETİMİ ====================
+# ==================== SORU YÃ–NETÄ°MÄ° ==================== (DÃœZELTÄ°LDÄ° - Speaking/Writing iÃ§in ÅŸÄ±klar NULL)
 @admin_bp.route('/sorular')
 @superadmin_required
 def sorular():
@@ -817,64 +750,95 @@ def sorular():
         sorular = Question.query.order_by(Question.id.desc()).all()
     except Exception as e:
         logger.error(f"Sorular error: {e}")
-        flash('Sorular yüklenirken bir hata oluştu.', 'danger')
+        flash('Sorular yÃ¼klenirken bir hata oluÅŸtu.', 'danger')
     return render_template('sorular.html', sorular=sorular)
 
 
 @admin_bp.route('/soru/ekle', methods=['GET', 'POST'])
 @superadmin_required
 def soru_ekle():
-    """Yeni soru ekleme"""
+    """Yeni soru ekleme - Speaking/Writing iÃ§in ÅŸÄ±k alanlarÄ± temizlenir"""
     if request.method == 'POST':
         try:
             from app.models import Question
             from app.extensions import db
-            yeni_soru = Question(
-                soru_metni=request.form.get('soru_metni'),
-                secenek_a=request.form.get('secenek_a'),
-                secenek_b=request.form.get('secenek_b'),
-                secenek_c=request.form.get('secenek_c'),
-                secenek_d=request.form.get('secenek_d'),
-                dogru_cevap=request.form.get('dogru_cevap'),
-                zorluk=request.form.get('zorluk', 'orta'),
-                kategori=request.form.get('kategori')
-            )
+            
+            kategori = (request.form.get('kategori') or '').strip().lower()
+            
+            # Speaking ve Writing iÃ§in ÅŸÄ±k ve doÄŸru cevap alanlarÄ±nÄ± NULL yap
+            if kategori in ['speaking', 'writing']:
+                yeni_soru = Question(
+                    soru_metni=request.form.get('soru_metni'),
+                    secenek_a=None,
+                    secenek_b=None,
+                    secenek_c=None,
+                    secenek_d=None,
+                    dogru_cevap=None,  # Speaking/Writing iÃ§in ÅŸÄ±k yok
+                    zorluk=request.form.get('zorluk', 'orta'),
+                    kategori=request.form.get('kategori')  # Original case'i koru
+                )
+            else:
+                # Ã‡oktan seÃ§meli ve diÄŸer soru tipleri iÃ§in ÅŸÄ±klarÄ± al
+                yeni_soru = Question(
+                    soru_metni=request.form.get('soru_metni'),
+                    secenek_a=request.form.get('secenek_a'),
+                    secenek_b=request.form.get('secenek_b'),
+                    secenek_c=request.form.get('secenek_c'),
+                    secenek_d=request.form.get('secenek_d'),
+                    dogru_cevap=request.form.get('dogru_cevap'),
+                    zorluk=request.form.get('zorluk', 'orta'),
+                    kategori=request.form.get('kategori')
+                )
+            
             db.session.add(yeni_soru)
             db.session.commit()
-            flash('Soru başarıyla eklendi.', 'success')
+            flash('Soru baÅŸarÄ±yla eklendi.', 'success')
             return redirect(url_for('admin.sorular'))
         except Exception as e:
             logger.error(f"Soru ekle error: {e}")
-            flash('Soru eklenirken bir hata oluştu.', 'danger')
+            flash('Soru eklenirken bir hata oluÅŸtu.', 'danger')
     return render_template('soru_form.html')
 
 
 @admin_bp.route('/soru/duzenle/<int:id>', methods=['GET', 'POST'])
 @superadmin_required
 def soru_duzenle(id):
-    """Soru düzenleme"""
+    """Soru dÃ¼zenleme - Speaking/Writing iÃ§in ÅŸÄ±k alanlarÄ± temizlenir"""
     try:
         from app.models import Question
         from app.extensions import db
         soru = Question.query.get_or_404(id)
 
         if request.method == 'POST':
+            kategori = (request.form.get('kategori') or soru.kategori or '').strip().lower()
+            
             soru.soru_metni = request.form.get('soru_metni') or soru.soru_metni
-            soru.secenek_a = request.form.get('secenek_a') or soru.secenek_a
-            soru.secenek_b = request.form.get('secenek_b') or soru.secenek_b
-            soru.secenek_c = request.form.get('secenek_c') or soru.secenek_c
-            soru.secenek_d = request.form.get('secenek_d') or soru.secenek_d
-            soru.dogru_cevap = request.form.get('dogru_cevap') or soru.dogru_cevap
             soru.zorluk = request.form.get('zorluk') or soru.zorluk
             soru.kategori = request.form.get('kategori') or soru.kategori
+            
+            # Speaking ve Writing iÃ§in ÅŸÄ±k ve doÄŸru cevap alanlarÄ±nÄ± NULL yap
+            if kategori in ['speaking', 'writing']:
+                soru.secenek_a = None
+                soru.secenek_b = None
+                soru.secenek_c = None
+                soru.secenek_d = None
+                soru.dogru_cevap = None
+            else:
+                # DiÄŸer soru tipleri iÃ§in ÅŸÄ±klarÄ± gÃ¼ncelle
+                soru.secenek_a = request.form.get('secenek_a') or soru.secenek_a
+                soru.secenek_b = request.form.get('secenek_b') or soru.secenek_b
+                soru.secenek_c = request.form.get('secenek_c') or soru.secenek_c
+                soru.secenek_d = request.form.get('secenek_d') or soru.secenek_d
+                soru.dogru_cevap = request.form.get('dogru_cevap') or soru.dogru_cevap
+            
             db.session.commit()
-            flash('Soru başarıyla güncellendi.', 'success')
+            flash('Soru baÅŸarÄ±yla gÃ¼ncellendi.', 'success')
             return redirect(url_for('admin.sorular'))
 
         return render_template('soru_form.html', soru=soru)
     except Exception as e:
         logger.error(f"Soru duzenle error: {e}")
-        flash('Soru düzenlenirken bir hata oluştu.', 'danger')
+        flash('Soru dÃ¼zenlenirken bir hata oluÅŸtu.', 'danger')
         return redirect(url_for('admin.sorular'))
 
 
@@ -888,25 +852,89 @@ def soru_sil(id):
         soru = Question.query.get_or_404(id)
         db.session.delete(soru)
         db.session.commit()
-        flash('Soru başarıyla silindi.', 'success')
+        flash('Soru baÅŸarÄ±yla silindi.', 'success')
     except Exception as e:
         logger.error(f"Soru sil error: {e}")
-        flash('Soru silinirken bir hata oluştu.', 'danger')
+        flash('Soru silinirken bir hata oluÅŸtu.', 'danger')
     return redirect(url_for('admin.sorular'))
 
 
-# ==================== ŞABLON YÖNETİMİ ====================
+# ==================== MEVCUT SPEAKING/WRITING SORULARINI DUZELT ====================
+@admin_bp.route('/fix-speaking-writing-questions', methods=['GET', 'POST'])
+@superadmin_required
+def fix_speaking_writing_questions():
+    """Speaking ve Writing sorularÄ±ndaki ÅŸÄ±k/doÄŸru_cevap alanlarÄ±nÄ± temizler - TEK SEFERLIK"""
+    if request.method == 'POST':
+        try:
+            from app.models import Question
+            from app.extensions import db
+            speaking_count = Question.query.filter(
+                db.func.lower(Question.kategori) == 'speaking'
+            ).update({
+                'dogru_cevap': None,
+                'secenek_a': None,
+                'secenek_b': None,
+                'secenek_c': None,
+                'secenek_d': None
+            }, synchronize_session=False)
+            writing_count = Question.query.filter(
+                db.func.lower(Question.kategori) == 'writing'
+            ).update({
+                'dogru_cevap': None,
+                'secenek_a': None,
+                'secenek_b': None,
+                'secenek_c': None,
+                'secenek_d': None
+            }, synchronize_session=False)
+            db.session.commit()
+            flash(f'{speaking_count} Speaking ve {writing_count} Writing sorusu dÃ¼zeltildi!', 'success')
+            return redirect(url_for('admin.sorular'))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Fix speaking/writing error: {e}")
+            flash(f'Hata oluÅŸtu: {str(e)}', 'danger')
+    
+    try:
+        from app.models import Question
+        from app.extensions import db
+        speaking_count = Question.query.filter(db.func.lower(Question.kategori) == 'speaking').count()
+        writing_count = Question.query.filter(db.func.lower(Question.kategori) == 'writing').count()
+        speaking_with_answer = Question.query.filter(
+            db.func.lower(Question.kategori) == 'speaking',
+            Question.dogru_cevap != None
+        ).count()
+        writing_with_answer = Question.query.filter(
+            db.func.lower(Question.kategori) == 'writing',
+            Question.dogru_cevap != None
+        ).count()
+    except:
+        speaking_count = writing_count = speaking_with_answer = writing_with_answer = 0
+    
+    return f'''
+    <!DOCTYPE html>
+    <html><head><title>Speaking/Writing DÃ¼zeltme</title>
+    <style>body{{font-family:Arial;padding:40px;max-width:600px;margin:0 auto}}.card{{background:#f5f5f5;padding:20px;border-radius:8px;margin:20px 0}}.warning{{background:#fff3cd;border:1px solid #ffc107}}.btn{{background:#dc3545;color:#fff;padding:12px 24px;border:none;border-radius:4px;cursor:pointer;font-size:16px}}.btn:hover{{background:#c82333}}</style>
+    </head><body>
+    <h1>ðŸ”§ Speaking/Writing SorularÄ±nÄ± DÃ¼zelt</h1>
+    <div class="card"><p><strong>Speaking:</strong> {speaking_count} (ÅŸÄ±klÄ±: {speaking_with_answer})</p><p><strong>Writing:</strong> {writing_count} (ÅŸÄ±klÄ±: {writing_with_answer})</p></div>
+    <div class="card warning"><p>âš ï¸ Bu iÅŸlem tÃ¼m Speaking ve Writing sorularÄ±nÄ±n ÅŸÄ±k ve doÄŸru_cevap alanlarÄ±nÄ± NULL yapacak.</p></div>
+    <form method="POST"><button type="submit" class="btn">âœ… DÃ¼zeltmeyi Uygula</button></form>
+    <p><a href="/admin/sorular">â† Sorulara DÃ¶n</a></p>
+    </body></html>
+    '''
+
+# ==================== ÅžABLON YÃ–NETÄ°MÄ° ====================
 @admin_bp.route('/sablonlar')
 @superadmin_required
 def sablonlar():
-    """Sınav şablonları listesi"""
+    """SÄ±nav ÅŸablonlarÄ± listesi"""
     sablonlar = []
     try:
         from app.models import ExamTemplate
         sablonlar = ExamTemplate.query.order_by(ExamTemplate.id.desc()).all()
     except Exception as e:
         logger.error(f"Sablonlar error: {e}")
-        flash('Şablonlar yüklenirken bir hata oluştu.', 'danger')
+        flash('Åžablonlar yÃ¼klenirken bir hata oluÅŸtu.', 'danger')
     return render_template('sablonlar.html', sablonlar=sablonlar)
 
 
@@ -914,7 +942,7 @@ def sablonlar():
 @admin_bp.route('/sablon/yeni', methods=['GET', 'POST'])
 @superadmin_required
 def sablon_ekle():
-    """Yeni şablon ekleme"""
+    """Yeni ÅŸablon ekleme"""
     if request.method == 'POST':
         try:
             from app.models import ExamTemplate
@@ -927,13 +955,12 @@ def sablon_ekle():
             )
             db.session.add(yeni_sablon)
             db.session.commit()
-            flash('Şablon başarıyla eklendi.', 'success')
+            flash('Åžablon baÅŸarÄ±yla eklendi.', 'success')
             return redirect(url_for('admin.sablonlar'))
         except Exception as e:
             logger.error(f"Sablon ekle error: {e}")
-            flash('Şablon eklenirken bir hata oluştu.', 'danger')
+            flash('Åžablon eklenirken bir hata oluÅŸtu.', 'danger')
     return render_template('sablon_form.html')
-
 
 # Alias for sablon_yeni -> sablon_ekle
 @admin_bp.route('/sablon-yeni', methods=['GET', 'POST'])
@@ -947,7 +974,7 @@ def sablon_yeni():
 @admin_bp.route('/sablon/duzenle/<int:id>', methods=['GET', 'POST'])
 @superadmin_required
 def sablon_duzenle(id):
-    """Şablon düzenleme"""
+    """Åžablon dÃ¼zenleme"""
     try:
         from app.models import ExamTemplate
         from app.extensions import db
@@ -959,30 +986,30 @@ def sablon_duzenle(id):
             sablon.sure = int(request.form.get('sure', sablon.sure))
             sablon.soru_sayisi = int(request.form.get('soru_sayisi', sablon.soru_sayisi))
             db.session.commit()
-            flash('Şablon başarıyla güncellendi.', 'success')
+            flash('Åžablon baÅŸarÄ±yla gÃ¼ncellendi.', 'success')
             return redirect(url_for('admin.sablonlar'))
 
         return render_template('sablon_form.html', sablon=sablon)
     except Exception as e:
         logger.error(f"Sablon duzenle error: {e}")
-        flash('Şablon düzenlenirken bir hata oluştu.', 'danger')
+        flash('Åžablon dÃ¼zenlenirken bir hata oluÅŸtu.', 'danger')
         return redirect(url_for('admin.sablonlar'))
 
 
 @admin_bp.route('/sablon/sil/<int:id>', methods=['POST'])
 @superadmin_required
 def sablon_sil(id):
-    """Şablon silme"""
+    """Åžablon silme"""
     try:
         from app.models import ExamTemplate
         from app.extensions import db
         sablon = ExamTemplate.query.get_or_404(id)
         db.session.delete(sablon)
         db.session.commit()
-        flash('Şablon başarıyla silindi.', 'success')
+        flash('Åžablon baÅŸarÄ±yla silindi.', 'success')
     except Exception as e:
         logger.error(f"Sablon sil error: {e}")
-        flash('Şablon silinirken bir hata oluştu.', 'danger')
+        flash('Åžablon silinirken bir hata oluÅŸtu.', 'danger')
     return redirect(url_for('admin.sablonlar'))
 
 
@@ -990,74 +1017,42 @@ def sablon_sil(id):
 @admin_bp.route('/export')
 @superadmin_required
 def export():
-    """Data export - CSV formatında veri indirme"""
+    """Data export - CSV formatÄ±nda veri indirme"""
     export_type = request.args.get('type', 'candidates')
-    format_type = request.args.get('format', 'csv')
-
     try:
         from flask import Response
         import csv
         import io
-
         output = io.StringIO()
         writer = csv.writer(output)
 
         if export_type == 'candidates' or export_type == 'adaylar':
             from app.models import Candidate
-            # CSV header
-            writer.writerow(['ID', 'Ad Soyad', 'Email', 'Cep No', 'Giriş Kodu', 'Durum', 'Puan', 'Seviye', 'Oluşturulma'])
-
+            writer.writerow(['ID', 'Ad Soyad', 'Email', 'Cep No', 'GiriÅŸ Kodu', 'Durum', 'Puan', 'Seviye', 'OluÅŸturulma'])
             candidates = Candidate.query.order_by(Candidate.id.desc()).all()
             for c in candidates:
-                writer.writerow([
-                    c.id,
-                    c.ad_soyad,
-                    c.email or '',
-                    c.cep_no or '',
-                    c.giris_kodu or '',
-                    c.sinav_durumu or 'beklemede',
-                    c.puan or '',
-                    c.seviye_sonuc or '',
-                    c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
-                ])
+                writer.writerow([c.id, c.ad_soyad, c.email or '', c.cep_no or '', c.giris_kodu or '',
+                    c.sinav_durumu or 'beklemede', c.puan or '', c.seviye_sonuc or '',
+                    c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''])
             filename = 'adaylar_export.csv'
-
         elif export_type == 'companies' or export_type == 'sirketler':
             from app.models import Company
-            writer.writerow(['ID', 'İsim', 'Email', 'Telefon', 'Adres', 'Kredi', 'Aktif', 'Oluşturulma'])
-
+            writer.writerow(['ID', 'Ä°sim', 'Email', 'Telefon', 'Adres', 'Kredi', 'Aktif', 'OluÅŸturulma'])
             companies = Company.query.order_by(Company.id.desc()).all()
             for c in companies:
-                writer.writerow([
-                    c.id,
-                    c.isim,
-                    c.email or '',
-                    c.telefon or '',
-                    c.adres or '',
-                    c.kredi or 0,
-                    'Evet' if c.is_active else 'Hayır',
-                    c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''
-                ])
+                writer.writerow([c.id, c.isim, c.email or '', c.telefon or '', c.adres or '',
+                    c.kredi or 0, 'Evet' if c.is_active else 'HayÄ±r',
+                    c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else ''])
             filename = 'sirketler_export.csv'
-
         elif export_type == 'questions' or export_type == 'sorular':
             from app.models import Question
-            writer.writerow(['ID', 'Soru Metni', 'Seviye', 'Beceri', 'Doğru Cevap', 'Aktif'])
-
+            writer.writerow(['ID', 'Soru Metni', 'Seviye', 'Beceri', 'DoÄŸru Cevap', 'Aktif'])
             questions = Question.query.order_by(Question.id.desc()).all()
             for q in questions:
-                writer.writerow([
-                    q.id,
-                    (q.soru_metni or '')[:100],  # İlk 100 karakter
-                    q.seviye or '',
-                    q.beceri or '',
-                    q.dogru_cevap or '',
-                    'Evet' if q.is_active else 'Hayır'
-                ])
+                writer.writerow([q.id, (q.soru_metni or '')[:100], q.seviye or '', q.beceri or '',
+                    q.dogru_cevap or '', 'Evet' if q.is_active else 'HayÄ±r'])
             filename = 'sorular_export.csv'
-
         else:
-            # Varsayılan olarak tüm adayları indir
             from app.models import Candidate
             writer.writerow(['ID', 'Ad Soyad', 'Email', 'Puan', 'Seviye'])
             candidates = Candidate.query.all()
@@ -1066,29 +1061,19 @@ def export():
             filename = 'veriler_export.csv'
 
         output.seek(0)
-
-        return Response(
-            output.getvalue(),
-            mimetype='text/csv',
-            headers={'Content-Disposition': f'attachment; filename={filename}'}
-        )
-
+        return Response(output.getvalue(), mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename={filename}'})
     except Exception as e:
         logger.error(f"Export error: {e}")
-        flash(f'Export işlemi başarısız: {str(e)}', 'danger')
+        flash(f'Export iÅŸlemi baÅŸarÄ±sÄ±z: {str(e)}', 'danger')
         return redirect(url_for('admin.dashboard'))
 
-
-# ==================== RAPORLAR ==================== (DÜZELTİLDİ)
+# ==================== RAPORLAR ==================== (DÃœZELTÄ°LDÄ°)
 @admin_bp.route('/raporlar')
 @superadmin_required
 def raporlar():
-    """Raporlar sayfası"""
-    stats = {
-        'total': 0,
-        'completed': 0,
-        'pending': 0,
-    }
+    """Raporlar sayfasÄ±"""
+    stats = {'total': 0, 'completed': 0, 'pending': 0}
     try:
         from app.models import Candidate
         stats = {
@@ -1105,14 +1090,8 @@ def raporlar():
 @superadmin_required
 def super_rapor():
     """Platform geneli rapor"""
-    stats = {
-        'total_companies': 0,
-        'active_companies': 0,
-        'total_users': 0,
-        'total_candidates': 0,
-        'completed_exams': 0,
-        'total_credits_used': 0,
-    }
+    stats = {'total_companies': 0, 'active_companies': 0, 'total_users': 0,
+             'total_candidates': 0, 'completed_exams': 0, 'total_credits_used': 0}
     try:
         from app.models import Company, User, Question, Candidate
         from app.extensions import db
@@ -1128,26 +1107,25 @@ def super_rapor():
         logger.error(f"Super rapor error: {e}")
     return render_template('super_rapor.html', stats=stats)
 
-
-# ==================== KREDİ YÖNETİMİ ====================
+# ==================== KREDÄ° YÃ–NETÄ°MÄ° ====================
 @admin_bp.route('/krediler')
 @superadmin_required
 def krediler():
-    """Kredi yönetimi"""
+    """Kredi yÃ¶netimi"""
     sirketler = []
     try:
         from app.models import Company
         sirketler = Company.query.order_by(Company.id.desc()).all()
     except Exception as e:
         logger.error(f"Krediler error: {e}")
-        flash('Krediler yüklenirken bir hata oluştu.', 'danger')
+        flash('Krediler yÃ¼klenirken bir hata oluÅŸtu.', 'danger')
     return render_template('krediler.html', sirketler=sirketler)
 
 
 @admin_bp.route('/kredi/ekle/<int:sirket_id>', methods=['POST'])
 @superadmin_required
 def kredi_ekle(sirket_id):
-    """Şirkete kredi ekleme"""
+    """Åžirkete kredi ekleme"""
     try:
         from app.models import Company
         from app.extensions import db
@@ -1156,34 +1134,26 @@ def kredi_ekle(sirket_id):
         if hasattr(sirket, 'kredi'):
             sirket.kredi = (sirket.kredi or 0) + miktar
         db.session.commit()
-        flash(f'{miktar} kredi başarıyla eklendi.', 'success')
+        flash(f'{miktar} kredi baÅŸarÄ±yla eklendi.', 'success')
     except Exception as e:
         logger.error(f"Kredi ekle error: {e}")
-        flash('Kredi eklenirken bir hata oluştu.', 'danger')
+        flash('Kredi eklenirken bir hata oluÅŸtu.', 'danger')
     return redirect(url_for('admin.krediler'))
-
 
 # ==================== AYARLAR ====================
 @admin_bp.route('/ayarlar')
 @superadmin_required
 def ayarlar():
-    """Sistem ayarları"""
+    """Sistem ayarlarÄ±"""
     return render_template('ayarlar.html')
 
-
-# ==================== VERİ YÖNETİMİ ==================== (DÜZELTİLDİ)
+# ==================== VERÄ° YÃ–NETÄ°MÄ° ==================== (DÃœZELTÄ°LDÄ°)
 @admin_bp.route('/veri-yonetimi')
 @superadmin_required
 def veri_yonetimi():
-    """Veri yönetimi sayfası"""
-    stats = {
-        'total_candidates': 0,
-        'total_questions': 0,
-        'total_answers': 0,
-        'speaking_recordings': 0,
-        'audit_logs': 0,
-        'db_size_mb': 0,
-    }
+    """Veri yÃ¶netimi sayfasÄ±"""
+    stats = {'total_candidates': 0, 'total_questions': 0, 'total_answers': 0,
+             'speaking_recordings': 0, 'audit_logs': 0, 'db_size_mb': 0}
     backups = []
     try:
         from app.models import Candidate, Question, ExamAnswer, AuditLog
@@ -1206,17 +1176,14 @@ def fraud_heatmap():
     """Fraud heatmap"""
     return render_template('fraud_heatmap.html')
 
-
 # ==================== LOGLAR ====================
 @admin_bp.route('/logs')
 @superadmin_required
 def logs():
-    """Admin logları - main function"""
+    """Admin loglarÄ± - main function"""
     page = request.args.get('page', 1, type=int)
     action = request.args.get('action', '')
     logs_list = []
-
-    # Create pagination object
     class LogPagination:
         def __init__(self):
             self.page = page
@@ -1225,17 +1192,13 @@ def logs():
             self.has_next = False
             self.prev_num = None
             self.next_num = None
-
     pagination = LogPagination()
-
     try:
         from app.models import AuditLog
         query = AuditLog.query
         if action:
             query = query.filter(AuditLog.action == action)
-        logs_data = query.order_by(AuditLog.id.desc()).paginate(
-            page=page, per_page=50, error_out=False
-        )
+        logs_data = query.order_by(AuditLog.id.desc()).paginate(page=page, per_page=50, error_out=False)
         logs_list = logs_data.items
         pagination.page = logs_data.page
         pagination.pages = logs_data.pages
@@ -1245,19 +1208,16 @@ def logs():
         pagination.next_num = logs_data.next_num
     except Exception as e:
         logger.error(f"Logs error: {e}")
-
     return render_template('admin_logs.html', logs=logs_list, pagination=pagination)
 
 
 @admin_bp.route('/loglar')
 @superadmin_required
 def loglar():
-    """Admin logları - alias that the template uses"""
+    """Admin loglarÄ± - alias that the template uses"""
     page = request.args.get('page', 1, type=int)
     action = request.args.get('action', '')
     logs_list = []
-
-    # Create pagination object
     class LogPagination:
         def __init__(self):
             self.page = page
@@ -1266,17 +1226,13 @@ def loglar():
             self.has_next = False
             self.prev_num = None
             self.next_num = None
-
     pagination = LogPagination()
-
     try:
         from app.models import AuditLog
         query = AuditLog.query
         if action:
             query = query.filter(AuditLog.action == action)
-        logs_data = query.order_by(AuditLog.id.desc()).paginate(
-            page=page, per_page=50, error_out=False
-        )
+        logs_data = query.order_by(AuditLog.id.desc()).paginate(page=page, per_page=50, error_out=False)
         logs_list = logs_data.items
         pagination.page = logs_data.page
         pagination.pages = logs_data.pages
@@ -1286,7 +1242,6 @@ def loglar():
         pagination.next_num = logs_data.next_num
     except Exception as e:
         logger.error(f"Loglar error: {e}")
-
     return render_template('admin_logs.html', logs=logs_list, pagination=pagination)
 
 
@@ -1296,12 +1251,11 @@ def loglar_liste():
     """Alias for logs"""
     return redirect(url_for('admin.loglar'))
 
-
-# ==================== DEMO OLUŞTURMA ====================
+# ==================== DEMO OLUÅžTURMA ====================
 @admin_bp.route('/demo-olustur', methods=['GET', 'POST'])
 @superadmin_required
 def demo_olustur():
-    """Hızlı demo şirket ve aday oluşturma"""
+    """HÄ±zlÄ± demo ÅŸirket ve aday oluÅŸturma"""
     if request.method == 'POST':
         try:
             from app.models import Company
@@ -1315,19 +1269,18 @@ def demo_olustur():
             )
             db.session.add(demo_sirket)
             db.session.commit()
-            flash('Demo şirket başarıyla oluşturuldu.', 'success')
+            flash('Demo ÅŸirket baÅŸarÄ±yla oluÅŸturuldu.', 'success')
             return redirect(url_for('admin.sirketler'))
         except Exception as e:
             logger.error(f"Demo olustur error: {e}")
-            flash('Demo oluşturulurken bir hata oluştu.', 'danger')
+            flash('Demo oluÅŸturulurken bir hata oluÅŸtu.', 'danger')
     return render_template('demo_olustur.html')
 
-
-# ==================== YEDEK ALMA VE VERİ ALT ROUTE'LARI ====================
+# ==================== YEDEK ALMA VE VERÄ° ALT ROUTE'LARI ====================
 @admin_bp.route('/veri-yonetimi/yedek-al', methods=['GET', 'POST'])
 @superadmin_required
 def yedek_al():
-    """Yedek alma sayfası - data.backup'a yönlendir"""
+    """Yedek alma sayfasÄ± - data.backup'a yÃ¶nlendir"""
     if request.method == 'POST':
         return redirect(url_for('data.create_backup'), code=307)
     return redirect(url_for('data.backup'))
@@ -1336,19 +1289,19 @@ def yedek_al():
 @admin_bp.route('/veri-yonetimi/temizlik')
 @superadmin_required
 def veri_temizlik():
-    """Veri temizliği sayfası"""
+    """Veri temizliÄŸi sayfasÄ±"""
     return redirect(url_for('data.cleanup'))
 
 
 @admin_bp.route('/veri-yonetimi/gdpr')
 @superadmin_required
 def veri_gdpr():
-    """GDPR sayfası"""
+    """GDPR sayfasÄ±"""
     return redirect(url_for('data.gdpr'))
 
 
 @admin_bp.route('/veri-yonetimi/kvkk')
 @superadmin_required
 def veri_kvkk():
-    """KVKK sayfası"""
+    """KVKK sayfasÄ±"""
     return redirect(url_for('data.kvkk'))
