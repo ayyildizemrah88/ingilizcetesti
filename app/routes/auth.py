@@ -2,7 +2,9 @@
 """
 Authentication Routes
 GitHub: app/routes/auth.py
-GÜNCELLENDİ: Sınav girişine TC Kimlik zorunluluğu eklendi
+GÜNCELLEME: 
+- Password hash doğrulama hatası düzeltildi
+- Sınav girişine TC Kimlik zorunluluğu eklendi
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import check_password_hash
@@ -25,81 +27,111 @@ def validate_tc_kimlik(tc_kimlik):
     """
     if not tc_kimlik or len(tc_kimlik) != 11:
         return False
-    
+
     if not tc_kimlik.isdigit():
         return False
-    
+
     if tc_kimlik[0] == '0':
         return False
-    
+
     try:
         digits = [int(d) for d in tc_kimlik]
-        
+
         # 10. basamak kontrolü
         odd_sum = sum(digits[0:9:2])  # 1, 3, 5, 7, 9. rakamlar
         even_sum = sum(digits[1:8:2])  # 2, 4, 6, 8. rakamlar
         digit_10 = (odd_sum * 7 - even_sum) % 10
-        
+
         if digit_10 < 0:
             digit_10 = (digit_10 + 10) % 10
-        
+
         if digit_10 != digits[9]:
             return False
-        
+
         # 11. basamak kontrolü
         total = sum(digits[0:10])
         digit_11 = total % 10
-        
+
         if digit_11 != digits[10]:
             return False
-        
+
         return True
     except:
         return False
 
 
 # ═══════════════════════════════════════════════════════════
+# LOGIN - DÜZELTİLDİ: Hash format kontrolü eklendi
+# ═══════════════════════════════════════════════════════════
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @auth_bp.route('/giris', methods=['GET', 'POST'])
 def login():
-    """Kullanıcı girişi"""
+    """Kullanıcı girişi - DÜZELTİLDİ: Hash kontrolü"""
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         sifre = request.form.get('sifre', '') or request.form.get('password', '')
-        
+
         if not email or not sifre:
             flash('Email ve şifre zorunludur.', 'danger')
             return render_template('login.html')
-        
+
         try:
             from app.models import User
             from app.extensions import db
             kullanici = User.query.filter_by(email=email).first()
+            
             if kullanici:
-                # Şifre kontrolü
+                # Şifre kontrolü - DÜZELTİLDİ
                 password_valid = False
+                password_hash = None
+                
+                # Hash alanını tespit et
                 if hasattr(kullanici, 'sifre_hash') and kullanici.sifre_hash:
-                    password_valid = check_password_hash(kullanici.sifre_hash, sifre)
+                    password_hash = kullanici.sifre_hash
                 elif hasattr(kullanici, 'sifre') and kullanici.sifre:
-                    password_valid = check_password_hash(kullanici.sifre, sifre)
+                    password_hash = kullanici.sifre
+                
+                # Hash var mı ve geçerli formatta mı kontrol et
+                if password_hash:
+                    # Geçerli hash formatları: pbkdf2:, scrypt:, sha256$
+                    valid_prefixes = ('pbkdf2:', 'scrypt:', 'sha256$')
+                    
+                    if not any(password_hash.startswith(prefix) for prefix in valid_prefixes):
+                        # Geçersiz hash formatı
+                        logger.error(f"Invalid password hash format for user {email}")
+                        flash('Hesabınızda bir sorun var. Lütfen şifrenizi sıfırlayın veya yönetici ile iletişime geçin.', 'danger')
+                        return render_template('login.html')
+                    
+                    try:
+                        password_valid = check_password_hash(password_hash, sifre)
+                    except ValueError as e:
+                        logger.error(f"Password hash check error for {email}: {e}")
+                        flash('Hesabınızda bir sorun var. Lütfen şifrenizi sıfırlayın veya yönetici ile iletişime geçin.', 'danger')
+                        return render_template('login.html')
+                else:
+                    # Hash alanı boş
+                    logger.error(f"Empty password hash for user {email}")
+                    flash('Hesabınızda bir sorun var. Lütfen şifrenizi sıfırlayın veya yönetici ile iletişime geçin.', 'danger')
+                    return render_template('login.html')
+                
                 if password_valid:
                     if hasattr(kullanici, 'is_active') and not kullanici.is_active:
                         flash('Hesabınız devre dışı bırakılmış.', 'danger')
                         return render_template('login.html')
-                    
+
                     session['kullanici_id'] = kullanici.id
                     session['email'] = kullanici.email
                     session['rol'] = kullanici.rol
                     session['ad_soyad'] = kullanici.ad_soyad if hasattr(kullanici, 'ad_soyad') else email
                     if hasattr(kullanici, 'sirket_id') and kullanici.sirket_id:
                         session['sirket_id'] = kullanici.sirket_id
-                    
+
                     if hasattr(kullanici, 'son_giris'):
                         kullanici.son_giris = datetime.utcnow()
                         db.session.commit()
-                    
+
                     flash('Giriş başarılı!', 'success')
-                    
+
                     if kullanici.rol in ['superadmin', 'super_admin', 'admin']:
                         return redirect(url_for('admin.dashboard'))
                     elif kullanici.rol == 'customer':
@@ -113,6 +145,7 @@ def login():
         except Exception as e:
             logger.error(f"Login error: {e}")
             flash('Giriş sırasında bir hata oluştu.', 'danger')
+    
     return render_template('login.html')
 
 
@@ -125,6 +158,8 @@ def logout():
     return redirect(url_for('main.index'))
 
 
+# ═══════════════════════════════════════════════════════════
+# REGISTER
 # ═══════════════════════════════════════════════════════════
 @auth_bp.route('/register', methods=['GET', 'POST'])
 @auth_bp.route('/kayit', methods=['GET', 'POST'])
@@ -145,6 +180,8 @@ def register():
 
 
 # ═══════════════════════════════════════════════════════════
+# CONTACT & PASSWORD RESET
+# ═══════════════════════════════════════════════════════════
 @auth_bp.route('/iletisim', methods=['GET', 'POST'])
 def iletisim():
     """İletişim formu"""
@@ -162,7 +199,6 @@ def iletisim():
     return render_template('iletisim.html')
 
 
-# ═══════════════════════════════════════════════════════════
 @auth_bp.route('/sifremi-unuttum', methods=['GET', 'POST'])
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
@@ -179,7 +215,7 @@ def forgot_password():
 
 
 # ═══════════════════════════════════════════════════════════
-# SINAV GİRİŞİ - TC KİMLİK + GİRİŞ KODU GEREKLİ
+# SINAV GİRİŞİ
 # ═══════════════════════════════════════════════════════════
 @auth_bp.route('/sinav-giris', methods=['GET', 'POST'])
 def sinav_giris():
@@ -188,15 +224,15 @@ def sinav_giris():
     GÜNCELLEME: Artık hem TC Kimlik hem de giriş kodu gerekli
     """
     errors = []
-    
+
     if request.method == 'POST':
         tc_kimlik = request.form.get('tc_kimlik', '').strip()
         exam_code = request.form.get('exam_code', '').strip().upper()
-        
+
         # Geriye uyumluluk: Eski form sadece giris_kodu gönderiyorsa
         if not exam_code:
             exam_code = request.form.get('giris_kodu', '').strip().upper()
-        
+
         # TC Kimlik doğrulama
         if not tc_kimlik:
             errors.append('TC Kimlik numarası gereklidir.')
@@ -204,47 +240,47 @@ def sinav_giris():
             errors.append('TC Kimlik numarası 11 haneli olmalıdır.')
         elif not validate_tc_kimlik(tc_kimlik):
             errors.append('Geçersiz TC Kimlik numarası.')
-        
+
         # Giriş kodu doğrulama
         if not exam_code:
             errors.append('Sınav giriş kodu gereklidir.')
         elif len(exam_code) < 6:
             errors.append('Sınav giriş kodu en az 6 karakter olmalıdır.')
-        
+
         if errors:
             return render_template('sinav_giris.html', errors=errors)
-        
+
         try:
             from app.models import Candidate
             from app.extensions import db
-            
+
             # TC Kimlik ve giriş kodu ile aday bul
             aday = Candidate.query.filter_by(
                 tc_kimlik=tc_kimlik,
                 giris_kodu=exam_code,
                 is_deleted=False
             ).first()
-            
+
             # is_deleted alanı yoksa sadece tc_kimlik ve giris_kodu ile sorgula
             if not aday:
                 aday = Candidate.query.filter_by(
                     tc_kimlik=tc_kimlik,
                     giris_kodu=exam_code
                 ).first()
-                
+
                 # is_deleted kontrolü
                 if aday and hasattr(aday, 'is_deleted') and aday.is_deleted:
                     aday = None
-            
+
             if not aday:
                 errors.append('TC Kimlik veya sınav kodu hatalı. Lütfen kontrol ediniz.')
                 return render_template('sinav_giris.html', errors=errors)
-            
+
             # Sınav durumu kontrolü
             if hasattr(aday, 'sinav_durumu') and aday.sinav_durumu == 'tamamlandi':
                 errors.append('Bu sınav daha önce tamamlanmış. Yeniden giriş yapamazsınız.')
                 return render_template('sinav_giris.html', errors=errors)
-            
+
             # Session ayarla
             session['aday_id'] = aday.id
             session['candidate_id'] = aday.id
@@ -253,28 +289,28 @@ def sinav_giris():
             session['sinav_modu'] = 'gercek'
             if hasattr(aday, 'sirket_id'):
                 session['sirket_id'] = aday.sirket_id
-            
+
             flash(f'Hoş geldiniz, {aday.ad_soyad}!', 'success')
-            
+
             # Duruma göre yönlendir
             if hasattr(aday, 'sinav_durumu'):
                 if aday.sinav_durumu == 'beklemede':
                     return redirect(url_for('candidate.tutorial'))
                 elif aday.sinav_durumu == 'devam_ediyor':
                     return redirect(url_for('exam.sinav'))
-            
+
             return redirect(url_for('candidate.tutorial'))
-            
+
         except Exception as e:
             logger.error(f"Sınav giriş error: {e}")
             errors.append('Giriş sırasında bir hata oluştu. Lütfen tekrar deneyin.')
             return render_template('sinav_giris.html', errors=errors)
-    
+
     return render_template('sinav_giris.html', errors=errors)
 
 
 # ═══════════════════════════════════════════════════════════
-# Decorator fonksiyonları
+# DECORATORS
 # ═══════════════════════════════════════════════════════════
 def login_required(f):
     @wraps(f)
