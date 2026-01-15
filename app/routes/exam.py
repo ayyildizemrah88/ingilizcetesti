@@ -2,11 +2,13 @@
 """
 Exam Routes - Exam interface and flow
 GitHub: app/routes/exam.py
-GÜNCELLENDİ:
+GÜNCELLEME:
 - calculate_exam_results fonksiyonuna error handling eklendi
 - sinav_bitti route'una try-except eklendi
 - Bölme hatası koruması eklendi
 - sinav_sonuc.html -> sinav_bitti.html düzeltildi
+- DÜZELTİLDİ: Speaking/Writing cevap desteği eklendi
+- DÜZELTİLDİ: Boş cevap işleme (süre dolduğunda)
 """
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
@@ -54,9 +56,8 @@ def superadmin_required(f):
 
 
 # ═══════════════════════════════════════════════════════════
-# SINAV SAYFASI
+# SINAV ANA SAYFA
 # ═══════════════════════════════════════════════════════════
-
 @exam_bp.route('/')
 @exam_bp.route('/sinav')
 @exam_required
@@ -161,13 +162,12 @@ def select_next_question(candidate, answered_ids):
 
 
 # ═══════════════════════════════════════════════════════════
-# CEVAP GÖNDERME
+# SINAV CEVAP - DÜZELTİLDİ: Speaking/Writing ve boş cevap desteği
 # ═══════════════════════════════════════════════════════════
-
 @exam_bp.route('/sinav', methods=['POST'])
 @exam_required
 def sinav_cevap():
-    """Submit answer and get next question"""
+    """Submit answer and get next question - DÜZELTİLDİ"""
     from app.models import Candidate, Question, ExamAnswer
 
     aday_id = session.get('aday_id')
@@ -180,7 +180,12 @@ def sinav_cevap():
         return redirect(url_for('candidate_auth.sinav_giris'))
 
     soru_id = request.form.get('soru_id', type=int)
+    soru_tipi = request.form.get('soru_tipi', 'grammar')
     cevap = request.form.get('cevap', '').upper()
+    
+    # Speaking/Writing için özel cevap işleme
+    text_response = request.form.get('text_response', '')
+    audio_response = request.form.get('audio_response', '')
 
     # SECURITY: Validate question ID matches session
     active_question_id = session.get('active_question_id')
@@ -193,22 +198,55 @@ def sinav_cevap():
     if not question:
         return redirect(url_for('exam.sinav'))
 
-    # Check answer
-    is_correct = cevap == question.dogru_cevap.upper()
+    # ========== DÜZELTİLDİ: Cevap işleme ==========
+    is_correct = False
+    verilen_cevap = cevap
+    
+    # Soru tipini belirle (beceri alanından veya form'dan)
+    actual_soru_tipi = soru_tipi
+    if hasattr(question, 'beceri') and question.beceri:
+        actual_soru_tipi = question.beceri
+    
+    if actual_soru_tipi == 'speaking':
+        # Speaking: Ses kaydı varsa AI değerlendirmesi için işaretle
+        if audio_response:
+            verilen_cevap = 'SPEAKING_RECORDED'
+            is_correct = None  # AI değerlendirecek
+        else:
+            verilen_cevap = 'SPEAKING_EMPTY'
+            is_correct = False
+            
+    elif actual_soru_tipi == 'writing':
+        # Writing: Metin varsa AI değerlendirmesi için işaretle
+        if text_response.strip():
+            verilen_cevap = text_response[:5000]  # Max 5000 karakter
+            is_correct = None  # AI değerlendirecek
+        else:
+            verilen_cevap = 'WRITING_EMPTY'
+            is_correct = False
+            
+    else:
+        # Çoktan seçmeli: Standart doğru/yanlış kontrolü
+        # DÜZELTİLDİ: Boş cevap kabul ediliyor (süre dolmuş olabilir)
+        if cevap and question.dogru_cevap:
+            is_correct = cevap == question.dogru_cevap.upper()
+        else:
+            is_correct = False  # Boş cevap = yanlış
 
     # Save answer
     answer = ExamAnswer(
         aday_id=aday_id,
         soru_id=soru_id,
-        verilen_cevap=cevap,
+        verilen_cevap=verilen_cevap,
         dogru_mu=is_correct
     )
     db.session.add(answer)
 
-    # Update CAT difficulty
-    candidate = Candidate.query.get(aday_id)
-    if candidate:
-        update_cat_difficulty(candidate, question.zorluk, is_correct)
+    # Update CAT difficulty (only for graded answers)
+    if is_correct is not None:
+        candidate = Candidate.query.get(aday_id)
+        if candidate and hasattr(question, 'zorluk'):
+            update_cat_difficulty(candidate, question.zorluk, is_correct)
 
     # Clear active question from session
     session.pop('active_question_id', None)
@@ -236,9 +274,8 @@ def update_cat_difficulty(candidate, question_difficulty, is_correct):
 
 
 # ═══════════════════════════════════════════════════════════
-# SINAV BİTİŞİ VE SONUÇ - HATA DÜZELTİLDİ
+# SINAV BİTTİ
 # ═══════════════════════════════════════════════════════════
-
 @exam_bp.route('/sinav-bitti')
 @exam_required
 def sinav_bitti():
@@ -277,7 +314,6 @@ def sinav_bitti():
                     candidate.seviye_sonuc = 'A1'
                 db.session.commit()
 
-        # DÜZELTİLDİ: sinav_sonuc.html -> sinav_bitti.html
         return render_template('sinav_bitti.html',
                               aday=candidate,
                               is_demo=False)
@@ -299,14 +335,13 @@ def sonuc(giris_kodu):
         flash('Bu sınav henüz tamamlanmamış.', 'warning')
         return redirect(url_for('main.index'))
 
-    # DÜZELTİLDİ: sinav_sonuc.html -> sinav_bitti.html
     return render_template('sinav_bitti.html', aday=candidate, is_demo=False)
 
 
 def calculate_exam_results(candidate):
     """
     Sınav sonuçlarını hesapla ve kaydet
-    GÜNCELLENDİ: Error handling ve edge case kontrolü eklendi
+    GÜNCELLEME: Error handling ve edge case kontrolü eklendi
     """
     from app.models import ExamAnswer
 
@@ -323,9 +358,9 @@ def calculate_exam_results(candidate):
             db.session.commit()
             return
 
-        # Doğru cevap sayısı
-        dogru_sayisi = sum(1 for a in answers if a.dogru_mu)
-        toplam = len(answers)
+        # Doğru cevap sayısı (None olanları say - AI değerlendirecek)
+        dogru_sayisi = sum(1 for a in answers if a.dogru_mu == True)
+        toplam = len([a for a in answers if a.dogru_mu is not None])
 
         # Bölme hatası koruması
         if toplam > 0:
@@ -369,13 +404,12 @@ def calculate_exam_results(candidate):
         except Exception as commit_error:
             logger.error(f"Commit hatası: {commit_error}")
             db.session.rollback()
-        raise  # Üst katmana hatayı ilet
+        raise
 
 
 # ═══════════════════════════════════════════════════════════
-# PAUSE / RESUME
+# SINAV KONTROL
 # ═══════════════════════════════════════════════════════════
-
 @exam_bp.route('/sinav/pause', methods=['POST'])
 @exam_required
 def pause_exam():
@@ -405,9 +439,8 @@ def pause_exam():
 
 
 # ═══════════════════════════════════════════════════════════
-# ADMIN FONKSİYONLARI
+# ADMIN İŞLEMLERİ
 # ═══════════════════════════════════════════════════════════
-
 @exam_bp.route('/admin/reset/<int:aday_id>', methods=['POST'])
 @login_required
 @superadmin_required
@@ -454,7 +487,6 @@ def extend_time(aday_id):
 # ═══════════════════════════════════════════════════════════
 # DEMO SINAV
 # ═══════════════════════════════════════════════════════════
-
 @exam_bp.route('/admin/demo-baslat', methods=['POST'])
 @login_required
 @superadmin_required
@@ -573,7 +605,8 @@ def create_demo_question(soru_no):
             'secenek_c': 'going',
             'secenek_d': 'gone',
             'dogru_cevap': 'B',
-            'zorluk': 'A2'
+            'zorluk': 'A2',
+            'beceri': 'grammar'
         },
         {
             'id': 'demo',
@@ -583,7 +616,8 @@ def create_demo_question(soru_no):
             'secenek_c': 'from',
             'secenek_d': 'at',
             'dogru_cevap': 'B',
-            'zorluk': 'B1'
+            'zorluk': 'B1',
+            'beceri': 'grammar'
         },
         {
             'id': 'demo',
@@ -593,7 +627,8 @@ def create_demo_question(soru_no):
             'secenek_c': 'were',
             'secenek_d': 'be',
             'dogru_cevap': 'C',
-            'zorluk': 'B2'
+            'zorluk': 'B2',
+            'beceri': 'grammar'
         },
         {
             'id': 'demo',
@@ -603,7 +638,8 @@ def create_demo_question(soru_no):
             'secenek_c': 'is reading',
             'secenek_d': 'reads',
             'dogru_cevap': 'B',
-            'zorluk': 'B2'
+            'zorluk': 'B2',
+            'beceri': 'grammar'
         },
         {
             'id': 'demo',
@@ -613,7 +649,8 @@ def create_demo_question(soru_no):
             'secenek_c': 'were',
             'secenek_d': 'did',
             'dogru_cevap': 'C',
-            'zorluk': 'A2'
+            'zorluk': 'A2',
+            'beceri': 'grammar'
         },
         {
             'id': 'demo',
@@ -623,7 +660,8 @@ def create_demo_question(soru_no):
             'secenek_c': 'try',
             'secenek_d': 'tried',
             'dogru_cevap': 'B',
-            'zorluk': 'B1'
+            'zorluk': 'B1',
+            'beceri': 'grammar'
         },
         {
             'id': 'demo',
@@ -633,7 +671,8 @@ def create_demo_question(soru_no):
             'secenek_c': 'was',
             'secenek_d': 'been',
             'dogru_cevap': 'C',
-            'zorluk': 'B1'
+            'zorluk': 'B1',
+            'beceri': 'grammar'
         },
         {
             'id': 'demo',
@@ -643,7 +682,8 @@ def create_demo_question(soru_no):
             'secenek_c': 'Are',
             'secenek_d': 'Do',
             'dogru_cevap': 'B',
-            'zorluk': 'A2'
+            'zorluk': 'A2',
+            'beceri': 'grammar'
         },
         {
             'id': 'demo',
@@ -653,7 +693,8 @@ def create_demo_question(soru_no):
             'secenek_c': 'has',
             'secenek_d': 'having',
             'dogru_cevap': 'B',
-            'zorluk': 'B2'
+            'zorluk': 'B2',
+            'beceri': 'grammar'
         },
         {
             'id': 'demo',
@@ -663,7 +704,8 @@ def create_demo_question(soru_no):
             'secenek_c': 'much',
             'secenek_d': 'many',
             'dogru_cevap': 'B',
-            'zorluk': 'A2'
+            'zorluk': 'A2',
+            'beceri': 'grammar'
         }
     ]
 
@@ -680,6 +722,7 @@ def create_demo_question(soru_no):
             self.secenek_d = data['secenek_d']
             self.dogru_cevap = data['dogru_cevap']
             self.zorluk = data['zorluk']
+            self.beceri = data.get('beceri', 'grammar')
             self.soru_tipi = 'SECMELI'
 
     return MockQuestion(soru_data)
@@ -688,7 +731,6 @@ def create_demo_question(soru_no):
 # ═══════════════════════════════════════════════════════════
 # ÇIKIŞ
 # ═══════════════════════════════════════════════════════════
-
 @exam_bp.route('/cikis')
 def sinav_cikis():
     """Sınavdan çık"""
