@@ -60,62 +60,6 @@
         text-align: center;
         padding: 2rem;
     }
-
-    /* Speaking/Writing Arayüzleri */
-    .speaking-interface, .writing-interface {
-        padding: 1.5rem;
-        background: #f8f9fa;
-        border-radius: 12px;
-    }
-
-    .audio-recorder {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        padding: 2rem;
-    }
-
-    .audio-recorder .btn {
-        width: 200px;
-    }
-
-    .recording-indicator {
-        display: none;
-        align-items: center;
-        gap: 0.5rem;
-        color: #dc3545;
-        font-weight: bold;
-    }
-
-    .recording-indicator.active {
-        display: flex;
-    }
-
-    .pulse {
-        width: 12px;
-        height: 12px;
-        background: #dc3545;
-        border-radius: 50%;
-        animation: pulse 1s infinite;
-    }
-
-    @keyframes pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(1.2); }
-    }
-
-    .word-count {
-        font-size: 0.9rem;
-    }
-
-    .word-count.warning {
-        color: #ffc107;
-    }
-
-    .word-count.success {
-        color: #28a745;
-    }
 </style>
 {% endblock %}
 {% block content %}
@@ -135,9 +79,6 @@
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                 <div>
                     <span class="badge bg-primary fs-6">Soru {{ soru_no }} / {{ toplam }}</span>
-                    {% if soru.beceri %}
-                    <span class="badge bg-secondary ms-2">{{ soru.beceri|capitalize }}</span>
-                    {% endif %}
                 </div>
                 <div class="d-flex align-items-center gap-3">
                     {% if soru_suresi and soru_suresi > 0 %}
@@ -157,72 +98,9 @@
                     <div class="progress-bar" style="width: {{ (soru_no / toplam * 100)|int }}%"></div>
                 </div>
                 <h4 class="mb-4">{{ soru.soru_metni }}</h4>
-                
                 <form method="POST" action="{{ url_for('exam.sinav_cevap') }}" id="examForm">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="soru_id" value="{{ soru.id }}">
-                    <input type="hidden" name="soru_tipi" value="{{ soru.beceri or 'grammar' }}">
-                    
-                    {% if soru.beceri == 'speaking' %}
-                    <!-- ============ SPEAKING: Ses Kayıt Arayüzü ============ -->
-                    <div class="speaking-interface">
-                        <div class="alert alert-info mb-4">
-                            <i class="fas fa-microphone me-2"></i>
-                            <strong>Konuşma Sorusu:</strong> Soruyu okuyun ve cevabınızı sesli olarak kaydedin.
-                        </div>
-                        
-                        <div class="audio-recorder">
-                            <div class="recording-indicator" id="recordingIndicator">
-                                <div class="pulse"></div>
-                                <span>Kayıt yapılıyor...</span>
-                            </div>
-                            
-                            <button type="button" id="startRecording" class="btn btn-danger btn-lg">
-                                <i class="fas fa-microphone me-2"></i> Kayda Başla
-                            </button>
-                            <button type="button" id="stopRecording" class="btn btn-secondary btn-lg" disabled>
-                                <i class="fas fa-stop me-2"></i> Kaydı Durdur
-                            </button>
-                            
-                            <audio id="audioPlayback" controls style="display:none; width: 100%; max-width: 400px;"></audio>
-                            
-                            <p class="text-muted small mt-3">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Kayıt tamamlandığında otomatik olarak değerlendirilecektir.
-                            </p>
-                        </div>
-                        
-                        <input type="hidden" name="audio_response" id="audioResponse">
-                        <input type="hidden" name="cevap" id="selectedAnswer" value="">
-                    </div>
-                    
-                    {% elif soru.beceri == 'writing' %}
-                    <!-- ============ WRITING: Yazı Alanı ============ -->
-                    <div class="writing-interface">
-                        <div class="alert alert-info mb-4">
-                            <i class="fas fa-pencil-alt me-2"></i>
-                            <strong>Yazma Sorusu:</strong> Aşağıdaki alana cevabınızı yazın.
-                        </div>
-                        
-                        <textarea name="text_response" id="textResponse" class="form-control" 
-                                  rows="12" placeholder="Cevabınızı buraya yazın..."
-                                  style="font-size: 1.1rem; line-height: 1.8;"></textarea>
-                        
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="word-count" id="wordCountDisplay">
-                                Kelime sayısı: <span id="wordCount">0</span> / <span class="text-muted">Önerilen: 150+</span>
-                            </div>
-                            <small class="text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Yazınız AI tarafından değerlendirilecektir.
-                            </small>
-                        </div>
-                        
-                        <input type="hidden" name="cevap" id="selectedAnswer" value="WRITING_SUBMITTED">
-                    </div>
-                    
-                    {% else %}
-                    <!-- ============ ÇOGtan SEÇMELİ: Standart Format ============ -->
                     <div class="d-grid gap-3">
                         <button type="button" class="btn btn-outline-secondary btn-lg text-start option-btn p-3"
                             onclick="selectOption(this, 'A')">
@@ -244,11 +122,8 @@
                         {% endif %}
                     </div>
                     <input type="hidden" name="cevap" id="selectedAnswer" value="">
-                    {% endif %}
-                    
                     <div class="d-flex justify-content-end mt-4">
-                        <button type="submit" class="btn btn-primary btn-lg px-5" id="submitBtn" 
-                                {% if soru.beceri not in ['speaking', 'writing'] %}disabled{% endif %}>
+                        <button type="submit" class="btn btn-primary btn-lg px-5" id="submitBtn" disabled>
                             Sonraki <i class="bi bi-arrow-right ms-2"></i>
                         </button>
                     </div>
@@ -268,8 +143,6 @@
     const questionTimerEl = document.getElementById('questionTimer');
     const OFFLINE_KEY = 'skills_offline_answers';
     let webcamStream = null;
-    let mediaRecorder = null;
-    let audioChunks = [];
 
     // CSRF Token - Proctoring için gerekli
     const csrfToken = document.querySelector('input[name="csrf_token"]').value;
@@ -281,9 +154,6 @@
     let ignoreTabSwitch = true;
     let lastTabSwitchTime = 0;
     setTimeout(() => { ignoreTabSwitch = false; }, 5000);
-
-    // Soru tipi
-    const soruTipi = '{{ soru.beceri or "grammar" }}';
 
     // ==================== ZAMANLAYICILAR ====================
     function updateTimer() {
@@ -298,8 +168,7 @@
         }
 
         if (remainingSeconds <= 0) {
-            // DÜZELTİLDİ: Süre dolduğunda formu otomatik gönder
-            autoSubmitForm();
+            document.getElementById('examForm').submit();
             return;
         }
 
@@ -323,37 +192,12 @@
         }
 
         if (questionSeconds <= 0) {
-            // DÜZELTİLDİ: Soru süresi dolduğunda otomatik sonraki soruya geç
-            autoSubmitForm();
+            document.getElementById('examForm').submit();
             return;
         }
 
         questionSeconds--;
         setTimeout(updateQuestionTimer, 1000);
-    }
-
-    // DÜZELTİLDİ: Otomatik form gönderimi
-    function autoSubmitForm() {
-        const form = document.getElementById('examForm');
-        const submitBtn = document.getElementById('submitBtn');
-        
-        // Cevap seçilmemişse boş olarak işaretle
-        const selectedAnswer = document.getElementById('selectedAnswer');
-        if (!selectedAnswer.value && soruTipi !== 'speaking' && soruTipi !== 'writing') {
-            selectedAnswer.value = '';  // Boş cevap - süre doldu
-        }
-        
-        // Writing için metin kontrolü
-        if (soruTipi === 'writing') {
-            const textResponse = document.getElementById('textResponse');
-            if (textResponse && !textResponse.value.trim()) {
-                selectedAnswer.value = 'TIMEOUT_EMPTY';
-            }
-        }
-        
-        // Submit butonunu aktifle ve formu gönder
-        submitBtn.disabled = false;
-        form.submit();
     }
 
     // ==================== SEÇENEK İŞLEMLERİ ====================
@@ -364,92 +208,6 @@
         document.getElementById('submitBtn').disabled = false;
 
         saveOfflineAnswer({{ soru.id }}, answer);
-    }
-
-    // ==================== WRITING KELIME SAYACI ====================
-    if (soruTipi === 'writing') {
-        const textArea = document.getElementById('textResponse');
-        const wordCountEl = document.getElementById('wordCount');
-        const wordCountDisplay = document.getElementById('wordCountDisplay');
-        
-        if (textArea) {
-            textArea.addEventListener('input', function() {
-                const text = this.value.trim();
-                const wordCount = text ? text.split(/\s+/).length : 0;
-                wordCountEl.textContent = wordCount;
-                
-                // Minimum kelime kontrolü
-                if (wordCount >= 150) {
-                    wordCountDisplay.classList.remove('warning');
-                    wordCountDisplay.classList.add('success');
-                } else if (wordCount >= 100) {
-                    wordCountDisplay.classList.remove('success');
-                    wordCountDisplay.classList.add('warning');
-                } else {
-                    wordCountDisplay.classList.remove('success', 'warning');
-                }
-            });
-        }
-    }
-
-    // ==================== SPEAKING SES KAYDI ====================
-    if (soruTipi === 'speaking') {
-        const startBtn = document.getElementById('startRecording');
-        const stopBtn = document.getElementById('stopRecording');
-        const audioPlayback = document.getElementById('audioPlayback');
-        const recordingIndicator = document.getElementById('recordingIndicator');
-        const audioResponseInput = document.getElementById('audioResponse');
-        const selectedAnswer = document.getElementById('selectedAnswer');
-
-        if (startBtn) {
-            startBtn.addEventListener('click', async function() {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-
-                    mediaRecorder.ondataavailable = (event) => {
-                        audioChunks.push(event.data);
-                    };
-
-                    mediaRecorder.onstop = () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        const audioUrl = URL.createObjectURL(audioBlob);
-                        audioPlayback.src = audioUrl;
-                        audioPlayback.style.display = 'block';
-
-                        // Base64'e çevir
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                            audioResponseInput.value = reader.result;
-                            selectedAnswer.value = 'SPEAKING_RECORDED';
-                            document.getElementById('submitBtn').disabled = false;
-                        };
-                        reader.readAsDataURL(audioBlob);
-
-                        // Stream'i kapat
-                        stream.getTracks().forEach(track => track.stop());
-                    };
-
-                    mediaRecorder.start();
-                    startBtn.disabled = true;
-                    stopBtn.disabled = false;
-                    recordingIndicator.classList.add('active');
-                } catch (err) {
-                    console.error('Mikrofon erişim hatası:', err);
-                    alert('Mikrofona erişilemedi. Lütfen tarayıcı izinlerini kontrol edin.');
-                }
-            });
-
-            stopBtn.addEventListener('click', function() {
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                    mediaRecorder.stop();
-                    startBtn.disabled = false;
-                    stopBtn.disabled = true;
-                    recordingIndicator.classList.remove('active');
-                }
-            });
-        }
     }
 
     // ==================== ÇEVRİMDIŞI MOD ====================
@@ -491,13 +249,15 @@
         }
     }
 
-    // ==================== WEBCAM PROCTORING ====================
+    // ==================== WEBCAM PROCTORING - DÜZELTİLDİ ====================
     async function initWebcam() {
         try {
             webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
             console.log('Webcam initialized for proctoring');
 
+            // İlk snapshot'ı hemen al
             setTimeout(captureSnapshot, 2000);
+            // Her 30 saniyede bir snapshot al
             setInterval(captureSnapshot, 30000);
         } catch (e) {
             console.warn('Webcam not available:', e);
@@ -505,7 +265,10 @@
     }
 
     async function captureSnapshot() {
-        if (!webcamStream) return;
+        if (!webcamStream) {
+            console.warn('Webcam stream not available');
+            return;
+        }
 
         try {
             const video = document.createElement('video');
@@ -517,64 +280,195 @@
             canvas.height = 240;
             canvas.getContext('2d').drawImage(video, 0, 0, 320, 240);
 
+            // Data URL formatında görüntü
             const imageData = canvas.toDataURL('image/png', 0.7);
 
-            await fetch('/api/proctoring/snapshot', {
+            // DÜZELTİLDİ: CSRF Token header'a eklendi
+            const resp = await fetch('/api/proctoring/snapshot', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
+                    'X-CSRFToken': csrfToken  // CSRF Token eklendi
                 },
                 body: JSON.stringify({ image: imageData })
             });
+
+            if (resp.ok) {
+                console.log('Proctoring snapshot captured successfully');
+            } else {
+                console.warn('Proctoring snapshot failed:', resp.status);
+            }
         } catch (e) {
             console.warn('Snapshot failed:', e);
         }
     }
 
     // ==================== GÜVENLİK TEDBİRLERİ ====================
-    document.addEventListener('contextmenu', e => e.preventDefault());
-    document.addEventListener('copy', e => e.preventDefault());
-    document.addEventListener('paste', e => e.preventDefault());
-    document.addEventListener('cut', e => e.preventDefault());
 
-    document.addEventListener('visibilitychange', function() {
-        if (document.hidden && !ignoreTabSwitch) {
+    // 1. Sağ tık engelleme
+    document.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+        console.log('Sağ tık engellendi');
+        return false;
+    });
+
+    // 2. Kopyalama engelleme
+    document.addEventListener('copy', function (e) {
+        e.preventDefault();
+        console.log('Kopyalama engellendi');
+        return false;
+    });
+
+    // 3. Yapıştırma engelleme
+    document.addEventListener('paste', function (e) {
+        e.preventDefault();
+        console.log('Yapıştırma engellendi');
+        return false;
+    });
+
+    // 4. Kesme engelleme
+    document.addEventListener('cut', function (e) {
+        e.preventDefault();
+        console.log('Kesme engellendi');
+        return false;
+    });
+
+    // 5. Tab/Pencere değiştirme tespiti - DÜZELTİLDİ
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            // İlk 5 saniye ignore et (kamera izni popup'ları için)
+            if (ignoreTabSwitch) {
+                console.log('Tab değişikliği ignore edildi (başlangıç)');
+                return;
+            }
+
+            // Debounce: 2 saniye içinde tekrar tetiklenmesini engelle
             const now = Date.now();
-            if (now - lastTabSwitchTime < 2000) return;
+            if (now - lastTabSwitchTime < 2000) {
+                console.log('Tab değişikliği ignore edildi (debounce)');
+                return;
+            }
             lastTabSwitchTime = now;
+
             tabSwitchCount++;
+            console.log('Tab değiştirildi! Toplam:', tabSwitchCount);
+
+            // Uyarı overlay göster
             document.getElementById('tabWarningOverlay').style.display = 'flex';
+
+            // Sunucuya bildir
             logSecurityEvent('tab_switch', { count: tabSwitchCount });
+
+            // 2 saniye sonra overlay'i gizle
             setTimeout(() => {
                 document.getElementById('tabWarningOverlay').style.display = 'none';
             }, 2000);
         }
     });
 
-    window.addEventListener('blur', function() {
-        if (!ignoreTabSwitch) logSecurityEvent('window_blur', {});
+    // 6. Blur (odak kaybı) tespiti - DÜZELTİLDİ
+    window.addEventListener('blur', function () {
+        // İlk 5 saniye ignore et
+        if (ignoreTabSwitch) {
+            console.log('Blur ignore edildi (başlangıç)');
+            return;
+        }
+        console.log('Pencere odağı kaybedildi');
+        logSecurityEvent('window_blur', {});
     });
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'F12') { e.preventDefault(); return false; }
-        if (e.ctrlKey && ['c','v','x','a','u','s','p'].includes(e.key.toLowerCase())) {
-            e.preventDefault(); return false;
+    // 7. Kısayol tuşları engelleme (Ctrl+C, Ctrl+V, Ctrl+A, F12, PrintScreen vb.)
+    document.addEventListener('keydown', function (e) {
+        // F12 (DevTools)
+        if (e.key === 'F12') {
+            e.preventDefault();
+            console.log('F12 engellendi');
+            return false;
+        }
+
+        // Ctrl + tuş kombinasyonları
+        if (e.ctrlKey) {
+            // Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A, Ctrl+U, Ctrl+S, Ctrl+P
+            if (['c', 'v', 'x', 'a', 'u', 's', 'p', 'C', 'V', 'X', 'A', 'U', 'S', 'P'].includes(e.key)) {
+                e.preventDefault();
+                console.log('Ctrl+' + e.key + ' engellendi');
+                return false;
+            }
+            // Ctrl+Shift+I (DevTools)
+            if (e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) {
+                e.preventDefault();
+                console.log('DevTools kısayolu engellendi');
+                return false;
+            }
+        }
+
+        // PrintScreen
+        if (e.key === 'PrintScreen') {
+            e.preventDefault();
+            console.log('PrintScreen engellendi');
+            return false;
         }
     });
 
+    // 8. Güvenlik olaylarını sunucuya bildir
     async function logSecurityEvent(eventType, data) {
         try {
             await fetch('/api/security/log', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                body: JSON.stringify({ event_type: eventType, data: data, timestamp: new Date().toISOString() })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    event_type: eventType,
+                    data: data,
+                    timestamp: new Date().toISOString()
+                })
             });
-        } catch (e) {}
+        } catch (e) {
+            console.warn('Security log failed:', e);
+        }
     }
 
     // ==================== AĞ DURUMU ====================
-    window.addEventListener('online', () => syncOfflineAnswers());
+    window.addEventListener('online', () => {
+        console.log('Back online, syncing...');
+        syncOfflineAnswers();
+    });
+
+    window.addEventListener('offline', () => {
+        console.log('Offline mode activated');
+    });
+
+    // ==================== DURAKLATMA ====================
+    async function pauseExam() {
+        if (!confirm('Sınavı duraklatmak istiyor musunuz? Kaldığınız yerden devam edebilirsiniz.')) {
+            return;
+        }
+
+        try {
+            const resp = await fetch('/exam/sinav/pause', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ current_question_id: {{ soru.id }} })
+    });
+
+    const data = await resp.json();
+
+    if (data.status === 'paused') {
+        alert(data.message);
+        window.location.href = '/sinav-giris';
+    } else if (data.status === 'already_paused') {
+        alert('Sınav zaten duraklatılmış.');
+    }
+        } catch (e) {
+        console.error('Pause failed:', e);
+        alert('Duraklatma başarısız. İnternet bağlantınızı kontrol edin.');
+    }
+    }
 
     // ==================== BAŞLATMA ====================
     updateTimer();
@@ -582,6 +476,6 @@
     initWebcam();
     syncOfflineAnswers();
 
-    console.log('Sınav güvenlik sistemi aktif - Soru tipi:', soruTipi);
+    console.log('Sınav güvenlik sistemi aktif');
 </script>
 {% endblock %}
