@@ -24,7 +24,8 @@
                 </div>
 
                 <div class="card-body p-4">
-                    <form method="POST" action="{{ url_for('admin.sablon_ekle', id=sablon.id if sablon else None) }}"
+                    <form method="POST"
+                        action="{% if sablon %}{{ url_for('admin.sablon_duzenle', id=sablon.id) }}{% else %}{{ url_for('admin.sablon_ekle') }}{% endif %}"
                         id="sablonForm">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -40,7 +41,7 @@
                                     <label for="isim" class="form-label fw-bold">Şablon Adı <span
                                             class="text-danger">*</span></label>
                                     <input type="text" class="form-control form-control-lg" id="isim" name="isim"
-                                        value="{{ sablon.isim if sablon else '' }}" required
+                                        value="{{ sablon.isim if sablon else '' }}" requifred
                                         placeholder="Örn: Genel İngilizce Sınavı">
                                 </div>
 
@@ -375,17 +376,17 @@
                                             <div class="col-md-2">
                                                 <label class="form-label">Toplam Süre (dk)</label>
                                                 <input type="number" class="form-control" name="speaking_time_limit"
-                                                    value="15" min="5" max="60">
+                                                    value="15" min="5" max="30">
                                             </div>
                                             <div class="col-md-2">
                                                 <label class="form-label">Hazırlık (sn)</label>
                                                 <input type="number" class="form-control" name="speaking_prep_time"
-                                                    value="30" min="10" max="300">
+                                                    value="30" min="15" max="120">
                                             </div>
                                             <div class="col-md-3">
                                                 <label class="form-label">Cevap Süresi (sn)</label>
                                                 <input type="number" class="form-control" name="speaking_answer_time"
-                                                    value="60" min="30" max="600">
+                                                    value="60" min="30" max="180">
                                             </div>
                                             <div class="col-md-2">
                                                 <label class="form-label">Sıra</label>
