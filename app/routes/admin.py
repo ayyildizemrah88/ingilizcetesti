@@ -848,18 +848,20 @@ def fix_speaking_writing_questions():
     '''
 
 
-# ==================== ŞABLON YÖNETİMİ ====================
+# ==================== ŞABLON YÖNETİMİ (ESNEK SİSTEM) ====================
 @admin_bp.route('/sablonlar')
 @superadmin_required
 def sablonlar():
     sablonlar = []
+    sirketler = []
     try:
-        from app.models import ExamTemplate
+        from app.models import ExamTemplate, Company
         sablonlar = ExamTemplate.query.order_by(ExamTemplate.id.desc()).all()
+        sirketler = Company.query.all()
     except Exception as e:
         logger.error(f"Sablonlar error: {e}")
         flash('Şablonlar yüklenirken bir hata oluştu.', 'danger')
-    return render_template('sablonlar.html', sablonlar=sablonlar)
+    return render_template('sablonlar.html', sablonlar=sablonlar, sirketler=sirketler)
 
 
 @admin_bp.route('/sablon/ekle', methods=['GET', 'POST'])
@@ -867,37 +869,68 @@ def sablonlar():
 @admin_bp.route('/sablon/yeni', methods=['GET', 'POST'])
 @superadmin_required
 def sablon_ekle():
+    sirketler = []
+    try:
+        from app.models import Company
+        sirketler = Company.query.filter_by(is_active=True).all()
+    except:
+        pass
+    
     if request.method == 'POST':
         try:
             from app.models import ExamTemplate
             from app.extensions import db
             import json
             
-            beceri_dagilimi = {
-                'grammar': int(request.form.get('grammar_count', 5)),
-                'vocabulary': int(request.form.get('vocabulary_count', 5)),
-                'reading': int(request.form.get('reading_count', 5)),
-                'listening': int(request.form.get('listening_count', 5)),
-                'speaking': int(request.form.get('speaking_count', 0)),
-                'writing': int(request.form.get('writing_count', 0))
+            # Hangi becerilerin dahil edileceğini al
+            secili_beceriler = request.form.getlist('beceriler')
+            
+            # Her beceri için soru sayısı ve süre ayarları
+            beceri_dagilimi = {}
+            beceri_sureleri = {}
+            toplam_soru = 0
+            
+            for beceri in ['grammar', 'vocabulary', 'reading', 'listening', 'speaking', 'writing']:
+                if beceri in secili_beceriler:
+                    soru_sayisi = int(request.form.get(f'{beceri}_count', 0) or 0)
+                    sure_saniye = int(request.form.get(f'{beceri}_sure', 60) or 60)
+                    if soru_sayisi > 0:
+                        beceri_dagilimi[beceri] = soru_sayisi
+                        beceri_sureleri[beceri] = sure_saniye
+                        toplam_soru += soru_sayisi
+            
+            if toplam_soru == 0:
+                flash('En az bir beceri ve soru sayısı girilmelidir.', 'warning')
+                return render_template('sablon_form.html', sirketler=sirketler)
+            
+            # Şablon ayarlarını JSON olarak kaydet
+            sablon_ayarlari = {
+                'beceri_dagilimi': beceri_dagilimi,
+                'beceri_sureleri': beceri_sureleri,
+                'toplam_sure_dakika': int(request.form.get('toplam_sure', 30) or 30),
+                'gecme_puani': int(request.form.get('gecme_puani', 60) or 60),
+                'karisik_soru': request.form.get('karisik_soru') == 'on',
+                'geri_donus': request.form.get('geri_donus') == 'on'
             }
             
             yeni_sablon = ExamTemplate(
                 isim=request.form.get('isim'),
                 aciklama=request.form.get('aciklama'),
-                sure=int(request.form.get('sure', 30)),
-                soru_sayisi=sum(beceri_dagilimi.values()),
-                beceri_dagilimi=json.dumps(beceri_dagilimi),
+                sure=sablon_ayarlari['toplam_sure_dakika'],
+                soru_sayisi=toplam_soru,
+                beceri_dagilimi=json.dumps(sablon_ayarlari),
                 is_active=True
             )
             db.session.add(yeni_sablon)
             db.session.commit()
-            flash('Şablon başarıyla oluşturuldu.', 'success')
+            
+            flash(f'"{yeni_sablon.isim}" şablonu başarıyla oluşturuldu. ({toplam_soru} soru)', 'success')
             return redirect(url_for('admin.sablonlar'))
         except Exception as e:
             logger.error(f"Sablon ekle error: {e}")
-            flash('Şablon oluşturulurken bir hata oluştu.', 'danger')
-    return render_template('sablon_form.html')
+            flash(f'Şablon oluşturulurken bir hata oluştu: {str(e)}', 'danger')
+    
+    return render_template('sablon_form.html', sirketler=sirketler)
 
 
 # Alias for template compatibility
@@ -910,33 +943,71 @@ def sablon_yeni():
 @admin_bp.route('/sablon/duzenle/<int:id>', methods=['GET', 'POST'])
 @superadmin_required
 def sablon_duzenle(id):
+    sirketler = []
+    try:
+        from app.models import Company
+        sirketler = Company.query.filter_by(is_active=True).all()
+    except:
+        pass
+    
     try:
         from app.models import ExamTemplate
         from app.extensions import db
         import json
         sablon = ExamTemplate.query.get_or_404(id)
+        
+        # Mevcut ayarları parse et
+        mevcut_ayarlar = {}
+        if sablon.beceri_dagilimi:
+            try:
+                mevcut_ayarlar = json.loads(sablon.beceri_dagilimi)
+            except:
+                pass
 
         if request.method == 'POST':
             sablon.isim = request.form.get('isim') or sablon.isim
             sablon.aciklama = request.form.get('aciklama') or sablon.aciklama
-            sablon.sure = int(request.form.get('sure', sablon.sure))
             
-            beceri_dagilimi = {
-                'grammar': int(request.form.get('grammar_count', 5)),
-                'vocabulary': int(request.form.get('vocabulary_count', 5)),
-                'reading': int(request.form.get('reading_count', 5)),
-                'listening': int(request.form.get('listening_count', 5)),
-                'speaking': int(request.form.get('speaking_count', 0)),
-                'writing': int(request.form.get('writing_count', 0))
+            # Hangi becerilerin dahil edileceğini al
+            secili_beceriler = request.form.getlist('beceriler')
+            
+            # Her beceri için soru sayısı ve süre ayarları
+            beceri_dagilimi = {}
+            beceri_sureleri = {}
+            toplam_soru = 0
+            
+            for beceri in ['grammar', 'vocabulary', 'reading', 'listening', 'speaking', 'writing']:
+                if beceri in secili_beceriler:
+                    soru_sayisi = int(request.form.get(f'{beceri}_count', 0) or 0)
+                    sure_saniye = int(request.form.get(f'{beceri}_sure', 60) or 60)
+                    if soru_sayisi > 0:
+                        beceri_dagilimi[beceri] = soru_sayisi
+                        beceri_sureleri[beceri] = sure_saniye
+                        toplam_soru += soru_sayisi
+            
+            if toplam_soru == 0:
+                flash('En az bir beceri ve soru sayısı girilmelidir.', 'warning')
+                return render_template('sablon_form.html', sablon=sablon, sirketler=sirketler, mevcut_ayarlar=mevcut_ayarlar)
+            
+            # Şablon ayarlarını JSON olarak kaydet
+            sablon_ayarlari = {
+                'beceri_dagilimi': beceri_dagilimi,
+                'beceri_sureleri': beceri_sureleri,
+                'toplam_sure_dakika': int(request.form.get('toplam_sure', 30) or 30),
+                'gecme_puani': int(request.form.get('gecme_puani', 60) or 60),
+                'karisik_soru': request.form.get('karisik_soru') == 'on',
+                'geri_donus': request.form.get('geri_donus') == 'on'
             }
-            sablon.beceri_dagilimi = json.dumps(beceri_dagilimi)
-            sablon.soru_sayisi = sum(beceri_dagilimi.values())
+            
+            sablon.sure = sablon_ayarlari['toplam_sure_dakika']
+            sablon.soru_sayisi = toplam_soru
+            sablon.beceri_dagilimi = json.dumps(sablon_ayarlari)
             
             db.session.commit()
-            flash('Şablon başarıyla güncellendi.', 'success')
+            flash(f'"{sablon.isim}" şablonu başarıyla güncellendi.', 'success')
             return redirect(url_for('admin.sablonlar'))
 
-        return render_template('sablon_form.html', sablon=sablon)
+        return render_template('sablon_form.html', sablon=sablon, sirketler=sirketler, mevcut_ayarlar=mevcut_ayarlar)
     except Exception as e:
         logger.error(f"Sablon duzenle error: {e}")
         flash('Şablon düzenlenirken bir hata oluştu.', 'danger')
@@ -950,12 +1021,87 @@ def sablon_sil(id):
         from app.models import ExamTemplate
         from app.extensions import db
         sablon = ExamTemplate.query.get_or_404(id)
+        sablon_isim = sablon.isim
         db.session.delete(sablon)
         db.session.commit()
-        flash('Şablon başarıyla silindi.', 'success')
+        flash(f'"{sablon_isim}" şablonu başarıyla silindi.', 'success')
     except Exception as e:
         logger.error(f"Sablon sil error: {e}")
         flash('Şablon silinirken bir hata oluştu.', 'danger')
+    return redirect(url_for('admin.sablonlar'))
+
+
+@admin_bp.route('/sablon/kopyala/<int:id>', methods=['POST'])
+@superadmin_required
+def sablon_kopyala(id):
+    """Mevcut şablonu kopyala"""
+    try:
+        from app.models import ExamTemplate
+        from app.extensions import db
+        
+        orijinal = ExamTemplate.query.get_or_404(id)
+        kopya = ExamTemplate(
+            isim=f"{orijinal.isim} (Kopya)",
+            aciklama=orijinal.aciklama,
+            sure=orijinal.sure,
+            soru_sayisi=orijinal.soru_sayisi,
+            beceri_dagilimi=orijinal.beceri_dagilimi,
+            is_active=True
+        )
+        db.session.add(kopya)
+        db.session.commit()
+        flash(f'"{orijinal.isim}" şablonu kopyalandı.', 'success')
+    except Exception as e:
+        logger.error(f"Sablon kopyala error: {e}")
+        flash('Şablon kopyalanırken bir hata oluştu.', 'danger')
+    return redirect(url_for('admin.sablonlar'))
+
+
+@admin_bp.route('/sirket/sablon-ata/<int:sirket_id>', methods=['GET', 'POST'])
+@superadmin_required
+def sirket_sablon_ata(sirket_id):
+    """Şirkete şablon atama"""
+    try:
+        from app.models import Company, ExamTemplate
+        from app.extensions import db
+        
+        sirket = Company.query.get_or_404(sirket_id)
+        sablonlar = ExamTemplate.query.filter_by(is_active=True).all()
+        
+        if request.method == 'POST':
+            sablon_id = request.form.get('sablon_id')
+            if sablon_id:
+                # Şirkete şablon ID'sini kaydet (Company modeline sablon_id alanı eklenmelidir)
+                if hasattr(sirket, 'sablon_id'):
+                    sirket.sablon_id = int(sablon_id)
+                    db.session.commit()
+                    flash(f'"{sirket.isim}" şirketine şablon atandı.', 'success')
+                else:
+                    flash('Şirket modeline sablon_id alanı eklenmeli.', 'warning')
+            return redirect(url_for('admin.sirketler'))
+        
+        return render_template('sirket_sablon_ata.html', sirket=sirket, sablonlar=sablonlar)
+    except Exception as e:
+        logger.error(f"Sirket sablon ata error: {e}")
+        flash('Şablon atanırken bir hata oluştu.', 'danger')
+        return redirect(url_for('admin.sirketler'))
+
+
+@admin_bp.route('/sablon/tumunu-sil', methods=['POST'])
+@superadmin_required
+def sablon_tumunu_sil():
+    """Tüm şablonları sil - Sıfırdan başlamak için"""
+    try:
+        from app.models import ExamTemplate
+        from app.extensions import db
+        
+        silinen = ExamTemplate.query.delete()
+        db.session.commit()
+        flash(f'{silinen} şablon silindi. Artık sıfırdan şablon oluşturabilirsiniz.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Sablon tumunu sil error: {e}")
+        flash('Şablonlar silinirken bir hata oluştu.', 'danger')
     return redirect(url_for('admin.sablonlar'))
 
 
@@ -1091,3 +1237,11 @@ def demo_olustur():
             db.session.add(demo_aday)
             db.session.commit()
             
+            flash(f'Demo sınav oluşturuldu. Giriş kodu: {giris_kodu}', 'success')
+            return redirect(url_for('admin.adaylar'))
+        except Exception as e:
+            logger.error(f"Demo olustur error: {e}")
+            flash('Demo oluşturulurken bir hata oluştu.', 'danger')
+    
+    return render_template('demo_bilgi.html')
+
