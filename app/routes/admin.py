@@ -291,6 +291,53 @@ def toplu_sirket_aktif():
     return redirect(url_for('admin.sirketler'))
 
 
+@admin_bp.route('/sirket/admin-olustur/<int:id>', methods=['GET', 'POST'])
+@superadmin_required
+def sirket_admin_olustur(id):
+    """Şirket için admin kullanıcısı oluştur"""
+    try:
+        from app.models import Company, User
+        from app.extensions import db
+        
+        sirket = Company.query.get_or_404(id)
+        
+        if request.method == 'POST':
+            email = request.form.get('email', '').strip().lower()
+            ad_soyad = request.form.get('ad_soyad', '').strip()
+            sifre = request.form.get('sifre', '')
+            
+            if not email or not sifre:
+                flash('Email ve şifre zorunludur.', 'warning')
+                return render_template('sirket_admin_olustur.html', sirket=sirket)
+            
+            # Email zaten kullanılıyor mu kontrol et
+            mevcut = User.query.filter_by(email=email).first()
+            if mevcut:
+                flash('Bu email adresi zaten kullanılıyor.', 'danger')
+                return render_template('sirket_admin_olustur.html', sirket=sirket)
+            
+            # Yeni admin kullanıcısı oluştur
+            yeni_admin = User(
+                email=email,
+                ad_soyad=ad_soyad or f"{sirket.isim} Admin",
+                rol='customer',
+                sirket_id=sirket.id,
+                is_active=True
+            )
+            yeni_admin.set_password(sifre)
+            db.session.add(yeni_admin)
+            db.session.commit()
+            
+            flash(f'"{sirket.isim}" için admin kullanıcısı oluşturuldu: {email}', 'success')
+            return redirect(url_for('admin.sirket_duzenle', id=id))
+        
+        return render_template('sirket_admin_olustur.html', sirket=sirket)
+    except Exception as e:
+        logger.error(f"Sirket admin olustur error: {e}")
+        flash('Admin oluşturulurken bir hata oluştu.', 'danger')
+        return redirect(url_for('admin.sirketler'))
+
+
 # ==================== KULLANICI YÖNETİMİ ====================
 @admin_bp.route('/kullanicilar')
 @superadmin_required
@@ -496,6 +543,42 @@ def aday_detay(aday_id):
         flash('Aday bulunamadı.', 'danger')
         return redirect(url_for('admin.adaylar'))
     return render_template('aday_detay.html', aday=aday)
+
+
+@admin_bp.route('/aday/duzenle/<int:id>', methods=['GET', 'POST'])
+@superadmin_required
+def aday_duzenle(id):
+    sirketler = []
+    sablonlar = []
+    try:
+        from app.models import Company, ExamTemplate
+        sirketler = Company.query.all()
+        sablonlar = ExamTemplate.query.all()
+    except:
+        pass
+    
+    try:
+        from app.models import Candidate
+        from app.extensions import db
+        aday = Candidate.query.get_or_404(id)
+
+        if request.method == 'POST':
+            aday.ad_soyad = request.form.get('ad_soyad') or aday.ad_soyad
+            aday.email = request.form.get('email') or aday.email
+            aday.tc_kimlik = request.form.get('tc_kimlik') or aday.tc_kimlik
+            aday.cep_no = request.form.get('cep_no') or request.form.get('telefon') or aday.cep_no
+            aday.sirket_id = request.form.get('sirket_id') or aday.sirket_id
+            aday.admin_notes = request.form.get('admin_notes') or aday.admin_notes
+            
+            db.session.commit()
+            flash('Aday bilgileri başarıyla güncellendi.', 'success')
+            return redirect(url_for('admin.adaylar'))
+
+        return render_template('aday_form.html', aday=aday, sirketler=sirketler, sablonlar=sablonlar)
+    except Exception as e:
+        logger.error(f"Aday duzenle error: {e}")
+        flash('Aday düzenlenirken bir hata oluştu.', 'danger')
+        return redirect(url_for('admin.adaylar'))
 
 
 @admin_bp.route('/aday/sil/<int:id>', methods=['POST'])
