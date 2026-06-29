@@ -1,313 +1,185 @@
-{% extends "base.html" %}
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Interview Test | İngilizce Mülakat Testi</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Ana Sayfa -->
+    <div id="homePage" class="container">
+        <div class="home-content">
+            <div class="logo">
+                <i class="fas fa-language"></i>
+                <h1>English Level Test</h1>
+                <p>İngilizce Seviye Belirleme ve Mülakat Simülasyonu</p>
+            </div>
+            
+            <div class="test-info">
+                <div class="info-card">
+                    <i class="fas fa-clock"></i>
+                    <h3>45 Dakika</h3>
+                    <p>Toplam Süre</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-layer-group"></i>
+                    <h3>3 Bölüm</h3>
+                    <p>Gramer • Kelime • Okuma</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-star"></i>
+                    <h3>A1-C2</h3>
+                    <p>Seviye Aralığı</p>
+                </div>
+            </div>
 
-{% block title %}Skills Test Center - İngilizce Yeterlilik Sınavı{% endblock %}
+            <div class="instructions">
+                <h2>Test İçeriği</h2>
+                <ul>
+                    <li><i class="fas fa-check"></i> 20 Gramer Sorusu (15 dk)</li>
+                    <li><i class="fas fa-check"></i> 15 Kelime Bilgisi Sorusu (10 dk)</li>
+                    <li><i class="fas fa-check"></i> 10 Okuma-Anlama Sorusu (20 dk)</li>
+                    <li><i class="fas fa-check"></i> Detaylı Seviye Analizi</li>
+                    <li><i class="fas fa-check"></i> Sertifika İndirme</li>
+                </ul>
+            </div>
 
-{% block content %}
-<div class="hero-section">
-    <div class="hero-content">
-        <div class="hero-logo">
-            <i class="fas fa-graduation-cap"></i>
+            <button id="startBtn" class="start-btn">
+                <i class="fas fa-play"></i> Teste Başla
+            </button>
         </div>
-        <h1>🎓 Skills Test Center</h1>
-        <p class="hero-subtitle">Uluslararası İngilizce Yeterlilik Değerlendirme Platformu</p>
     </div>
 
-    <div class="cards-container">
-        <!-- Super Admin Card -->
-        <div class="role-card admin-card">
-            <div class="card-icon">
-                <i class="fas fa-user-tie"></i>
+    <!-- Test Sayfası -->
+    <div id="testPage" class="container" style="display: none;">
+        <div class="test-header">
+            <div class="test-title">
+                <h2 id="sectionTitle">Gramer Testi</h2>
+                <span id="sectionIndicator">Bölüm 1/3</span>
             </div>
-            <h3>Süper Admin</h3>
-            <p>Sistem yönetimi, şirket ve kullanıcı yönetimi, tüm raporlar</p>
-            <a href="{{ url_for('auth.login') }}" class="btn btn-admin">
-                <i class="fas fa-sign-in-alt"></i> Giriş Yap
-            </a>
+            
+            <div class="timer">
+                <i class="fas fa-hourglass-half"></i>
+                <span id="timer">15:00</span>
+            </div>
         </div>
 
-        <!-- Customer Card -->
-        <div class="role-card customer-card">
-            <div class="card-icon">
-                <i class="fas fa-building"></i>
-            </div>
-            <h3>Kurumsal Müşteri</h3>
-            <p>Şirket dashboard, aday yönetimi, sınav raporları</p>
-            <a href="{{ url_for('auth.login') }}" class="btn btn-customer">
-                <i class="fas fa-sign-in-alt"></i> Giriş Yap
-            </a>
+        <div class="progress-bar">
+            <div class="progress" id="progress"></div>
         </div>
 
-        <!-- Candidate Card -->
-        <div class="role-card candidate-card">
-            <div class="card-icon">
-                <i class="fas fa-clipboard-check"></i>
+        <div class="question-area">
+            <div class="question-number">
+                <span>Soru <span id="currentQuestion">1</span> / <span id="totalQuestions">20</span></span>
             </div>
-            <h3>Sınav Adayı</h3>
-            <p>Giriş kodunuzla sınava başlayın</p>
-            <a href="{{ url_for('auth.sinav_giris') }}" class="btn btn-candidate">
-                <i class="fas fa-play-circle"></i> Sınava Gir
-            </a>
+            
+            <div class="question-card">
+                <p class="question-text" id="questionText"></p>
+                
+                <div class="options" id="options"></div>
+                
+                <div class="feedback" id="feedback"></div>
+            </div>
+        </div>
+
+        <div class="navigation">
+            <button id="prevBtn" class="nav-btn" disabled>
+                <i class="fas fa-arrow-left"></i> Önceki
+            </button>
+            <button id="nextBtn" class="nav-btn">
+                Sonraki <i class="fas fa-arrow-right"></i>
+            </button>
         </div>
     </div>
 
-    <!-- Features Section -->
-    <div class="features-section">
-        <div class="feature">
-            <i class="fas fa-globe"></i>
-            <span>CEFR Uyumlu</span>
-        </div>
-        <div class="feature">
-            <i class="fas fa-shield-alt"></i>
-            <span>Güvenli Sınav</span>
-        </div>
-        <div class="feature">
-            <i class="fas fa-chart-line"></i>
-            <span>Detaylı Analiz</span>
-        </div>
-        <div class="feature">
-            <i class="fas fa-certificate"></i>
-            <span>Sertifika</span>
+    <!-- Sonuç Sayfası -->
+    <div id="resultPage" class="container" style="display: none;">
+        <div class="result-content">
+            <div class="result-header">
+                <i class="fas fa-trophy"></i>
+                <h1>Test Tamamlandı!</h1>
+            </div>
+
+            <div class="score-circle">
+                <div class="score-inner">
+                    <span id="totalScore">85</span>
+                    <small>Puan</small>
+                </div>
+            </div>
+
+            <div class="level-badge" id="levelBadge">
+                <h2>Seviyeniz: <span id="levelResult">B2</span></h2>
+                <p id="levelDescription">Upper Intermediate</p>
+            </div>
+
+            <div class="detailed-results">
+                <h3>Detaylı Analiz</h3>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-label">Gramer</div>
+                        <div class="result-bar">
+                            <div class="bar-fill" id="grammarBar"></div>
+                        </div>
+                        <span id="grammarScore">0/20</span>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Kelime</div>
+                        <div class="result-bar">
+                            <div class="bar-fill" id="vocabularyBar"></div>
+                        </div>
+                        <span id="vocabularyScore">0/15</span>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Okuma</div>
+                        <div class="result-bar">
+                            <div class="bar-fill" id="readingBar"></div>
+                        </div>
+                        <span id="readingScore">0/10</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="time-result">
+                <i class="fas fa-clock"></i>
+                <span>Tamamlanma Süresi: <strong id="timeResult">00:00</strong></span>
+            </div>
+
+            <div class="action-buttons">
+                <button id="retryBtn" class="action-btn">
+                    <i class="fas fa-redo"></i> Tekrar Dene
+                </button>
+                <button id="certificateBtn" class="action-btn certificate">
+                    <i class="fas fa-certificate"></i> Sertifika İndir
+                </button>
+                <button id="historyBtn" class="action-btn">
+                    <i class="fas fa-history"></i> Geçmiş Sonuçlar
+                </button>
+            </div>
         </div>
     </div>
-</div>
 
-<style>
-    /* ================================
-   ANA SAYFA - AÇIK PEMBE TEMA
-   ================================ */
+    <!-- Sertifika Modal -->
+    <div id="certificateModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="certificate">
+                <h1>Certificate of Achievement</h1>
+                <p>This certifies that</p>
+                <h2 id="certName">Test Participant</h2>
+                <p>has successfully completed the English Level Test with</p>
+                <h3 id="certLevel">B2 - Upper Intermediate</h3>
+                <p>Score: <span id="certScore">85</span>/100</p>
+                <p class="cert-date" id="certDate"></p>
+            </div>
+            <button id="downloadCert" class="download-btn">
+                <i class="fas fa-download"></i> Sertifikayı İndir
+            </button>
+        </div>
+    </div>
 
-    .hero-section {
-        min-height: calc(100vh - 100px);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 40px 20px;
-        /* AÇIK PEMBE GRADIENT - Güncellenmiş renk */
-        background: linear-gradient(135deg, #ffeef8 0%, #f8e1f4 100%) !important;
-    }
-
-    .hero-content {
-        text-align: center;
-        margin-bottom: 50px;
-    }
-
-    .hero-logo {
-        width: 100px;
-        height: 100px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 30px;
-        box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
-        animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-
-        0%,
-        100% {
-            transform: scale(1);
-        }
-
-        50% {
-            transform: scale(1.05);
-        }
-    }
-
-    .hero-logo i {
-        font-size: 48px;
-        color: white;
-    }
-
-    .hero-content h1 {
-        font-size: 48px;
-        font-weight: 800;
-        color: #1a1a2e;
-        margin-bottom: 15px;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .hero-subtitle {
-        font-size: 20px;
-        color: #666;
-        max-width: 600px;
-        margin: 0 auto;
-    }
-
-    /* Cards Container */
-    .cards-container {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 30px;
-        max-width: 1100px;
-        width: 100%;
-        margin-bottom: 60px;
-    }
-
-    /* Role Cards */
-    .role-card {
-        background: white;
-        border-radius: 20px;
-        padding: 40px 30px;
-        text-align: center;
-        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-    }
-
-    .role-card:hover {
-        transform: translateY(-10px);
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-    }
-
-    .admin-card:hover {
-        border-color: #667eea;
-    }
-
-    .customer-card:hover {
-        border-color: #11998e;
-    }
-
-    .candidate-card:hover {
-        border-color: #f5576c;
-    }
-
-    .card-icon {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 25px;
-        font-size: 32px;
-    }
-
-    .admin-card .card-icon {
-        background: linear-gradient(135deg, #ffecd2, #fcb69f);
-        color: #e17055;
-    }
-
-    .customer-card .card-icon {
-        background: linear-gradient(135deg, #a8edea, #fed6e3);
-        color: #00b894;
-    }
-
-    .candidate-card .card-icon {
-        background: linear-gradient(135deg, #ffeef8, #f8e1f4);
-        color: #e84393;
-    }
-
-    .role-card h3 {
-        font-size: 22px;
-        font-weight: 700;
-        color: #1a1a2e;
-        margin-bottom: 12px;
-    }
-
-    .role-card p {
-        font-size: 14px;
-        color: #888;
-        margin-bottom: 25px;
-        line-height: 1.5;
-    }
-
-    /* Buttons */
-    .role-card .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 28px;
-        border-radius: 25px;
-        font-weight: 600;
-        font-size: 14px;
-        text-decoration: none;
-        transition: all 0.3s ease;
-        border: none;
-    }
-
-    .btn-admin {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-    }
-
-    .btn-admin:hover {
-        background: linear-gradient(135deg, #5a6fd6, #6a4190);
-        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        color: white;
-    }
-
-    .btn-customer {
-        background: linear-gradient(135deg, #11998e, #38ef7d);
-        color: white;
-    }
-
-    .btn-customer:hover {
-        background: linear-gradient(135deg, #0d7d73, #2ed573);
-        box-shadow: 0 8px 20px rgba(17, 153, 142, 0.4);
-        color: white;
-    }
-
-    .btn-candidate {
-        background: linear-gradient(135deg, #f093fb, #f5576c);
-        color: white;
-    }
-
-    .btn-candidate:hover {
-        background: linear-gradient(135deg, #e080eb, #e04860);
-        box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4);
-        color: white;
-    }
-
-    /* Features Section */
-    .features-section {
-        display: flex;
-        gap: 50px;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-
-    .feature {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: #666;
-        font-size: 15px;
-        font-weight: 500;
-    }
-
-    .feature i {
-        font-size: 24px;
-        color: #667eea;
-    }
-
-    /* Responsive */
-    @media (max-width: 992px) {
-        .cards-container {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    @media (max-width: 768px) {
-        .cards-container {
-            grid-template-columns: 1fr;
-            max-width: 400px;
-        }
-
-        .hero-content h1 {
-            font-size: 32px;
-        }
-
-        .hero-subtitle {
-            font-size: 16px;
-        }
-
-        .features-section {
-            gap: 25px;
-        }
-    }
-</style>
-{% endblock %}
+    <script src="script.js"></script>
+</body>
+</html>
