@@ -1,12 +1,629 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>English Interview Test | İngilizce Mülakat Testi</title>
-    <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4A90E2;
+            --secondary: #50C878;
+            --danger: #FF6B6B;
+            --warning: #FFD93D;
+            --dark: #2C3E50;
+            --light: #ECF0F1;
+            --white: #FFFFFF;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--white);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes correctAnswer {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes incorrectAnswer {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .home-content {
+            text-align: center;
+        }
+
+        .logo {
+            margin-bottom: 40px;
+        }
+
+        .logo i {
+            font-size: 60px;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .logo h1 {
+            font-size: 36px;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+
+        .logo p {
+            font-size: 18px;
+            color: #666;
+        }
+
+        .test-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .info-card {
+            background: linear-gradient(135deg, #667eea15, #764ba215);
+            padding: 25px;
+            border-radius: 15px;
+            transition: var(--transition);
+        }
+
+        .info-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-card i {
+            font-size: 30px;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .info-card h3 {
+            font-size: 28px;
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+
+        .info-card p {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .instructions {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .instructions h2 {
+            font-size: 22px;
+            color: var(--dark);
+            margin-bottom: 20px;
+        }
+
+        .instructions ul {
+            list-style: none;
+        }
+
+        .instructions li {
+            padding: 10px 0;
+            color: #555;
+            font-size: 16px;
+        }
+
+        .instructions li i {
+            color: var(--secondary);
+            margin-right: 10px;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, var(--primary), #764ba2);
+            color: var(--white);
+            border: none;
+            padding: 18px 50px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(74, 144, 226, 0.4);
+        }
+
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .test-title h2 {
+            font-size: 24px;
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+
+        #sectionIndicator {
+            font-size: 14px;
+            color: #666;
+            background: var(--light);
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+
+        .timer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            color: var(--danger);
+            font-weight: bold;
+            background: #fff5f5;
+            padding: 10px 20px;
+            border-radius: 50px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--light);
+            border-radius: 10px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease;
+        }
+
+        .question-area {
+            margin-bottom: 30px;
+        }
+
+        .question-number {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .question-card {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+        }
+
+        .question-text {
+            font-size: 20px;
+            color: var(--dark);
+            margin-bottom: 25px;
+            line-height: 1.6;
+            font-weight: 500;
+            white-space: pre-line;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            padding: 15px 20px;
+            border: 2px solid #ddd;
+            background: var(--white);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 16px;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option-btn:hover {
+            border-color: var(--primary);
+            background: #f0f6ff;
+        }
+
+        .option-btn.selected {
+            border-color: var(--primary);
+            background: #e3f0ff;
+        }
+
+        .option-btn.correct {
+            border-color: var(--secondary);
+            background: #e8f5e9;
+            animation: correctAnswer 0.6s ease;
+        }
+
+        .option-btn.incorrect {
+            border-color: var(--danger);
+            background: #ffebee;
+            animation: incorrectAnswer 0.6s ease;
+        }
+
+        .feedback {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .feedback.show {
+            display: block;
+        }
+
+        .feedback.correct {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .feedback.incorrect {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .nav-btn {
+            padding: 12px 30px;
+            border: none;
+            background: var(--primary);
+            color: var(--white);
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: #357ABD;
+            transform: translateY(-2px);
+        }
+
+        .result-content {
+            text-align: center;
+        }
+
+        .result-header {
+            margin-bottom: 30px;
+        }
+
+        .result-header i {
+            font-size: 60px;
+            color: var(--warning);
+            margin-bottom: 15px;
+        }
+
+        .result-header h1 {
+            font-size: 36px;
+            color: var(--dark);
+        }
+
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            box-shadow: 0 10px 30px rgba(74, 144, 226, 0.3);
+        }
+
+        .score-inner {
+            background: var(--white);
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .score-inner span {
+            font-size: 48px;
+            font-weight: bold;
+            color: var(--dark);
+        }
+
+        .score-inner small {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .level-badge {
+            background: linear-gradient(135deg, #667eea15, #764ba215);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .level-badge h2 {
+            font-size: 28px;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+
+        .level-badge p {
+            font-size: 18px;
+            color: #666;
+        }
+
+        .detailed-results {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .detailed-results h3 {
+            font-size: 20px;
+            color: var(--dark);
+            margin-bottom: 20px;
+        }
+
+        .result-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .result-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .result-label {
+            width: 100px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .result-bar {
+            flex: 1;
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 1s ease;
+        }
+
+        .result-item span {
+            font-weight: bold;
+            color: var(--dark);
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .time-result {
+            padding: 20px;
+            background: #fff5f5;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            font-size: 18px;
+        }
+
+        .time-result i {
+            color: var(--danger);
+            margin-right: 10px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .action-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .action-btn.certificate {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: var(--white);
+            margin: 5% auto;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 700px;
+            position: relative;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 30px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .certificate {
+            text-align: center;
+            padding: 40px;
+            border: 3px solid #ddd;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .certificate h1 {
+            font-size: 36px;
+            color: var(--dark);
+            margin-bottom: 20px;
+        }
+
+        .certificate h2 {
+            font-size: 28px;
+            color: var(--primary);
+            margin: 20px 0;
+        }
+
+        .certificate h3 {
+            font-size: 24px;
+            color: var(--secondary);
+            margin: 20px 0;
+        }
+
+        .cert-date {
+            margin-top: 30px;
+            color: #666;
+        }
+
+        .download-btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--secondary);
+            color: var(--white);
+            border: none;
+            border-radius: 25px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .download-btn:hover {
+            background: #45b86c;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .test-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .test-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .score-circle {
+                width: 120px;
+                height: 120px;
+            }
+            
+            .score-inner {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .score-inner span {
+                font-size: 36px;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Ana Sayfa -->
@@ -180,6 +797,737 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        class EnglishTest {
+            constructor() {
+                this.currentSection = 1;
+                this.currentQuestion = 0;
+                this.answers = {};
+                this.score = {
+                    grammar: 0,
+                    vocabulary: 0,
+                    reading: 0
+                };
+                this.timer = null;
+                this.timeLeft = 900; // 15 dakika
+                this.totalTime = 0;
+                this.testStarted = false;
+                
+                this.sections = [
+                    {
+                        name: 'Gramer Testi',
+                        time: 900, // 15 dakika
+                        questions: this.getGrammarQuestions()
+                    },
+                    {
+                        name: 'Kelime Bilgisi',
+                        time: 600, // 10 dakika
+                        questions: this.getVocabularyQuestions()
+                    },
+                    {
+                        name: 'Okuma-Anlama',
+                        time: 1200, // 20 dakika
+                        questions: this.getReadingQuestions()
+                    }
+                ];
+                
+                this.init();
+            }
+            
+            init() {
+                this.bindEvents();
+                this.loadHistory();
+            }
+            
+            bindEvents() {
+                document.getElementById('startBtn').addEventListener('click', () => this.startTest());
+                document.getElementById('prevBtn').addEventListener('click', () => this.previousQuestion());
+                document.getElementById('nextBtn').addEventListener('click', () => this.nextQuestion());
+                document.getElementById('retryBtn').addEventListener('click', () => this.resetTest());
+                document.getElementById('certificateBtn').addEventListener('click', () => this.showCertificate());
+                document.getElementById('historyBtn').addEventListener('click', () => this.showHistory());
+                document.getElementById('downloadCert').addEventListener('click', () => this.downloadCertificate());
+                
+                document.querySelector('.close').addEventListener('click', () => {
+                    document.getElementById('certificateModal').style.display = 'none';
+                });
+            }
+            
+            startTest() {
+                this.testStarted = true;
+                document.getElementById('homePage').style.display = 'none';
+                document.getElementById('testPage').style.display = 'block';
+                this.currentSection = 1;
+                this.currentQuestion = 0;
+                this.answers = {};
+                this.score = { grammar: 0, vocabulary: 0, reading: 0 };
+                this.loadSection();
+                this.startTimer();
+            }
+            
+            loadSection() {
+                const section = this.sections[this.currentSection - 1];
+                document.getElementById('sectionTitle').textContent = section.name;
+                document.getElementById('sectionIndicator').textContent = `Bölüm ${this.currentSection}/3`;
+                document.getElementById('totalQuestions').textContent = section.questions.length;
+                this.timeLeft = section.time;
+                this.updateTimer();
+                this.loadQuestion();
+                this.updateProgress();
+            }
+            
+            loadQuestion() {
+                const section = this.sections[this.currentSection - 1];
+                const question = section.questions[this.currentQuestion];
+                
+                document.getElementById('currentQuestion').textContent = this.currentQuestion + 1;
+                document.getElementById('questionText').textContent = question.text;
+                
+                const optionsContainer = document.getElementById('options');
+                optionsContainer.innerHTML = '';
+                
+                question.options.forEach((option, index) => {
+                    const button = document.createElement('button');
+                    button.className = 'option-btn';
+                    button.textContent = `${String.fromCharCode(65 + index)}) ${option}`;
+                    button.addEventListener('click', () => this.selectAnswer(index));
+                    
+                    // Daha önce cevaplandıysa işaretle
+                    const answerKey = `${this.currentSection}-${this.currentQuestion}`;
+                    if (this.answers[answerKey] === index) {
+                        button.classList.add('selected');
+                    }
+                    
+                    optionsContainer.appendChild(button);
+                });
+                
+                // Feedback'i temizle
+                document.getElementById('feedback').className = 'feedback';
+                document.getElementById('feedback').style.display = 'none';
+                
+                // Navigasyon butonlarını güncelle
+                document.getElementById('prevBtn').disabled = this.currentQuestion === 0 && this.currentSection === 1;
+                
+                const isLastQuestion = this.currentSection === 3 && 
+                                      this.currentQuestion === this.sections[2].questions.length - 1;
+                document.getElementById('nextBtn').textContent = isLastQuestion ? 'Testi Bitir' : 'Sonraki →';
+            }
+            
+            selectAnswer(index) {
+                const answerKey = `${this.currentSection}-${this.currentQuestion}`;
+                this.answers[answerKey] = index;
+                
+                // Seçili butonu güncelle
+                document.querySelectorAll('.option-btn').forEach((btn, i) => {
+                    btn.classList.toggle('selected', i === index);
+                });
+                
+                // Doğru cevabı kontrol et
+                const section = this.sections[this.currentSection - 1];
+                const question = section.questions[this.currentQuestion];
+                
+                if (index === question.correct) {
+                    this.showFeedback(true, question.explanation);
+                    const sectionKey = ['grammar', 'vocabulary', 'reading'][this.currentSection - 1];
+                    this.score[sectionKey]++;
+                } else {
+                    this.showFeedback(false, question.explanation);
+                }
+            }
+            
+            showFeedback(isCorrect, explanation) {
+                const feedback = document.getElementById('feedback');
+                feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'} show`;
+                feedback.innerHTML = `
+                    <strong>${isCorrect ? '✓ Doğru!' : '✗ Yanlış!'}</strong>
+                    <p>${explanation}</p>
+                `;
+            }
+            
+            nextQuestion() {
+                const section = this.sections[this.currentSection - 1];
+                
+                if (this.currentQuestion < section.questions.length - 1) {
+                    this.currentQuestion++;
+                    this.loadQuestion();
+                    this.updateProgress();
+                } else if (this.currentSection < 3) {
+                    // Sonraki bölüme geç
+                    this.currentSection++;
+                    this.currentQuestion = 0;
+                    this.loadSection();
+                    this.updateProgress();
+                } else {
+                    // Test bitti
+                    this.finishTest();
+                }
+            }
+            
+            previousQuestion() {
+                if (this.currentQuestion > 0) {
+                    this.currentQuestion--;
+                } else if (this.currentSection > 1) {
+                    this.currentSection--;
+                    const section = this.sections[this.currentSection - 1];
+                    this.currentQuestion = section.questions.length - 1;
+                }
+                this.loadQuestion();
+                this.updateProgress();
+            }
+            
+            updateProgress() {
+                const totalQuestions = this.sections.reduce((sum, section) => sum + section.questions.length, 0);
+                const answeredQuestions = Object.keys(this.answers).length;
+                const progress = (answeredQuestions / totalQuestions) * 100;
+                document.getElementById('progress').style.width = `${progress}%`;
+            }
+            
+            startTimer() {
+                this.updateTimer();
+                this.timer = setInterval(() => {
+                    this.timeLeft--;
+                    this.totalTime++;
+                    
+                    if (this.timeLeft <= 0) {
+                        // Süre doldu, otomatik olarak sonraki bölüme geç
+                        if (this.currentSection < 3) {
+                            this.currentSection++;
+                            this.currentQuestion = 0;
+                            this.loadSection();
+                        } else {
+                            this.finishTest();
+                        }
+                    }
+                    
+                    this.updateTimer();
+                }, 1000);
+            }
+            
+            updateTimer() {
+                const minutes = Math.floor(this.timeLeft / 60);
+                const seconds = this.timeLeft % 60;
+                document.getElementById('timer').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                // Süre azaldıkça rengi değiştir
+                if (this.timeLeft < 60) {
+                    document.querySelector('.timer').style.animation = 'pulse 1s infinite';
+                } else {
+                    document.querySelector('.timer').style.animation = 'none';
+                }
+            }
+            
+            finishTest() {
+                clearInterval(this.timer);
+                this.calculateResults();
+                this.saveToHistory();
+                this.showResults();
+            }
+            
+            calculateResults() {
+                const totalQuestions = this.sections.reduce((sum, section) => sum + section.questions.length, 0);
+                const totalCorrect = this.score.grammar + this.score.vocabulary + this.score.reading;
+                this.totalScore = Math.round((totalCorrect / totalQuestions) * 100);
+                this.determineLevel();
+            }
+            
+            determineLevel() {
+                if (this.totalScore >= 95) this.level = 'C2';
+                else if (this.totalScore >= 85) this.level = 'C1';
+                else if (this.totalScore >= 75) this.level = 'B2';
+                else if (this.totalScore >= 65) this.level = 'B1';
+                else if (this.totalScore >= 50) this.level = 'A2';
+                else this.level = 'A1';
+                
+                this.levelDescriptions = {
+                    'A1': 'Beginner - Başlangıç',
+                    'A2': 'Elementary - Temel',
+                    'B1': 'Intermediate - Orta',
+                    'B2': 'Upper Intermediate - Orta Üstü',
+                    'C1': 'Advanced - İleri',
+                    'C2': 'Proficient - Yetkin'
+                };
+            }
+            
+            showResults() {
+                document.getElementById('testPage').style.display = 'none';
+                document.getElementById('resultPage').style.display = 'block';
+                
+                document.getElementById('totalScore').textContent = this.totalScore;
+                document.getElementById('levelResult').textContent = this.level;
+                document.getElementById('levelDescription').textContent = this.levelDescriptions[this.level];
+                
+                // Detaylı sonuçlar
+                const grammarPercent = (this.score.grammar / 20) * 100;
+                const vocabularyPercent = (this.score.vocabulary / 15) * 100;
+                const readingPercent = (this.score.reading / 10) * 100;
+                
+                document.getElementById('grammarBar').style.width = `${grammarPercent}%`;
+                document.getElementById('vocabularyBar').style.width = `${vocabularyPercent}%`;
+                document.getElementById('readingBar').style.width = `${readingPercent}%`;
+                
+                document.getElementById('grammarScore').textContent = `${this.score.grammar}/20`;
+                document.getElementById('vocabularyScore').textContent = `${this.score.vocabulary}/15`;
+                document.getElementById('readingScore').textContent = `${this.score.reading}/10`;
+                
+                // Süre
+                const minutes = Math.floor(this.totalTime / 60);
+                const seconds = this.totalTime % 60;
+                document.getElementById('timeResult').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            showCertificate() {
+                document.getElementById('certName').textContent = 'Test Participant';
+                document.getElementById('certLevel').textContent = `${this.level} - ${this.levelDescriptions[this.level]}`;
+                document.getElementById('certScore').textContent = this.totalScore;
+                document.getElementById('certDate').textContent = new Date().toLocaleDateString('tr-TR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                document.getElementById('certificateModal').style.display = 'block';
+            }
+            
+            downloadCertificate() {
+                // Basit bir sertifika indirme simülasyonu
+                alert('Sertifika indiriliyor... (Gerçek uygulamada PDF olarak indirilecek)');
+                // Burada html2canvas veya jsPDF kullanarak gerçek PDF oluşturulabilir
+            }
+            
+            saveToHistory() {
+                const history = JSON.parse(localStorage.getItem('testHistory') || '[]');
+                history.push({
+                    date: new Date().toISOString(),
+                    score: this.totalScore,
+                    level: this.level,
+                    levelDescription: this.levelDescriptions[this.level],
+                    details: { ...this.score },
+                    time: this.totalTime
+                });
+                
+                // Son 10 testi sakla
+                if (history.length > 10) history.shift();
+                
+                localStorage.setItem('testHistory', JSON.stringify(history));
+            }
+            
+            loadHistory() {
+                const history = JSON.parse(localStorage.getItem('testHistory') || '[]');
+                if (history.length > 0) {
+                    // En son test sonucunu göster
+                    console.log('Önceki testler yüklendi:', history);
+                }
+            }
+            
+            showHistory() {
+                const history = JSON.parse(localStorage.getItem('testHistory') || '[]');
+                if (history.length === 0) {
+                    alert('Henüz kaydedilmiş test sonucu bulunmamaktadır.');
+                    return;
+                }
+                
+                let historyHTML = '<h2>Test Geçmişi</h2><div style="max-height: 400px; overflow-y: auto;">';
+                
+                history.reverse().forEach((test, index) => {
+                    historyHTML += `
+                        <div style="background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 10px;">
+                            <strong>Test ${index + 1}</strong><br>
+                            Tarih: ${new Date(test.date).toLocaleDateString('tr-TR')}<br>
+                            Puan: ${test.score}/100<br>
+                            Seviye: ${test.level} - ${test.levelDescription}<br>
+                            Süre: ${Math.floor(test.time / 60)}:${(test.time % 60).toString().padStart(2, '0')}
+                        </div>
+                    `;
+                });
+                
+                historyHTML += '</div>';
+                
+                // Modal olarak göster
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                `;
+                
+                modal.innerHTML = `
+                    <div style="background: white; padding: 30px; border-radius: 20px; max-width: 600px; width: 90%;">
+                        ${historyHTML}
+                        <button onclick="this.closest('div').parentElement.remove()" 
+                                style="width: 100%; margin-top: 20px; padding: 10px; background: #4A90E2; color: white; border: none; border-radius: 10px; cursor: pointer;">
+                            Kapat
+                        </button>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) modal.remove();
+                });
+            }
+            
+            resetTest() {
+                clearInterval(this.timer);
+                this.currentSection = 1;
+                this.currentQuestion = 0;
+                this.answers = {};
+                this.score = { grammar: 0, vocabulary: 0, reading: 0 };
+                this.totalTime = 0;
+                this.testStarted = false;
+                
+                document.getElementById('resultPage').style.display = 'none';
+                document.getElementById('homePage').style.display = 'block';
+            }
+            
+            getGrammarQuestions() {
+                return [
+                    {
+                        text: 'She _____ to the gym every morning.',
+                        options: ['go', 'goes', 'going', 'gone'],
+                        correct: 1,
+                        explanation: 'Üçüncü tekil şahıs (she) ile present simple tense kullanılır: goes'
+                    },
+                    {
+                        text: 'If I _____ rich, I would travel the world.',
+                        options: ['am', 'was', 'were', 'be'],
+                        correct: 2,
+                        explanation: 'Type 2 conditional (gerçek dışı durumlar) için "were" kullanılır'
+                    },
+                    {
+                        text: 'The book _____ by millions of people.',
+                        options: ['reads', 'is read', 'read', 'reading'],
+                        correct: 1,
+                        explanation: 'Passive voice (edilgen çatı) yapısı: is + past participle'
+                    },
+                    {
+                        text: 'She has been studying English _____ 2019.',
+                        options: ['for', 'since', 'from', 'in'],
+                        correct: 1,
+                        explanation: 'Belirli bir başlangıç noktası için "since" kullanılır'
+                    },
+                    {
+                        text: 'By the time we arrived, the movie _____.',
+                        options: ['already started', 'had already started', 'has already started', 'was already started'],
+                        correct: 1,
+                        explanation: 'Past perfect tense: Geçmişte bir olaydan önce gerçekleşen diğer olay'
+                    },
+                    {
+                        text: 'Neither John nor his brothers _____ at the party.',
+                        options: ['was', 'were', 'is', 'has been'],
+                        correct: 1,
+                        explanation: '"Neither...nor" yapısında fiil en yakın özneye göre çekimlenir: brothers → were'
+                    },
+                    {
+                        text: 'I wish I _____ how to swim.',
+                        options: ['know', 'knew', 'known', 'knowing'],
+                        correct: 1,
+                        explanation: 'Wish + past simple: Şu anki gerçek dışı dilekler için'
+                    },
+                    {
+                        text: 'The project _____ by next Friday.',
+                        options: ['will complete', 'will be completed', 'completes', 'completed'],
+                        correct: 1,
+                        explanation: 'Future passive: will be + past participle'
+                    },
+                    {
+                        text: '_____ you study harder, you will fail the exam.',
+                        options: ['If', 'Unless', 'When', 'Although'],
+                        correct: 1,
+                        explanation: 'Unless = if not: Eğer daha çok çalışmazsan'
+                    },
+                    {
+                        text: 'The teacher asked the students _____ quietly.',
+                        options: ['to speak', 'speak', 'speaking', 'spoke'],
+                        correct: 0,
+                        explanation: 'Ask + object + to + verb yapısı'
+                    },
+                    {
+                        text: 'I have been living here _____ 10 years.',
+                        options: ['since', 'for', 'during', 'while'],
+                        correct: 1,
+                        explanation: 'Süre belirten zaman ifadeleri için "for" kullanılır'
+                    },
+                    {
+                        text: 'He suggested _____ to the cinema.',
+                        options: ['go', 'to go', 'going', 'went'],
+                        correct: 2,
+                        explanation: 'Suggest + gerund (-ing form) kullanılır'
+                    },
+                    {
+                        text: '_____ the weather was bad, we went out.',
+                        options: ['Because', 'Although', 'Despite', 'Since'],
+                        correct: 1,
+                        explanation: 'Although + clause: Zıtlık bildirir'
+                    },
+                    {
+                        text: 'The house _____ in 1990.',
+                        options: ['built', 'was built', 'is built', 'builds'],
+                        correct: 1,
+                        explanation: 'Geçmiş zaman passive: was/were + past participle'
+                    },
+                    {
+                        text: 'I look forward to _____ from you.',
+                        options: ['hear', 'hearing', 'heard', 'hears'],
+                        correct: 1,
+                        explanation: 'Look forward to + gerund (-ing form)'
+                    },
+                    {
+                        text: 'She _____ be at home. The lights are on.',
+                        options: ['can', 'must', 'might', 'could'],
+                        correct: 1,
+                        explanation: 'Güçlü tahmin için "must" kullanılır'
+                    },
+                    {
+                        text: 'Not only _____ late, but he also forgot the documents.',
+                        options: ['he arrived', 'did he arrive', 'arrived he', 'he did arrive'],
+                        correct: 1,
+                        explanation: 'Not only ile başlayan cümlelerde devrik yapı kullanılır'
+                    },
+                    {
+                        text: 'The more you practice, _____ you become.',
+                        options: ['the best', 'better', 'the better', 'good'],
+                        correct: 2,
+                        explanation: 'The more... the better kalıbı'
+                    },
+                    {
+                        text: 'I _____ rather stay at home tonight.',
+                        options: ['had', 'would', 'will', 'have'],
+                        correct: 1,
+                        explanation: 'Would rather + verb: Tercih belirtir'
+                    },
+                    {
+                        text: 'It\'s time you _____ a decision.',
+                        options: ['make', 'made', 'making', 'to make'],
+                        correct: 1,
+                        explanation: 'It\'s time + past simple: Yapılması gereken bir şeyi vurgular'
+                    }
+                ];
+            }
+            
+            getVocabularyQuestions() {
+                return [
+                    {
+                        text: 'What is the synonym of "enormous"?',
+                        options: ['tiny', 'huge', 'small', 'narrow'],
+                        correct: 1,
+                        explanation: 'Enormous = huge (devasa, kocaman)'
+                    },
+                    {
+                        text: 'Choose the correct word: "The company made a significant _____ last year."',
+                        options: ['profit', 'prophet', 'prophecy', 'proficient'],
+                        correct: 0,
+                        explanation: 'Profit = kar, kazanç anlamında kullanılır'
+                    },
+                    {
+                        text: 'What does "to procrastinate" mean?',
+                        options: ['to hurry up', 'to delay', 'to celebrate', 'to investigate'],
+                        correct: 1,
+                        explanation: 'Procrastinate = ertelemek, geciktirmek'
+                    },
+                    {
+                        text: 'The opposite of "generous" is:',
+                        options: ['kind', 'stingy', 'brave', 'honest'],
+                        correct: 1,
+                        explanation: 'Generous (cömert) kelimesinin zıttı stingy (cimri)'
+                    },
+                    {
+                        text: '"To hit the nail on the head" means:',
+                        options: ['to make a mistake', 'to be exactly right', 'to work hard', 'to be confused'],
+                        correct: 1,
+                        explanation: 'Bu deyim "tam isabet ettirmek, doğruyu bulmak" anlamına gelir'
+                    },
+                    {
+                        text: 'Which word means "very tired"?',
+                        options: ['energetic', 'exhausted', 'excited', 'elegant'],
+                        correct: 1,
+                        explanation: 'Exhausted = bitkin, çok yorgun'
+                    },
+                    {
+                        text: '"Colleague" refers to:',
+                        options: ['a family member', 'a coworker', 'a friend', 'a neighbor'],
+                        correct: 1,
+                        explanation: 'Colleague = iş arkadaşı, meslektaş'
+                    },
+                    {
+                        text: 'The word "benevolent" is closest in meaning to:',
+                        options: ['angry', 'kind', 'intelligent', 'brave'],
+                        correct: 1,
+                        explanation: 'Benevolent = iyiliksever, hayırsever'
+                    },
+                    {
+                        text: '"To bite the bullet" means:',
+                        options: ['to be angry', 'to face a difficult situation', 'to eat quickly', 'to complain'],
+                        correct: 1,
+                        explanation: 'Bu deyim "zor bir durumla yüzleşmek" anlamına gelir'
+                    },
+                    {
+                        text: 'What is the meaning of "ubiquitous"?',
+                        options: ['rare', 'everywhere', 'expensive', 'dangerous'],
+                        correct: 1,
+                        explanation: 'Ubiquitous = her yerde bulunan, yaygın'
+                    },
+                    {
+                        text: 'A "dilemma" is:',
+                        options: ['a solution', 'a difficult choice', 'a celebration', 'an agreement'],
+                        correct: 1,
+                        explanation: 'Dilemma = ikilem, zor seçim'
+                    },
+                    {
+                        text: '"To elaborate" means:',
+                        options: ['to simplify', 'to explain in detail', 'to ignore', 'to shorten'],
+                        correct: 1,
+                        explanation: 'Elaborate = detaylandırmak, ayrıntılı açıklamak'
+                    },
+                    {
+                        text: 'The antonym of "ancient" is:',
+                        options: ['old', 'modern', 'broken', 'traditional'],
+                        correct: 1,
+                        explanation: 'Ancient (antik, çok eski) kelimesinin zıttı modern'
+                    },
+                    {
+                        text: '"To get cold feet" means:',
+                        options: ['to feel cold', 'to become nervous', 'to get sick', 'to be angry'],
+                        correct: 1,
+                        explanation: 'Bu deyim "cesaretini kaybetmek, korkmak" anlamına gelir'
+                    },
+                    {
+                        text: 'Choose the correct word: "The view from the mountain was _____."',
+                        options: ['boring', 'breathtaking', 'ordinary', 'plain'],
+                        correct: 1,
+                        explanation: 'Breathtaking = nefes kesici, muhteşem'
+                    }
+                ];
+            }
+            
+            getReadingQuestions() {
+                return [
+                    {
+                        text: 'Read the passage:\n\n"Technology has revolutionized the way we communicate. From smartphones to social media, people can now connect instantly across the globe. However, some argue that this constant connectivity has led to a decrease in face-to-face interactions."\n\nWhat is the main idea of this passage?',
+                        options: [
+                            'Technology is harmful',
+                            'Technology changed communication but may reduce personal interactions',
+                            'Social media is the best invention',
+                            'People should stop using smartphones'
+                        ],
+                        correct: 1,
+                        explanation: 'Metin teknolojinin iletişimi değiştirdiğini ancak yüz yüze etkileşimleri azaltabileceğini anlatıyor'
+                    },
+                    {
+                        text: '"The research indicates that regular exercise not only improves physical health but also enhances mental well-being. Studies show that people who exercise at least three times a week report lower stress levels and better concentration."\n\nAccording to the text, regular exercise:',
+                        options: [
+                            'Only improves physical health',
+                            'Improves both physical and mental health',
+                            'Is not very effective',
+                            'Increases stress levels'
+                        ],
+                        correct: 1,
+                        explanation: 'Metin egzersizin hem fiziksel hem zihinsel sağlığı iyileştirdiğini belirtiyor'
+                    },
+                    {
+                        text: '"Climate change is one of the most pressing issues of our time. Rising temperatures, melting ice caps, and extreme weather events are all consequences of global warming. Scientists warn that immediate action is necessary to prevent irreversible damage."\n\nWhat is the tone of this passage?',
+                        options: [
+                            'Humorous',
+                            'Urgent and concerned',
+                            'Optimistic',
+                            'Indifferent'
+                        ],
+                        correct: 1,
+                        explanation: 'Metin acil ve endişeli bir ton kullanarak iklim değişikliğinin ciddiyetini vurguluyor'
+                    },
+                    {
+                        text: '"The company\'s new policy aims to promote work-life balance. Employees are now allowed to work remotely two days a week, and flexible hours have been introduced. Early feedback suggests increased productivity and job satisfaction."\n\nWhat can be inferred from the passage?',
+                        options: [
+                            'The company is losing money',
+                            'Flexible work arrangements may improve employee satisfaction',
+                            'All employees must work from home',
+                            'The policy has failed'
+                        ],
+                        correct: 1,
+                        explanation: 'Metinden esnek çalışma düzenlemelerinin çalışan memnuniyetini artırabileceği çıkarımı yapılabilir'
+                    },
+                    {
+                        text: '"Despite advances in medicine, prevention remains the best approach to health. A balanced diet, regular exercise, and adequate sleep are fundamental to maintaining good health. These lifestyle choices can prevent many chronic diseases."\n\nAccording to the text, what is the best approach to health?',
+                        options: [
+                            'Advanced medicine',
+                            'Prevention through healthy lifestyle',
+                            'Taking many medications',
+                            'Visiting doctors frequently'
+                        ],
+                        correct: 1,
+                        explanation: 'Metin sağlıklı yaşam tarzıyla korunmanın en iyi yaklaşım olduğunu vurguluyor'
+                    },
+                    {
+                        text: '"Artificial Intelligence is transforming industries across the board. From healthcare to finance, AI applications are improving efficiency and accuracy. However, ethical concerns about privacy and job displacement need to be addressed."\n\nWhat is the author\'s view on AI?',
+                        options: [
+                            'Completely negative',
+                            'Balanced - recognizing both benefits and concerns',
+                            'Entirely positive',
+                            'Uninterested'
+                        ],
+                        correct: 1,
+                        explanation: 'Yazar AI\'ın faydalarını kabul ederken etik endişelere de dikkat çekiyor - dengeli bir görüş'
+                    },
+                    {
+                        text: '"The education system is evolving to meet the demands of the 21st century. Traditional lecture-based teaching is giving way to interactive, student-centered approaches. Technology plays a crucial role in this transformation."\n\nWhat trend is described in this passage?',
+                        options: [
+                            'Return to traditional methods',
+                            'Shift towards interactive, technology-enhanced education',
+                            'Elimination of all technology',
+                            'Focus only on lectures'
+                        ],
+                        correct: 1,
+                        explanation: 'Metin eğitimde etkileşimli ve teknoloji destekli yaklaşımlara doğru bir değişimi anlatıyor'
+                    },
+                    {
+                        text: '"Global tourism has both positive and negative impacts. While it boosts local economies and promotes cultural exchange, it can also lead to environmental degradation and overcrowding in popular destinations."\n\nWhat is the main purpose of this passage?',
+                        options: [
+                            'To promote tourism',
+                            'To present a balanced view of tourism\'s effects',
+                            'To discourage all travel',
+                            'To describe tourist attractions'
+                        ],
+                        correct: 1,
+                        explanation: 'Metin turizmin hem olumlu hem olumsuz etkilerini dengeli bir şekilde sunuyor'
+                    },
+                    {
+                        text: '"Remote work has become increasingly common. While it offers flexibility and eliminates commuting, it also presents challenges such as isolation and difficulty separating work from personal life."\n\nWhat is the author\'s stance on remote work?',
+                        options: [
+                            'It is perfect with no drawbacks',
+                            'It has both advantages and disadvantages',
+                            'It should be banned',
+                            'It is only suitable for certain jobs'
+                        ],
+                        correct: 1,
+                        explanation: 'Yazar uzaktan çalışmanın hem avantajlarını hem dezavantajlarını objektif bir şekilde sunuyor'
+                    },
+                    {
+                        text: '"The importance of biodiversity cannot be overstated. Each species plays a vital role in maintaining ecological balance. The loss of even a single species can have far-reaching consequences for entire ecosystems."\n\nWhat is the central message of this text?',
+                        options: [
+                            'Some species are not important',
+                            'Biodiversity is crucial for ecological balance',
+                            'We should focus only on large animals',
+                            'Ecosystems can survive without diversity'
+                        ],
+                        correct: 1,
+                        explanation: 'Metin biyoçeşitliliğin ekolojik denge için hayati önemini vurguluyor'
+                    }
+                ];
+            }
+        }
+
+        // Uygulamayı başlat
+        document.addEventListener('DOMContentLoaded', () => {
+            new EnglishTest();
+        });
+    </script>
 </body>
 </html>
